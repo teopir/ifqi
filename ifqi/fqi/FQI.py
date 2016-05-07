@@ -59,7 +59,7 @@ class FQI:
 
         sa = np.copy(sast[:, 0:nextstate_pos]).reshape(nSamples,-1)
         snext = sast[:, nextstate_pos:absorbing_pos].reshape(nSamples,-1)
-        absorbing = sast[:, absorbing_pos].reshape(-1,1)
+        absorbing = sast[:, absorbing_pos]
 
         #select unique actions
         if isinstance(self.discrete_actions, int):
@@ -123,7 +123,7 @@ class FQI:
             predictions = self.estimator.predict(samples)
 
             Q[:, idx] = predictions.ravel()
-            Q[:, idx] = Q[:, idx] * (1 - absorbing).ravel()
+            Q[:, idx] = Q[:, idx] * (1 - absorbing)
 
         amax = np.argmax(Q, axis=1)
         return Q[np.arange(nbstates), amax], amax
