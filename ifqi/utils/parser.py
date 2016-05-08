@@ -2,6 +2,7 @@ from __future__ import print_function
 import os
 import csv
 import numpy as np
+import json
 
 def parseReLeDataset(dataPath):
     """
@@ -46,3 +47,17 @@ def parseReLeDataset(dataPath):
     sars = np.concatenate((states, actions, rewards, nextStates, absorbingStates), axis=1)
 
     return sars, stateDim, actionDim, rewardDim
+
+
+def parsejson(dataPath):
+
+    with open(dataPath, 'r') as infile:
+        jsondata = json.load(infile)
+
+        dataList = jsondata['data']
+        flatlist = []
+        for el in dataList:
+            flatlist += el
+        data = np.array(flatlist, dtype='float32')
+
+        return data, jsondata['statedim'], jsondata['actiondim'], jsondata['rewarddim']

@@ -69,6 +69,16 @@ class TestParsers(unittest.TestCase):
         self.assertTrue(data.shape[0] == len(res2))
         self.assertTrue(data.shape[1] == len(res2[0]))
 
+    def testjsonparser(self):
+
+        data, sdim, adim, rdim = parser.parsejson('data_prova_json1.txt')
+        self.assertTrue(data.shape[0] == 18, '{}'.format(data.shape[0]))
+        self.assertTrue(sdim == 3)
+        self.assertTrue(adim == 1)
+        self.assertTrue(rdim == 1)
+        for el in data:
+            self.assertTrue(len(el) == 2*sdim+adim+rdim+1)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -139,3 +139,12 @@ class FQI:
         """
         self._fit(X, y, **kwargs)
         return self
+
+    def predict(self, states):
+        if not hasattr(self, '_actions'):
+            raise ValueError('The model must be trained before to be evaluated')
+
+        maxQ, maxa = self.maxQA(states)
+        return maxa, maxQ
+
+
