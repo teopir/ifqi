@@ -31,6 +31,7 @@ if __name__ == '__main__':
     if estimator == 'extra':
         alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                          min_samples_split=2, min_samples_leaf=1)
+        fit_params = dict()
     elif estimator == 'mlp':
         alg = MLP(n_input=sdim+adim, optimizer='rmsprop').getModel()
         fit_params = {'nb_epoch':12, 'batch_size':50, 'verbose':1}
