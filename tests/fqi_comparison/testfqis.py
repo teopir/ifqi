@@ -15,6 +15,25 @@ from ifqi.fqi.FQI import FQI
 import ifqi.utils.parser as parser
 from ifqi.preprocessors.invPendulumPreprocessor import InvertedPendulumPreprocessor
 from sklearn.ensemble import ExtraTreesRegressor
+from ifqi.envs.actor import Actor
+from ifqi.envs.invertedPendulum import InvPendulum
+
+
+def runEpisode(obj, actor, myfqi, environment, gamma):   # (nstep, J, success)
+    J = 0
+    t=0
+    test_succesful = 0
+    while(not environment.isAbsorbing()):
+        state = environment.getState()
+        action = actor.exploitAction(state)
+        myaction, _ = myfqi.predict(np.array(state))
+        obj.assertTrue(np.allclose(action,myaction))
+        J += gamma**t * environment.step(action)
+        if(t>500):
+            test_succesful = 1
+            break
+        t+=1
+    return (t, J, test_succesful)
 
 
 class TestFQIs(unittest.TestCase):
@@ -86,7 +105,8 @@ class TestFQIs(unittest.TestCase):
 
         check_extra_model(self, mod, mymod)
 
-        for iteration in range(20):
+        environment = InvPendulum()
+        for iteration in range(10):
             X, y = fqi.run()
             myX, myy = myfqi._partial_fit(sast, r)
             self.assertTrue(np.allclose(y, myy),
@@ -94,6 +114,11 @@ class TestFQIs(unittest.TestCase):
             self.assertTrue(np.allclose(X, myX),
                             '{} != {}'.format(X, myX))
             check_extra_model(self, fqi.model, myfqi.estimator)
+
+            print('Performing simulation')
+            actor = Actor(fqi.model, epsilon=0, n_state=2, n_act=3)
+            environment.reset()
+            tupla = runEpisode(self, actor, myfqi, environment, 0.95)
 
 if __name__ == '__main__':
     unittest.main()
