@@ -50,11 +50,10 @@ if __name__ == '__main__':
     fqi = FQI(estimator=alg,
               stateDim=sdim, actionDim=adim,
               discrete_actions=actions,
-              gamma=0.9, horizon=10, verbose=1)
+              gamma=0.95, horizon=10, verbose=1)
     #fqi.fit(sast, r, **fit_params)
 
     for t in range(20):
         fqi.partial_fit(sast, r, **fit_params)
-
-    # get the model
-    print(fqi.estimator)
+        mod = fqi.estimator
+        ## test on the simulator
