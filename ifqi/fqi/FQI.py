@@ -19,37 +19,39 @@ class FQI:
         if isinstance(discrete_actions, np.ndarray):
             assert discrete_actions.shape[1] == actionDim
             assert discrete_actions.shape[0] > 1
-        else:
+            self._actions = discrete_actions
+        elif isinstance(discrete_actions, list):
+            assert len(discrete_actions) > 1, 'Error: at least two actions are required'
+            self._actions = np.array(discrete_actions, dtype='float32').reshape(-1, actionDim)
+        elif isinstance(discrete_actions, int):
             assert discrete_actions > 1, 'Error: at least two actions are required'
+        else:
+            raise ValueError('Supported types for diacrete_actions are {np.darray, list, int}')
 
         self.__name__ = "FittedQIteration"
-
-    def _checkInputs(self, X, y):
-        nFeatures = X.shape[1]
-        assert nFeatures == self.stateDim + self.actionDim, \
-            'state/action dimension do not match the dimension of the provided data'
-
-        assert y.shape[1] == 1,\
-            'reward must be a single value'
-
-        assert X.shape[0] == y.shape[0],\
-            'X and y must have the same number of samples'
+        self.iteration = 0
 
     def _check_states(self, X, copy=True):
         return X.reshape(-1, self.stateDim)
 
-    def _fit(self, sast, r, **kwargs):
-        """
+    def _compute_actions(self, sast):
+        action_po = self.stateDim
+        nextstate_pos = self.stateDim + self.actionDim
+        #select unique actions
+        if isinstance(self.discrete_actions, int):
+            actions = sast[:, action_po:nextstate_pos].reshape(-1, self.actionDim)
+            ubound = np.amax(actions, axis=0)
+            lbound = np.amin(actions, axis=0)
+            if self.actionDim == 1:
+                self._actions = np.linspace(lbound, ubound, self.discrete_actions).reshape(-1,1)
+            else:
+                print("not implemented in the general case (action_dim > 1")
+                exit(9)
 
-        :param sast: array-like, [nbsamples x nfeatures]
-         Note that it stores the state, action, nextstate and absorbing flag, this means that
-         nfeatures = state_dim*2 + action_dim + 1
-        :param r: array-like, [nbsamples x 1]
-         Note it stores the reward function associated to the transition sas
-        :return: None
-        """
-        if self.verbose > 0:
-            print("Starting FQI ...")
+    def _partial_fit(self, sast, r, **kwargs):
+        # compute the action list
+        if not hasattr(self, '_actions'):
+            self._compute_actions(sast)
 
         # get number of samples
         nSamples = sast.shape[0]
@@ -61,43 +63,51 @@ class FQI:
         snext = sast[:, nextstate_pos:absorbing_pos].reshape(nSamples,-1)
         absorbing = sast[:, absorbing_pos]
 
-        #select unique actions
-        if isinstance(self.discrete_actions, int):
-            actions = sast[:, action_po:absorbing_pos].reshape(-1, self.actionDim)
-            ubound = np.amax(actions, axis=0)
-            lbound = np.amin(actions, axis=0)
-            if self.actionDim == 1:
-                self._actions = np.linspace(lbound, ubound, self.discrete_actions).reshape(-1,1)
-            else:
-                print("not implemented in the general case (action_dim > 1")
-                exit(9)
-        else:
-            self._actions = self.discrete_actions
-
         #check if the estimator change the structure at each iteration
         adaptive = False
         if hasattr(self.estimator, 'adapt'):
             adaptive = True
 
-        # fit reward
-        if self.verbose > 0:
-            print('Iteration 0: fitting reward')
-        self.estimator.fit(sa, r, **kwargs)
-
-        # main loop
-        for t in range(self.horizon):
-
+        y = r
+        if self.iteration == 0:
+            self.estimator.fit(sa, r, **kwargs)
+        else:
             maxq, maxa = self.maxQA(snext, absorbing)
             y = r + self.gamma * maxq
 
             if self.verbose > 0:
-                print('Iteration {}'.format(t+1))
+                print('Iteration {}'.format(self.iteration+1))
 
             if adaptive:
                 # update estimator structure
-                self.estimator.adapt(iteration=t)
+                self.estimator.adapt(iteration=self.iteration)
 
             self.estimator.fit(sa, y, **kwargs)
+
+        self.iteration += 1
+
+        return sa, y
+
+    def _fit(self, sast, r, **kwargs):
+        """
+        :param sast: array-like, [nbsamples x nfeatures]
+         Note that it stores the state, action, nextstate and absorbing flag, this means that
+         nfeatures = state_dim*2 + action_dim + 1
+        :param r: array-like, [nbsamples x 1]
+         Note it stores the reward function associated to the transition sas
+        :return: None
+        """
+        if self.verbose > 0:
+            print("Starting complete FQI ...")
+
+        # reset iteration count
+        self.iteration = 0
+        # compute/recompute the action set
+        self._compute_actions(sast)
+
+        # main loop
+        for t in range(self.horizon):
+            self._partial_fit(sast, r)
 
     def maxQA(self, states, absorbing=None):
         """
@@ -117,7 +127,7 @@ class FQI:
 
         Q = np.zeros((nbstates, self._actions.shape[0]))
         for idx in range(self._actions.shape[0]):
-            a = self._actions[idx,:].reshape(1,-1)
+            a = self._actions[idx,:].reshape(1, self.actionDim)
             actions = np.matlib.repmat(a, nbstates, 1)
             samples = np.concatenate((newstate, actions), axis=1)
             predictions = self.estimator.predict(samples)
@@ -127,6 +137,10 @@ class FQI:
 
         amax = np.argmax(Q, axis=1)
         return Q[np.arange(nbstates), amax], amax
+
+    def partial_fit(self, X, y, **kwargs):
+        self._partial_fit(X, y, **kwargs)
+        return self
 
     def fit(self, X, y, **kwargs):
         """

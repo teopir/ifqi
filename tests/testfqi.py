@@ -114,6 +114,77 @@ class TestFQI(unittest.TestCase):
         print(sast.shape)
         fqi.fit(sast, r)
 
+    def testComputeAction(self):
+        data, sdim, adim, rdim = parser.parseReLeDataset('../dataset/episodicPendulum.txt')
+        self.assertTrue(sdim == 2)
+        self.assertTrue(adim == 1)
+        self.assertTrue(rdim == 1)
+
+        rewardpos = sdim + adim
+        indicies = np.delete(np.arange(data.shape[1]), rewardpos)
+
+        # select state, action, nextstate, absorbin
+        sast = data[:, indicies]
+        # select reward
+        r = data[:, rewardpos]
+
+        alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
+                                         min_samples_split=2, min_samples_leaf=1, verbose=0)
+        fit_params = {}
+        actions = (np.arange(10) - 1).tolist()
+        n_actions = len(actions)
+        fqi = FQI(estimator=alg,
+              stateDim=sdim, actionDim=adim,
+              discrete_actions=actions,
+              gamma=0.9, horizon=10, verbose=1)
+        fqi._compute_actions(None)
+        print(fqi._actions)
+        self.assertTrue(isinstance(fqi._actions, np.ndarray))
+        self.assertTrue(fqi._actions.shape[0] == n_actions)
+        self.assertTrue(fqi._actions.shape[1] == adim)
+        for i in range(n_actions):
+            self.assertTrue(fqi._actions[i,0] == actions[i], '{} != {}'.format(fqi._actions[i,0], actions[i]))
+
+        fqi = FQI(estimator=alg,
+              stateDim=sdim, actionDim=adim,
+              discrete_actions=6,
+              gamma=0.9, horizon=10, verbose=1)
+        #fqi._compute_actions(sast)
+        fqi.partial_fit(sast, r)
+        print(fqi._actions)
+        self.assertTrue(isinstance(fqi._actions, np.ndarray))
+        self.assertTrue(fqi._actions.shape[0] == 6)
+        self.assertTrue(fqi._actions.shape[1] == adim)
+        self.assertTrue(fqi.iteration == 1)
+
+        fqi = FQI(estimator=alg,
+              stateDim=sdim, actionDim=adim,
+              discrete_actions=[0, 1, 2, 3],
+              gamma=0.9, horizon=10, verbose=1)
+        fqi.partial_fit(sast, r)
+        print(fqi._actions)
+        self.assertTrue(isinstance(fqi._actions, np.ndarray))
+        self.assertTrue(fqi._actions.shape[0] == 4)
+        self.assertTrue(fqi._actions.shape[1] == adim)
+        for i in range(4):
+            self.assertTrue(fqi._actions[i] == i, '{} != {}'.format(fqi._actions[i], i))
+        self.assertTrue(fqi.iteration == 1)
+        fqi.partial_fit(sast, r)
+        self.assertTrue(fqi.iteration == 2)
+
+        actionpos = 2
+        sast[:,actionpos] = np.random.randint(5,8, (sast.shape[0], ))
+        fqi = FQI(estimator=alg,
+              stateDim=sdim, actionDim=adim,
+              discrete_actions=3,
+              gamma=0.9, horizon=10, verbose=1)
+        fqi.partial_fit(sast, r)
+        print(fqi._actions)
+        self.assertTrue(isinstance(fqi._actions, np.ndarray))
+        self.assertTrue(fqi._actions.shape[0] == 3)
+        self.assertTrue(fqi._actions.shape[1] == adim)
+        for i in range(3):
+            self.assertTrue(fqi._actions[i] == i+5, '{} != {}'.format(fqi._actions[i], i))
 
 if __name__ == '__main__':
     unittest.main()
