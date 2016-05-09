@@ -36,7 +36,7 @@ if __name__ == '__main__':
     if estimator == 'extra':
         alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                          min_samples_split=2, min_samples_leaf=1)
-        fit_params = {}
+        fit_params = dict()
     elif estimator == 'mlp':
         alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=2,
                   optimizer='rmsprop', act_function="sigmoid").getModel()
