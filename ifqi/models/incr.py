@@ -17,28 +17,25 @@ class IncRegression:
         self.activation = act_function
         
         self.model = self.initModel()
-    """add a new layer on the stack
-       n_neuron: number of neuron of the new layer
-        activation_: name of the activation function of the new layer"""
         
-    def fit(self,X,y, **kwargs):
-        return self.model.fit(X,y,**kwargs)
+    def fit(self, X, y, **kwargs):
+        return self.model.fit(X, y, **kwargs)
       
-    def predict(self,x, **kwargs):
-        return self.model.predict(x,**kwargs)
+    def predict(self, x, **kwargs):
+        return self.model.predict(x, **kwargs)
         
     def adapt(self, iteration=1):
-        self.model = self.addLayer(self.model)
+        self.model = self.addLayer()
     
-    def addLayer(self, model):
+    def addLayer(self):
         new_model = Sequential()
         new_model.add(Dense(self.hidden_neurons[0],
                             input_shape=(self.n_input,),
                             activation=self.activation[0],
                             trainable=self.reLearn,
-                            weights=model.layers[0].get_weights()))
+                            weights=self.model.layers[0].get_weights()))
         i = 1
-        for lay in model.layers[1:-1]:
+        for lay in self.model.layers[1:-1]:
             new_model.add(Dense(self.hidden_neurons[i],
                                 activation=self.activation[i],
                                 trainable=self.reLearn,
@@ -63,9 +60,3 @@ class IncRegression:
 
         model.compile(loss='mse', optimizer=self.optimizer)
         return model
-
-    def configureModel(self, model):
-        lay =  self.addLayer(model)
-        #print(lay.layers[0].get_weights())
-        #a = input("write 0 - ")
-        return lay
