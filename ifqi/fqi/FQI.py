@@ -70,6 +70,9 @@ class FQI:
 
         y = r
         if self.iteration == 0:
+            if self.verbose > 0:
+                print('Iteration {}'.format(self.iteration+1))
+                
             self.estimator.fit(sa, r, **kwargs)
         else:
             maxq, maxa = self.maxQA(snext, absorbing)
