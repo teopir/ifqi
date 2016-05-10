@@ -20,15 +20,12 @@ class MLP():
         model = Sequential()
         model.add(Dense(self.hidden_neurons,
                         input_shape=(self.n_input,),
-                        activation=self.act_function,
-                        init='uniform'))
+                        activation=self.act_function))
         for i in range(1, self.h_layer):
             model.add(Dense(self.hidden_neurons,
-                            activation=self.act_function,
-                            init='uniform'))
+                            activation=self.act_function))
         model.add(Dense(self.n_output,
-                        activation='linear',
-                        init='uniform'))
+                        activation='linear'))
 
         model.compile(loss='mse', optimizer=self.optimizer)
 
