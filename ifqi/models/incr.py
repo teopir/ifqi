@@ -1,5 +1,7 @@
 from keras.models import Sequential
 from keras.layers import Dense
+# Python 2 and 3: forward-compatible
+from builtins import range
 
 class IncRegression:
     def __init__(self, n_input=2,
@@ -53,7 +55,7 @@ class IncRegression:
         model.add(Dense(self.hidden_neurons[0],
                         input_shape=(self.n_input,),
                         activation=self.activation[0]))
-        for i in xrange(1, self.n_h_layer_beginning):
+        for i in range(1, self.n_h_layer_beginning):
             model.add(Dense(self.hidden_neurons[i],
                         activation=self.activation[i]))
         model.add(Dense(self.n_output, activation='linear'))

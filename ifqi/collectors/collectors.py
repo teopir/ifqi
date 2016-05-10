@@ -1,9 +1,8 @@
-import gym
-from gym import spaces, envs
-import argparse
+from gym import envs
 import numpy as np
 import itertools
 import time
+from builtins import input
 
 
 def gymnumpy_data(state, action=None, reward=None, nextstate=None, done=None):
@@ -99,9 +98,7 @@ class GymCollector:
                 if done:
                     break
 
-
             data.append(trajectory)
-
 
             state_dim = len(state)
             action_dim = len(action)
