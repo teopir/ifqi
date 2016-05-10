@@ -41,7 +41,7 @@ class TestFQIs(unittest.TestCase):
     def testcomparefqiextra(self):
         #filename = '../../dataset/pendulum/A/data0.log'
         filename = '../../dataset/episodicPendulum.txt'
-        nActions = 9
+        nActions = 3
         ###########
         # define other fqi
         fqi = FQITree(nActions, gamma=.95, nIterations=20, nb_epoch=10000, batch_size=100)
@@ -56,7 +56,7 @@ class TestFQIs(unittest.TestCase):
         myfqi = FQI(estimator=alg,
                     stateDim=2, actionDim=1,
                     discrete_actions=actions,
-                    gamma=0.95, horizon=20, verbose=1)
+                    gamma=0.95, horizon=6, verbose=1, scaled=False)
 
         gPrepro = InvertedPendulumPreprocessor()
 
@@ -106,7 +106,7 @@ class TestFQIs(unittest.TestCase):
         check_extra_model(self, mod, mymod)
 
         environment = InvPendulum()
-        for iteration in range(10):
+        for iteration in range(myfqi.horizon):
             X, y = fqi.run()
             myX, myy = myfqi._partial_fit(sast, r)
             self.assertTrue(np.allclose(y, myy),

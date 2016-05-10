@@ -2,11 +2,13 @@ from __future__ import print_function
 import numpy as np
 import sys
 import numpy.matlib
+import sklearn.preprocessing as preprocessing
 
 class FQI:
     def __init__(self, estimator, stateDim, actionDim,
                  discrete_actions=10,
-                 gamma=0.9, horizon=10, verbose=0):
+                 gamma=0.9, horizon=10,
+                 scaled=False, verbose=0):
         self.estimator = estimator
         self.gamma = gamma
         self.horizon = horizon
@@ -30,6 +32,7 @@ class FQI:
 
         self.__name__ = "FittedQIteration"
         self.iteration = 0
+        self.scaled = scaled
 
     def _check_states(self, X, copy=True):
         return X.reshape(-1, self.stateDim)
@@ -48,35 +51,51 @@ class FQI:
                 print("not implemented in the general case (action_dim > 1")
                 exit(9)
 
-    def _partial_fit(self, sast, r, **kwargs):
+    def _preprocess_data(self, sast=None, r=None):
+
+        if sast is not None and r is not None:
+            # get number of samples
+            nSamples = sast.shape[0]
+            action_po = self.stateDim
+            nextstate_pos = self.stateDim + self.actionDim
+            absorbing_pos = nextstate_pos + self.stateDim
+
+            sa = np.copy(sast[:, 0:nextstate_pos]).reshape(nSamples,-1)
+            snext = sast[:, nextstate_pos:absorbing_pos].reshape(nSamples,-1)
+            absorbing = sast[:, absorbing_pos]
+
+            if self.scaled and self.iteration == 0:
+                # create scaler and fit it
+                self._sa_scaler = preprocessing.StandardScaler()
+                sa = self._sa_scaler.fit_transform(sa)
+
+            self.sa = sa
+            self.snext = snext
+            self.absorbing = absorbing
+            self.r = r
+
+
+    def _partial_fit(self, sast=None, r=None, **kwargs):
         # compute the action list
         if not hasattr(self, '_actions'):
             self._compute_actions(sast)
 
-        # get number of samples
-        nSamples = sast.shape[0]
-        action_po = self.stateDim
-        nextstate_pos = self.stateDim + self.actionDim
-        absorbing_pos = nextstate_pos + self.stateDim
-
-        sa = np.copy(sast[:, 0:nextstate_pos]).reshape(nSamples,-1)
-        snext = sast[:, nextstate_pos:absorbing_pos].reshape(nSamples,-1)
-        absorbing = sast[:, absorbing_pos]
+        self._preprocess_data(sast, r)
 
         #check if the estimator change the structure at each iteration
         adaptive = False
         if hasattr(self.estimator, 'adapt'):
             adaptive = True
 
-        y = r
+        y = self.r
         if self.iteration == 0:
             if self.verbose > 0:
                 print('Iteration {}'.format(self.iteration+1))
                 
-            self.estimator.fit(sa, r, **kwargs)
+            self.estimator.fit(self.sa, self.r, **kwargs)
         else:
-            maxq, maxa = self.maxQA(snext, absorbing)
-            y = r + self.gamma * maxq
+            maxq, maxa = self.maxQA(self.snext, self.absorbing)
+            y = self.r + self.gamma * maxq
 
             if self.verbose > 0:
                 print('Iteration {}'.format(self.iteration+1))
@@ -85,11 +104,11 @@ class FQI:
                 # update estimator structure
                 self.estimator.adapt(iteration=self.iteration)
 
-            self.estimator.fit(sa, y, **kwargs)
+            self.estimator.fit(self.sa, y, **kwargs)
 
         self.iteration += 1
 
-        return sa, y
+        return self.sa, y
 
     def _fit(self, sast, r, **kwargs):
         """
@@ -104,13 +123,14 @@ class FQI:
             print("Starting complete FQI ...")
 
         # reset iteration count
-        self.iteration = 0
+        self.reset()
         # compute/recompute the action set
         self._compute_actions(sast)
 
         # main loop
-        for t in range(self.horizon):
-            self._partial_fit(sast, r)
+        self._partial_fit(sast, r)
+        for t in range(1, self.horizon):
+            self._partial_fit()
 
     def maxQA(self, states, absorbing=None):
         """
@@ -132,7 +152,16 @@ class FQI:
         for idx in range(self._actions.shape[0]):
             a = self._actions[idx,:].reshape(1, self.actionDim)
             actions = np.matlib.repmat(a, nbstates, 1)
-            samples = np.concatenate((newstate, actions), axis=1)
+
+            # concatenate [newstate, action] and scalarize them
+            if self.scaled:
+                samples = self._sa_scaler.transform(
+                    np.concatenate((newstate, actions), axis=1)
+                )
+            else:
+                samples = np.concatenate((newstate, actions), axis=1)
+
+            # predict Q-function
             predictions = self.estimator.predict(samples)
 
             Q[:, idx] = predictions.ravel()
@@ -163,5 +192,11 @@ class FQI:
 
         maxQ, maxa = self.maxQA(states)
         return maxa, maxQ
+
+    def reset(self):
+        self.iteration = 0
+        self.sa = None
+        self.snext = None
+        self.absorbing = None
 
 

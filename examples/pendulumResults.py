@@ -106,19 +106,19 @@ if __name__ == '__main__':
             elif estimator == 'mlp':
                 alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=2,
                           optimizer='rmsprop', act_function="sigmoid").getModel()
-                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
+                fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
                 # it is equivalente to call
                 #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
             elif estimator == 'frozen-incr':
                 alg = IncRegression(n_input=sdim+adim, n_output=1, hidden_neurons=[5]*(niter+2), 
                           n_h_layer_beginning=2,optimizer='rmsprop', act_function=["sigmoid"]*(niter+2))
-                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
+                fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
                 # it is equivalente to call
                 #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
             elif estimator == 'unfrozen-incr':
                 alg = IncRegression(n_input=sdim+adim, n_output=1, hidden_neurons=[5]*(niter+2), 
                           n_h_layer_beginning=2,optimizer='rmsprop', act_function=["sigmoid"]*(niter+2), reLearn=True)
-                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
+                fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
             else:
                 raise ValueError('Unknown estimator type.')
         
@@ -138,7 +138,11 @@ if __name__ == '__main__':
             breakable= (sys.argv[2]=="True")
             this_success=False
             for iteration in range(niter):
-                fqi.partial_fit(sast, r, **fit_params)
+                if iteration == 0:
+                    fqi.partial_fit(sast, r, **fit_params)
+                else:
+                    fqi.partial_fit(None, None, **fit_params)
+
                 if(iteration%10==0):
                     mod = fqi.estimator
                     ## test on the simulator

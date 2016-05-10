@@ -36,7 +36,8 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
 
 if __name__ == '__main__':
 
-    data, sdim, adim, rdim = parser.parseReLeDataset('../dataset/episodicPendulum.txt')
+    #data, sdim, adim, rdim = parser.parseReLeDataset('../dataset/episodicPendulum.txt')
+    data, sdim, adim, rdim = parser.parseReLeDataset('../dataset/pendulum_data/A/data0.log')
     assert(sdim == 2)
     assert(adim == 1)
     assert(rdim == 1)
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     elif estimator == 'mlp':
         alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=2,
                   optimizer='rmsprop', act_function="sigmoid").getModel()
-        fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
+        fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
         # it is equivalente to call
         #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
     else:
@@ -71,13 +72,15 @@ if __name__ == '__main__':
     fqi = FQI(estimator=alg,
               stateDim=sdim, actionDim=adim,
               discrete_actions=actions,
-              gamma=0.95, horizon=10, verbose=1)
+              gamma=0.95, horizon=10, verbose=1, scaled=True)
     #fqi.fit(sast, r, **fit_params)
 
     environment = InvPendulum()
 
-    for t in range(100):
-        fqi.partial_fit(sast, r, **fit_params)
+
+    fqi.partial_fit(sast, r, **fit_params)
+    for t in range(1, 100):
+        fqi.partial_fit(None, None, **fit_params)
         mod = fqi.estimator
         ## test on the simulator
         print('Simulate on environment')
