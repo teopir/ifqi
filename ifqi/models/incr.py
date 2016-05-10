@@ -15,9 +15,21 @@ class IncRegression:
         self.reLearn = reLearn
         self.n_h_layer_beginning = n_h_layer_beginning
         self.activation = act_function
+        
+        self.model = self.initModel()
     """add a new layer on the stack
        n_neuron: number of neuron of the new layer
         activation_: name of the activation function of the new layer"""
+        
+    def fit(self,X,y, **kwargs):
+        return self.model.fit(X,y,**kwargs)
+      
+    def predict(self,x, **kwargs):
+        return self.model.predict(x,**kwargs)
+        
+    def adapt(self, iteration=1):
+        self.model = self.addLayer(self.model)
+    
     def addLayer(self, model):
         new_model = Sequential()
         new_model.add(Dense(self.hidden_neurons[0],
@@ -32,25 +44,28 @@ class IncRegression:
                                 trainable=self.reLearn,
                                 weights=lay.get_weights()))
             i += 1
-        new_model.add(Dense(self.hidden_neurons[i], self.activation[i]))
+        new_model.add(Dense(self.hidden_neurons[i], activation=self.activation[i]))
         new_model.add(Dense(self.n_output, activation='linear'))
 
         new_model.compile(loss='mse', optimizer=self.optimizer)
         
         return new_model
 
-    def getModel(self):
+    def initModel(self):
         model = Sequential()
         model.add(Dense(self.hidden_neurons[0],
                         input_shape=(self.n_input,),
                         activation=self.activation[0]))
         for i in xrange(1, self.n_h_layer_beginning):
-            model.add(Dense(self.hidden_neurons[1],
-                        activation=self.activation[1]))
+            model.add(Dense(self.hidden_neurons[i],
+                        activation=self.activation[i]))
         model.add(Dense(self.n_output, activation='linear'))
 
         model.compile(loss='mse', optimizer=self.optimizer)
         return model
 
     def configureModel(self, model):
-        return self.addLayer(model)
+        lay =  self.addLayer(model)
+        #print(lay.layers[0].get_weights())
+        #a = input("write 0 - ")
+        return lay
