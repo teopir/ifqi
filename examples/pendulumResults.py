@@ -48,7 +48,7 @@ def time_to_string(t):
     
 if __name__ == '__main__':
     
-    folders = "FEDCBA"
+    folders = "ABCDE"
     
     cls = input ("Do you want to remove previus results? (yes=1, no=0)")
     
@@ -131,7 +131,7 @@ if __name__ == '__main__':
                       stateDim=sdim, actionDim=adim,
                       discrete_actions=actions,
                       gamma=0.95, horizon=31, verbose=1)
-            fqi.fit(sast, r, **fit_params)
+            #fqi.fit(sast, r, **fit_params)
         
             environment = InvPendulum()
         
