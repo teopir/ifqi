@@ -14,6 +14,7 @@ from ifqi.envs.invertedPendulum import InvPendulum
 import ifqi.utils.parser as parser
 from sklearn.ensemble import ExtraTreesRegressor
 import time
+from keras.regularizers import l2, activity_l2
 
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
@@ -48,7 +49,7 @@ def time_to_string(t):
     
 if __name__ == '__main__':
     
-    folders = "ABCDE"
+    folders = "AFBECD"
     
     cls = input ("Do you want to remove previus results? (yes=1, no=0)")
     
@@ -106,23 +107,25 @@ if __name__ == '__main__':
             elif estimator == 'mlp':
                 alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=2,
                           optimizer='rmsprop', act_function="sigmoid").getModel()
-                fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
+                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
+                # it is equivalente to call
+                #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
+            elif estimator == 'big-mlp':
+                alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=10,
+                          optimizer='rmsprop', act_function="sigmoid").getModel()
+                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
                 # it is equivalente to call
                 #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
             elif estimator == 'frozen-incr':
                 alg = IncRegression(n_input=sdim+adim, n_output=1, hidden_neurons=[5]*(niter+2), 
                           n_h_layer_beginning=2,optimizer='rmsprop', act_function=["sigmoid"]*(niter+2))
-                fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
+                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
                 # it is equivalente to call
                 #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
             elif estimator == 'unfrozen-incr':
                 alg = IncRegression(n_input=sdim+adim, n_output=1, hidden_neurons=[5]*(niter+2), 
                           n_h_layer_beginning=2,optimizer='rmsprop', act_function=["sigmoid"]*(niter+2), reLearn=True)
-                fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
-            elif estimator == 'frozen-incr-sin':
-                alg = IncRegression(n_input=sdim+adim, n_output=1, hidden_neurons=[5]*(niter+2), 
-                          n_h_layer_beginning=2,optimizer='rmsprop', act_function=["sigmoid"]*2 + ["sin"]*(niter))
-                fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
+                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
             else:
                 raise ValueError('Unknown estimator type.')
         
@@ -130,7 +133,7 @@ if __name__ == '__main__':
             fqi = FQI(estimator=alg,
                       stateDim=sdim, actionDim=adim,
                       discrete_actions=actions,
-                      gamma=0.95, horizon=31, verbose=1)
+                      gamma=0.95,scaled=False, horizon=31, verbose=1)
             #fqi.fit(sast, r, **fit_params)
         
             environment = InvPendulum()
@@ -147,6 +150,7 @@ if __name__ == '__main__':
                     fqi.partial_fit(sast, r, **fit_params)
                 else:
                     fqi.partial_fit(None, None, **fit_params)
+                    
                 if(iteration%1==0):
                     mod = fqi.estimator
                     ## test on the simulator
