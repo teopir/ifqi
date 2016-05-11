@@ -77,8 +77,9 @@ if __name__ == '__main__':
 
     environment = MountainCar()
 
+    fqi.partial_fit(sast, r, **fit_params)
     for t in range(100):
-        fqi.partial_fit(sast, r, **fit_params)
+        fqi.partial_fit(None, None, **fit_params)
         mod = fqi.estimator
         ## test on the simulator
         print('Simulate on environment')
