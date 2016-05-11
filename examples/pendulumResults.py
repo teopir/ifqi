@@ -48,7 +48,7 @@ def time_to_string(t):
     
 if __name__ == '__main__':
     
-    folders = "ABCDEF"
+    folders = "FEDCBA"
     
     cls = input ("Do you want to remove previus results? (yes=1, no=0)")
     
@@ -72,7 +72,7 @@ if __name__ == '__main__':
         tot_J = 0
         tot_len = 0
         tot_iter = 0
-        for i in range(0,2):
+        for i in range(0,50):
             
             print ("Test: " + test + " n ", i)
             local_start = time.time()
@@ -119,15 +119,19 @@ if __name__ == '__main__':
                 alg = IncRegression(n_input=sdim+adim, n_output=1, hidden_neurons=[5]*(niter+2), 
                           n_h_layer_beginning=2,optimizer='rmsprop', act_function=["sigmoid"]*(niter+2), reLearn=True)
                 fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
+            elif estimator == 'frozen-incr-sin':
+                alg = IncRegression(n_input=sdim+adim, n_output=1, hidden_neurons=[5]*(niter+2), 
+                          n_h_layer_beginning=2,optimizer='rmsprop', act_function=["sigmoid"]*2 + ["sin"]*(niter))
+                fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
             else:
                 raise ValueError('Unknown estimator type.')
         
-            actions = (np.arange(3)).tolist()
+            actions = (np.arange(3) - 1).tolist()
             fqi = FQI(estimator=alg,
                       stateDim=sdim, actionDim=adim,
                       discrete_actions=actions,
-                      gamma=0.95, horizon=10, verbose=1)
-            #fqi.fit(sast, r, **fit_params)
+                      gamma=0.95, horizon=31, verbose=1)
+            fqi.fit(sast, r, **fit_params)
         
             environment = InvPendulum()
         
@@ -137,13 +141,13 @@ if __name__ == '__main__':
             
             breakable= (sys.argv[2]=="True")
             this_success=False
+        
             for iteration in range(niter):
-                if iteration == 0:
+                if(iteration==0):
                     fqi.partial_fit(sast, r, **fit_params)
                 else:
                     fqi.partial_fit(None, None, **fit_params)
-
-                if(iteration%10==0):
+                if(iteration%1==0):
                     mod = fqi.estimator
                     ## test on the simulator
                     environment.reset()
@@ -154,17 +158,19 @@ if __name__ == '__main__':
                     else:
                         fout.write(str(t)+"\n")
                     print ("----time: " + str(t))
-                    if(t>=best_tupla[0]):
+                    if(t>best_tupla[0]):
                         best_tupla = tupla
                         best_iteration = iteration
-                    if(s==1):
-                        if(not this_success):
-                            this_success=True
-                            test_successful += 1
-                        if(breakable):
-                            break
+                    if(s==1 and breakable):
+                        break
             
-            tot_iter+=best_iteration +2
+            _,_,s = best_tupla
+            
+            if(s==1):
+                test_successful+=1
+                tot_iter+=best_iteration +2
+            else:
+                tot_iter+=niter+1
                 #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
                 #plt.show()
             fout.close()
