@@ -33,6 +33,8 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
             print('Goal reached\n')
             test_succesful = 1
             
+    print(t)
+            
     return (t, J, test_succesful), rh
 
 if __name__ == '__main__':
@@ -77,13 +79,40 @@ if __name__ == '__main__':
 
     environment = MountainCar()
 
+    nIterations = 20
+    discRewards = np.zeros((289, nIterations))
+    
     fqi.partial_fit(sast, r, **fit_params)
-    for t in range(100):
+    counter = 0
+    for i in xrange(-8, 9):
+        for j in xrange(-8, 9):
+            position = 0.125 * i
+            velocity = 0.375 * j
+            ## test on the simulator
+            print('Simulate on environment')
+            environment.reset(position, velocity)
+            tupla, rhistory = runEpisode(fqi, environment, environment.gamma)
+            #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
+            #plt.show()
+            discRewards[counter, 0] = tupla[1]
+            counter += 1
+    for t in xrange(1, nIterations):
         fqi.partial_fit(None, None, **fit_params)
         mod = fqi.estimator
-        ## test on the simulator
-        print('Simulate on environment')
-        environment.reset()
-        tupla, rhistory = runEpisode(fqi, environment, environment.gamma)
-        #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
-        #plt.show()
+        counter = 0
+        for i in xrange(-8, 9):
+            for j in xrange(-8, 9):
+                position = 0.125 * i
+                velocity = 0.375 * j
+                ## test on the simulator
+                print('Simulate on environment')
+                environment.reset(position, velocity)
+                tupla, rhistory = runEpisode(fqi, environment, environment.gamma)
+                #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
+                #plt.show()
+                
+                discRewards[counter, t] = tupla[1]
+                counter += 1
+                
+    print('Cumulative discounted reward per step:')
+    print(np.mean(discRewards, axis=0))
