@@ -21,6 +21,8 @@ class TestFQI(unittest.TestCase):
         nactions = 3
         nbsamples = 3*nactions
 
+        aoffset = 10
+
         st0 = np.random.get_state()
         # with open('company_data.pkl', 'wb') as output:
         #     pickle.dump(st0, output)
@@ -32,12 +34,12 @@ class TestFQI(unittest.TestCase):
         class dummyestimator:
             def predict(self, X):
                 action = X[0,-1]
-                v = np.ones((X.shape[0],1)) * -9
+                v = np.ones((X.shape[0],1)) * -9999
                 idx = int(nbsamples/nactions)
                 off = 0
                 for a in range(nactions):
-                    print(action,a)
-                    if action == a:
+                    print(action,a-aoffset)
+                    if action == a-aoffset:
                         v[off:off+idx] = action
                     off = off+idx
                 return v
@@ -46,7 +48,7 @@ class TestFQI(unittest.TestCase):
         # define absorbing state
         X[:, -1] = np.random.randint(0, 2, (nbsamples, ))
         # define actions
-        X[:, 2] = np.random.randint(0, nactions, (nbsamples, ))
+        X[:, 2] = np.random.randint(0, nactions, (nbsamples, )) - aoffset
 
         print('---- DATA ----')
         print(X)
@@ -56,7 +58,7 @@ class TestFQI(unittest.TestCase):
         fqi = FQI(de, nstates_dim, nactions_dim)
         print(fqi.__name__)
 
-        fqi._actions = np.arange(0, nactions).reshape(-1,1)
+        fqi._actions = (np.arange(0, nactions)-aoffset).reshape(-1,1)
         print(fqi._actions)
 
         Q, A = fqi.maxQA(X[:, 3:5])
@@ -66,8 +68,8 @@ class TestFQI(unittest.TestCase):
         idx = int(nbsamples/nactions)
         off = 0
         for i in range(nactions):
-            self.assertTrue(np.allclose(Q[off:off+idx],i), '{}'.format(Q))
-            self.assertTrue(np.allclose(A[off:off+idx],i), '{}'.format(A))
+            self.assertTrue(np.allclose(Q[off:off+idx],i-aoffset), '{}'.format(Q))
+            self.assertTrue(np.allclose(A[off:off+idx],i-aoffset), '{}'.format(A))
             off = off + idx
 
         Q, A = fqi.maxQA(X[:, 3:5], X[:,-1])
@@ -79,10 +81,10 @@ class TestFQI(unittest.TestCase):
             for r in range(off, min(off+idx, nbsamples)):
                 if X[r,-1] == 1:
                     self.assertTrue(Q[r] == 0)
-                    self.assertTrue(A[r] == 0)
+                    self.assertTrue(A[r] == fqi._actions[0])
                 else:
-                    self.assertTrue(Q[r] == i)
-                    self.assertTrue(A[r] == i)
+                    self.assertTrue(Q[r] == i-aoffset)
+                    self.assertTrue(A[r] == i-aoffset)
             off = off + idx
 
     def testmlp(self):

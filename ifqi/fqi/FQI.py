@@ -167,8 +167,18 @@ class FQI:
             Q[:, idx] = predictions.ravel()
             Q[:, idx] = Q[:, idx] * (1 - absorbing)
 
+        # compute the maximal action
         amax = np.argmax(Q, axis=1)
-        return Q[np.arange(nbstates), amax], amax
+
+        # store Q-value and action for each state
+        rQ, rA = np.zeros((nbstates,)), np.zeros((nbstates,))
+        for idx in range(nbstates):
+            rQ[idx] = Q[idx, amax[idx]]
+            rA[idx] = self._actions[amax[idx]]
+        #sanity check
+        #assert(np.allclose(rQ, Q[np.arange(nbstates), amax]))
+
+        return rQ, rA
 
     def partial_fit(self, X, y, **kwargs):
         self._partial_fit(X, y, **kwargs)

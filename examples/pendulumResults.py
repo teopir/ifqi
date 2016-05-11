@@ -72,7 +72,7 @@ if __name__ == '__main__':
         tot_J = 0
         tot_len = 0
         tot_iter = 0
-        for i in range(0,50):
+        for i in range(0,2):
             
             print ("Test: " + test + " n ", i)
             local_start = time.time()
@@ -90,8 +90,8 @@ if __name__ == '__main__':
             # select state, action, nextstate, absorbin
             sast = data[:, indicies]
         
-            prep = InvertedPendulumPreprocessor()
-            sast[:,:3] = prep.preprocess(sast[:,:3])
+            #prep = InvertedPendulumPreprocessor()
+            #sast[:,:3] = prep.preprocess(sast[:,:3])
             
             niter = int(sys.argv[3])
         
@@ -122,7 +122,7 @@ if __name__ == '__main__':
             else:
                 raise ValueError('Unknown estimator type.')
         
-            actions = (np.arange(3) - 1).tolist()
+            actions = (np.arange(3)).tolist()
             fqi = FQI(estimator=alg,
                       stateDim=sdim, actionDim=adim,
                       discrete_actions=actions,

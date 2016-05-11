@@ -48,8 +48,8 @@ if __name__ == '__main__':
     # select state, action, nextstate, absorbin
     sast = data[:, indicies]
 
-    prep = InvertedPendulumPreprocessor()
-    sast[:,:3] = prep.preprocess(sast[:,:3])
+    #prep = InvertedPendulumPreprocessor()
+    #sast[:,:3] = prep.preprocess(sast[:,:3])
 
     # select reward
     r = data[:, rewardpos]
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     else:
         raise ValueError('Unknown estimator type.')
 
-    actions = (np.arange(10) - 1).tolist()
+    actions = (np.arange(3)).tolist()
     fqi = FQI(estimator=alg,
               stateDim=sdim, actionDim=adim,
               discrete_actions=actions,

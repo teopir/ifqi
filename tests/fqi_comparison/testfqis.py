@@ -27,7 +27,7 @@ def runEpisode(obj, actor, myfqi, environment, gamma):   # (nstep, J, success)
         state = environment.getState()
         action = actor.exploitAction(state)
         myaction, _ = myfqi.predict(np.array(state))
-        obj.assertTrue(np.allclose(action,myaction))
+        obj.assertTrue(np.allclose(action, myaction+1))
         J += gamma**t * environment.step(action)
         if(t>500):
             test_succesful = 1
