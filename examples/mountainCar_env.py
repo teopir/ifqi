@@ -58,7 +58,7 @@ if __name__ == '__main__':
     r = data[:, rewardpos]
 
     nIterations = 20
-    estimator = 'incr'
+    estimator = 'mlp'
     if estimator == 'extra':
         alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                          min_samples_split=4, min_samples_leaf=2)
@@ -76,7 +76,7 @@ if __name__ == '__main__':
                             optimizer='rmsprop',
                             act_function=['relu'] * (nIterations + 1),
                             reLearn=False)
-        fit_params = {'nb_epoch':1, 'batch_size':50, 'verbose':1}
+        fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':1}
     else:
         raise ValueError('Unknown estimator type.')
 
@@ -84,7 +84,8 @@ if __name__ == '__main__':
     fqi = FQI(estimator=alg,
               stateDim=sdim, actionDim=adim,
               discrete_actions=actions,
-              gamma=0.95, horizon=10, verbose=1)
+              gamma=0.95, horizon=10, verbose=1,
+              scaled=True)
     #fqi.fit(sast, r, **fit_params)
 
     environment = MountainCar()
@@ -118,7 +119,7 @@ if __name__ == '__main__':
                 tupla, rhistory = runEpisode(fqi, environment, environment.gamma)
                 #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
                 #plt.show()
-                
+            
                 discRewards[counter, t] = tupla[1]
                 counter += 1
                 
