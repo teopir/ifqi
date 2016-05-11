@@ -8,6 +8,7 @@ import unittest
 import numpy as np
 from ifqi.fqi.FQI import FQI
 from ifqi.models.mlp import MLP
+from ifqi.models.incr import IncRegression
 from ifqi.preprocessors.mountainCarPreprocessor import MountainCarPreprocessor
 from ifqi.envs.mountainCar import MountainCar
 import ifqi.utils.parser as parser
@@ -56,7 +57,8 @@ if __name__ == '__main__':
     # select reward
     r = data[:, rewardpos]
 
-    estimator = 'mlp'
+    nIterations = 20
+    estimator = 'incr'
     if estimator == 'extra':
         alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                          min_samples_split=4, min_samples_leaf=2)
@@ -67,6 +69,14 @@ if __name__ == '__main__':
         fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':1}
         # it is equivalente to call
         #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
+    elif estimator == 'incr':
+        alg = IncRegression(n_input=sdim+adim, n_output=1,
+                            hidden_neurons=[10] * (nIterations + 1),
+                            n_h_layer_beginning=2,
+                            optimizer='rmsprop',
+                            act_function=['relu'] * (nIterations + 1),
+                            reLearn=[False] * (nIterations + 1))
+        fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':1}
     else:
         raise ValueError('Unknown estimator type.')
 
@@ -78,10 +88,8 @@ if __name__ == '__main__':
     #fqi.fit(sast, r, **fit_params)
 
     environment = MountainCar()
-
-    nIterations = 20
-    discRewards = np.zeros((289, nIterations))
     
+    discRewards = np.zeros((289, nIterations))
     fqi.partial_fit(sast, r, **fit_params)
     counter = 0
     for i in xrange(-8, 9):
