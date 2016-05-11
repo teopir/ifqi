@@ -1,7 +1,7 @@
 from keras.models import Sequential
 from keras.layers import Dense
 # Python 2 and 3: forward-compatible
-from builtins import range
+#from builtins import range
 
 class IncRegression:
     def __init__(self, n_input=2,
@@ -9,7 +9,7 @@ class IncRegression:
                     hidden_neurons=[15] * 10,
                     n_h_layer_beginning=1,
                     act_function=["sigmoid","sigmoid"] + ["relu"]*8,
-                    reLearn=False, optimizer=None):
+                    reLearn=False, optimizer=None, regularizer=None):
         self.n_input = n_input
         self.n_output = n_output
         self.optimizer = optimizer
@@ -17,7 +17,7 @@ class IncRegression:
         self.reLearn = reLearn
         self.n_h_layer_beginning = n_h_layer_beginning
         self.activation = act_function
-        
+        self.regularizer = regularizer
         self.model = self.initModel()
         
     def fit(self, X, y, **kwargs):
@@ -35,15 +35,22 @@ class IncRegression:
                             input_shape=(self.n_input,),
                             activation=self.activation[0],
                             trainable=self.reLearn,
-                            weights=self.model.layers[0].get_weights()))
+                            weights=self.model.layers[0].get_weights(),
+                            W_regularizer = self.regularizer,
+                            b_regularizer = self.regularizer                        
+                            ))
         i = 1
         for lay in self.model.layers[1:-1]:
             new_model.add(Dense(self.hidden_neurons[i],
                                 activation=self.activation[i],
                                 trainable=self.reLearn,
-                                weights=lay.get_weights()))
+                                weights=lay.get_weights(),
+                                W_regularizer = self.regularizer,
+                                b_regularizer = self.regularizer))
             i += 1
-        new_model.add(Dense(self.hidden_neurons[i], activation=self.activation[i]))
+        new_model.add(Dense(self.hidden_neurons[i], activation=self.activation[i],
+                            W_regularizer = self.regularizer,
+                            b_regularizer = self.regularizer))
         new_model.add(Dense(self.n_output, activation='linear'))
 
         new_model.compile(loss='mse', optimizer=self.optimizer)
