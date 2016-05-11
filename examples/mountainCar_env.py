@@ -75,8 +75,8 @@ if __name__ == '__main__':
                             n_h_layer_beginning=2,
                             optimizer='rmsprop',
                             act_function=['relu'] * (nIterations + 1),
-                            reLearn=[False] * (nIterations + 1))
-        fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':1}
+                            reLearn=False)
+        fit_params = {'nb_epoch':1, 'batch_size':50, 'verbose':1}
     else:
         raise ValueError('Unknown estimator type.')
 
