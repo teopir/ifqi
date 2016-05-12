@@ -48,11 +48,11 @@ class MountainCar(object):
         else:
             return self.position, self.velocity, 0
 
-    def reset(self):
+    def reset(self, position=-0.5, velocity=0.):
         
         self.absorbing=False
-        self.position = -0.5
-        self.velocity = 0.
+        self.position = position
+        self.velocity = velocity
         
     def getState(self):
         return [self.position, self.velocity]
