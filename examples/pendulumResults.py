@@ -15,6 +15,7 @@ import ifqi.utils.parser as parser
 from sklearn.ensemble import ExtraTreesRegressor
 import time
 from keras.regularizers import l2, activity_l2
+import datetime
 
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
@@ -49,7 +50,7 @@ def time_to_string(t):
     
 if __name__ == '__main__':
     
-    folders = "F"
+
     
     cls = input ("Do you want to remove previus results? (yes=1, no=0)")
     
@@ -59,7 +60,8 @@ if __name__ == '__main__':
     niter = int(sys.argv[3])
     n_test = int(sys.argv[4])
     n_epoch = int(sys.argv[5])
-    scaled = breakable= (sys.argv[6]=="True")
+    scaled =  (sys.argv[6]=="True")
+    folders = sys.argv[7]
         
     if not os.path.exists("../results/InvPendulum/" + estimator+ "/" ):
         print("non esiste")
@@ -74,8 +76,11 @@ if __name__ == '__main__':
         
     print("STARTED!!!")
     
+    
+    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+    
     with open("../results/InvPendulum/" + estimator +"/results.txt", "a") as myfile:
-        myfile.write("estimator: " + estimator + ", breakable: " + str(breakable) + ", n_iter: " + str(niter) + ", n_test: " + str(n_test) + ", n_epoch: " + str(n_epoch) + ", scaled: " + str(scaled) + "\n")
+        myfile.write("time: " + timestamp + ", estimator: " + estimator + ", breakable: " + str(breakable) + ", n_iter: " + str(niter) + ", n_test: " + str(n_test) + ", n_epoch: " + str(n_epoch) + ", scaled: " + str(scaled) + "\n")
         
     start = time.time()
     for test in folders:
