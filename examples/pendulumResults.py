@@ -49,23 +49,32 @@ def time_to_string(t):
     
 if __name__ == '__main__':
     
-    folders = "AFBECD"
+    folders = "AF"
     
     cls = input ("Do you want to remove previus results? (yes=1, no=0)")
     
-
-    if not os.path.exists("../results/InvPendulum/" + sys.argv[1] + "/" ):
+    n_test = int(sys.argv[4])
+    n_epoch = int(sys.argv[5])
+    estimator = sys.argv[1]
+    breakable= (sys.argv[2]=="True")
+    niter = int(sys.argv[3])
+        
+    if not os.path.exists("../results/InvPendulum/" + estimator+ "/" ):
         print("non esiste")
-        os.makedirs("../results/InvPendulum/" + sys.argv[1] + "/")
+        os.makedirs("../results/InvPendulum/" + estimator + "/")
         
     if(cls==1):
-        open( "../results/InvPendulum/" + sys.argv[1] +"/results.txt", 'w').close()
+        open( "../results/InvPendulum/" + estimator +"/results.txt", 'w').close()
         for test in folders:
-            open( "../results/InvPendulum/" + sys.argv[1] +"/results" + test + ".txt", 'w').close()
+            open( "../results/InvPendulum/" + estimator +"/results" + test + ".txt", 'w').close()
         
         #clear previous file
         
     print("STARTED!!!")
+    
+    with open("../results/InvPendulum/" + estimator +"/results.txt", "a") as myfile:
+        myfile.write("estimator: " + estimator + ", breakable: " + str(breakable) + ", n_iter: " + str(niter) + ", n_test: " + str(n_test) + ", n_epoch: " + str(n_epoch) + "\n")
+        
     start = time.time()
     for test in folders:
     
@@ -73,7 +82,10 @@ if __name__ == '__main__':
         tot_J = 0
         tot_len = 0
         tot_iter = 0
-        for i in range(0,50):
+        
+        
+        
+        for i in range(0,n_test):
             
             print ("Test: " + test + " n ", i)
             local_start = time.time()
@@ -94,12 +106,12 @@ if __name__ == '__main__':
             #prep = InvertedPendulumPreprocessor()
             #sast[:,:3] = prep.preprocess(sast[:,:3])
             
-            niter = int(sys.argv[3])
+            
         
             # select reward
             r = data[:, rewardpos]
         
-            estimator = sys.argv[1]
+            
             if estimator == 'extra':
                 alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                                  min_samples_split=2, min_samples_leaf=1)
@@ -107,29 +119,27 @@ if __name__ == '__main__':
             elif estimator == 'mlp':
                 alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=2,
                           optimizer='rmsprop', act_function="sigmoid").getModel()
-                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
+                fit_params = {'nb_epoch':n_epoch, 'batch_size':50, 'verbose':0}
                 # it is equivalente to call
                 #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
             elif estimator == 'big-mlp':
                 alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=10,
                           optimizer='rmsprop', act_function="sigmoid").getModel()
-                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
+                fit_params = {'nb_epoch':n_epoch, 'batch_size':50, 'verbose':0}
                 # it is equivalente to call
                 #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
             elif estimator == 'frozen-incr':
                 alg = IncRegression(n_input=sdim+adim, n_output=1, hidden_neurons=[5]*(niter+2), 
                           n_h_layer_beginning=2,optimizer='rmsprop', act_function=["sigmoid"]*(niter+2))
-                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
-                # it is equivalente to call
-                #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
+                fit_params = {'nb_epoch':n_epoch, 'batch_size':50, 'verbose':0}
             elif estimator == 'unfrozen-incr':
                 alg = IncRegression(n_input=sdim+adim, n_output=1, hidden_neurons=[5]*(niter+2), 
                           n_h_layer_beginning=2,optimizer='rmsprop', act_function=["sigmoid"]*(niter+2), reLearn=True)
-                fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':0}
+                fit_params = {'nb_epoch':n_epoch, 'batch_size':50, 'verbose':0}
             else:
                 raise ValueError('Unknown estimator type.')
         
-            actions = (np.arange(3) - 1).tolist()
+            actions = (np.arange(3)).tolist()
             fqi = FQI(estimator=alg,
                       stateDim=sdim, actionDim=adim,
                       discrete_actions=actions,
@@ -140,9 +150,9 @@ if __name__ == '__main__':
         
             best_tupla = (0,0,0)
             best_iteration = 0
-            fout = open("../results/InvPendulum/" + sys.argv[1] + "/results" + test + ".txt", "a")
+            fout = open("../results/InvPendulum/" + estimator + "/results" + test + ".txt", "a")
             
-            breakable= (sys.argv[2]=="True")
+            
             this_success=False
         
             for iteration in range(niter):
@@ -180,17 +190,17 @@ if __name__ == '__main__':
             fout.close()
             print ("Ci ho messo: " + str(time.time() - start) + "s")
             
-        mean_J = tot_J/50.
-        mean_len = tot_len/50.
-        mean_iter = tot_iter/50.
+        mean_J = tot_J/(n_test +0.)
+        mean_len = tot_len/(n_test+ 0.)
+        mean_iter = tot_iter/(n_test+0.)
         ETA = int(time.time()-start)    
         s_eta = time_to_string(ETA)
         print ("END TEST: " + s_eta)
 
-        print ("mean_len " + str(mean_len) + " successes: " + str(test_successful) + "/50 " + s_eta)
+        print ("mean_len " + str(mean_len) + " successes: " + str(test_successful) + "/" + str(n_test) + " " + s_eta)
 
         #Writing File of results: ------------------------------------
 
         with open("../results/InvPendulum/" + sys.argv[1] +"/results.txt", "a") as myfile:
             myfile.write("Test Case " + test + "\n")
-            myfile.write("J = " + str(mean_J) + ", len = " + str(mean_len) + ", passed = " + str(test_successful) + "/50 "  + "mean_iter: " +str(mean_iter) + " "+ s_eta + "\n")
+            myfile.write("J = " + str(mean_J) + ", len = " + str(mean_len) + ", passed = " + str(test_successful) + "/" + str(n_test)  + " mean_iter: " +str(mean_iter) + " "+ s_eta + "\n")
