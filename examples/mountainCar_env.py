@@ -31,11 +31,9 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
         rh += [r]
         
         if r == 1:
-            print('Goal reached\n')
+            print('Goal reached')
             test_succesful = 1
-            
-    print(t)
-            
+
     return (t, J, test_succesful), rh
 
 if __name__ == '__main__':
@@ -57,71 +55,73 @@ if __name__ == '__main__':
     # select reward
     r = data[:, rewardpos]
 
+    nExperiments = 3
     nIterations = 20
-    estimator = 'mlp'
-    if estimator == 'extra':
-        alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
-                                         min_samples_split=4, min_samples_leaf=2)
-        fit_params = dict()
-    elif estimator == 'mlp':
-        alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=10, h_layer=2,
-                  optimizer='rmsprop', act_function="relu").getModel()
-        fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':1}
-        # it is equivalente to call
-        #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
-    elif estimator == 'incr':
-        alg = IncRegression(n_input=sdim+adim, n_output=1,
-                            hidden_neurons=[10] * (nIterations + 1),
-                            n_h_layer_beginning=2,
-                            optimizer='rmsprop',
-                            act_function=['relu'] * (nIterations + 1),
-                            reLearn=False)
-        fit_params = {'nb_epoch':20, 'batch_size':50, 'verbose':1}
-    else:
-        raise ValueError('Unknown estimator type.')
-
-    actions = 2
-    fqi = FQI(estimator=alg,
-              stateDim=sdim, actionDim=adim,
-              discrete_actions=actions,
-              gamma=0.95, horizon=10, verbose=1,
-              scaled=True)
-    #fqi.fit(sast, r, **fit_params)
-
-    environment = MountainCar()
+    discRewardsPerExperiment = np.zeros((nExperiments, nIterations))
+    for exp in xrange(nExperiments):
+        print('Experiment: ' + str(exp))
+        estimator = 'incr'
+        if estimator == 'extra':
+            alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
+                                             min_samples_split=4, min_samples_leaf=2)
+            fit_params = dict()
+        elif estimator == 'mlp':
+            alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=10, h_layer=1,
+                      optimizer='rmsprop', act_function="relu").getModel()
+            fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
+            # it is equivalente to call
+            #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
+        elif estimator == 'incr':
+            alg = IncRegression(n_input=sdim+adim, n_output=1,
+                                hidden_neurons=[10] * (nIterations + 1),
+                                n_h_layer_beginning=1,
+                                optimizer='rmsprop',
+                                act_function=['relu'] * (nIterations + 1),
+                                reLearn=False)
+            fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':0}
+        else:
+            raise ValueError('Unknown estimator type.')
     
-    discRewards = np.zeros((289, nIterations))
-    fqi.partial_fit(sast, r, **fit_params)
-    counter = 0
-    for i in xrange(-8, 9):
-        for j in xrange(-8, 9):
-            position = 0.125 * i
-            velocity = 0.375 * j
-            ## test on the simulator
-            print('Simulate on environment')
-            environment.reset(position, velocity)
-            tupla, rhistory = runEpisode(fqi, environment, environment.gamma)
-            #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
-            #plt.show()
-            discRewards[counter, 0] = tupla[1]
-            counter += 1
-    for t in xrange(1, nIterations):
-        fqi.partial_fit(None, None, **fit_params)
-        mod = fqi.estimator
+        actions = 2
+        fqi = FQI(estimator=alg,
+                  stateDim=sdim, actionDim=adim,
+                  discrete_actions=actions,
+                  gamma=0.95, horizon=10, verbose=1,
+                  scaled=True)
+        #fqi.fit(sast, r, **fit_params)
+    
+        environment = MountainCar()
+        
+        discRewards = np.zeros((289, nIterations))
+        fqi.partial_fit(sast, r, **fit_params)
         counter = 0
         for i in xrange(-8, 9):
             for j in xrange(-8, 9):
                 position = 0.125 * i
                 velocity = 0.375 * j
                 ## test on the simulator
-                print('Simulate on environment')
                 environment.reset(position, velocity)
                 tupla, rhistory = runEpisode(fqi, environment, environment.gamma)
                 #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
                 #plt.show()
-            
-                discRewards[counter, t] = tupla[1]
+                discRewards[counter, 0] = tupla[1]
                 counter += 1
+        for t in xrange(1, nIterations):
+            fqi.partial_fit(None, None, **fit_params)
+            mod = fqi.estimator
+            counter = 0
+            for i in xrange(-8, 9):
+                for j in xrange(-8, 9):
+                    position = 0.125 * i
+                    velocity = 0.375 * j
+                    ## test on the simulator
+                    environment.reset(position, velocity)
+                    tupla, rhistory = runEpisode(fqi, environment, environment.gamma)
+                    #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
+                    #plt.show()
                 
-    print('Cumulative discounted reward per step:')
-    print(np.mean(discRewards, axis=0))
+                    discRewards[counter, t] = tupla[1]
+                    counter += 1
+        discRewardsPerExperiment[exp, :] = np.mean(discRewards, axis=0)
+                
+    np.save('incr', discRewardsPerExperiment)

@@ -61,10 +61,14 @@ class IncRegression:
         model = Sequential()
         model.add(Dense(self.hidden_neurons[0],
                         input_shape=(self.n_input,),
-                        activation=self.activation[0]))
+                        activation=self.activation[0],
+                        W_regularizer = self.regularizer,
+                        b_regularizer = self.regularizer))
         for i in range(1, self.n_h_layer_beginning):
-            model.add(Dense(self.hidden_neurons[i],
-                        activation=self.activation[i]))
+            model.add(Dense(self.hidden_neurons[0],
+                        activation=self.activation[0],
+                        W_regularizer = self.regularizer,
+                        b_regularizer = self.regularizer))
         model.add(Dense(self.n_output, activation='linear'))
 
         model.compile(loss='mse', optimizer=self.optimizer)
