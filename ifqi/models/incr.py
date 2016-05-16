@@ -1,5 +1,6 @@
-from keras.models import Sequential
-from keras.layers import Dense
+from keras.models import Sequential, Model
+from keras.layers import Dense, Merge, merge
+from keras.utils.layer_utils import layer_from_config
 # Python 2 and 3: forward-compatible
 #from builtins import range
 
@@ -73,3 +74,31 @@ class IncRegression:
 
         model.compile(loss='mse', optimizer=self.optimizer)
         return model
+    
+class MergedRegressor(IncRegression):
+
+    def addLayer(self):
+        if not hasattr(self, 'n_steps'):
+            self.n_steps = self.n_h_layer_beginning
+        nlayers = len(self.model.layers)
+        idx = self.n_steps
+        for i in range(nlayers):
+            self.model.layers[i].trainable = self.reLearn
+        
+        output = self.model.layers[-2].output
+        print(self.n_steps)
+        print(self.hidden_neurons[idx])
+        new_out = Dense(self.hidden_neurons[idx],
+                        activation=self.activation[idx],
+                        trainable=True,
+                        W_regularizer = self.regularizer,
+                        b_regularizer = self.regularizer)(output)
+                        
+        merged_output = merge([self.model.layers[-1].output, new_out], mode='concat')
+        final_loss = Dense(self.n_output, activation='linear')(merged_output)
+        
+        model = Model(input=[self.model.layers[0].input], output=final_loss)
+        model.compile(loss='mse', optimizer=self.optimizer)
+        self.n_steps += 1
+        return model
+
