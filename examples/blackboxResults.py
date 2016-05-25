@@ -103,7 +103,7 @@ def runEpisodeToDS(environment, fqi_list,eps_out):   # (nstep, J, success)
         #action, _ = myfqi.predict(np.array(state))
         action = np.random.randint(4 + len(fqi_list))
         if(action >= 4):
-            runOnTram(fqi_list[action-4], environment, eps_out)
+            runOnTram(fqi_list[action-4], environment, eps_out, sast)
             continue
         environment.step(action)
         next_state =  environment.getState()
@@ -144,9 +144,9 @@ qfunction = False
 policy = False
 
 #variable to save
-mean_density = [] 
-std_density = []
-#precedence_diff = []
+std_scores = []
+std_states = []
+mean_scores = []
 
 """---------------------------------------------------------------------------
 Connection with the test
@@ -159,7 +159,6 @@ sample = loadSample()
 Test changes
 ----------------------------------------------------------------------------"""
 print("effective model: " + model)
-print("effective n_neuron: " + str(n_neuron))
 """---------------------------------------------------------------------------
 Init the regressor
 ---------------------------------------------------------------------------"""
@@ -217,6 +216,7 @@ data = np.load("dataset/blackbox_data/" + dataset + "/data" + str(nsample) + ".n
 #-----------------------------------------------------------------------------
 #Prepare sast matrix
 #-----------------------------------------------------------------------------
+
 np.random.shuffle(data)
 data = data[0:data_size,:]
 #np.concatenate((data,np.array([0]*data.size).T),axis=1)
@@ -229,56 +229,89 @@ stateDim = sdim
 indicies = np.delete(np.arange(data.shape[1]), rewardpos)
 # select state, action, nextstate, absorbin
 sast = data[:, indicies]  
-
+actions = (np.arange(3)).tolist()
 
 fqi_list = []
 
 for i in xrange(0,n_cycle): 
+    alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
+                                     min_samples_split=2, min_samples_leaf=1)
     
-    states = sast[:,0:stateDim]
+    np.random.shuffle(sast)               
+    states = np.array(sast[:,0:stateDim])
     std_var = np.mean(np.std(states))
     h = std_var* (4./(3.*data_size)) ** 0.2
     
-    old_scores = np.copy(scores)
+    #old_scores = np.copy(scores)
     
     kde = KernelDensity(kernel="gaussian",bandwidth=h).fit(states)
-
-    mean_scores.append(np.mean(scores))
-    std_scores.apprend(np.std(scores))
-    #precedence_diff = np.sum((scores-old_scores)**2)
-    
     
     scores = kde.score_samples(states)
+    
+    #mean of the scores
+    mean_scores.append(np.mean(scores))
+    #variance of the scores
+    std_scores.append(np.std(scores))
+    #mean of the variance of the states
+    std_states.append(np.mean(np.std(states, axis=1)))
+    #precedence_diff = np.sum((scores-old_scores)**2)
     # select reward
     r =  -scores
     
     #-----------------------------------------------------------------------------
     #Run FQI
     #-----------------------------------------------------------------------------
-    
-    fqi = FQI(estimator=alg,
+              
+    fqi_list.append(FQI(estimator=alg,
               stateDim=sdim, actionDim=adim,
               discrete_actions=actions,
-              gamma=0.99,scaled=scaled, horizon=31, verbose=1)
-              
-    fqi_list.append(fqi)
+              #TODO: set scaled again
+              gamma=0.99,scaled=False, horizon=31, verbose=1))
+    
+    fqi = fqi_list[i]
               
     environment = BlackBox()
     
     init_state = environment.getState()
     
+    l1=[0]*(n_iter-1)
+    l2=[0]*(n_iter-1)
+    linf=[0]*(n_iter-1)
+    
+    new_q = np.zeros((4,data_size))
     for iteration in range(n_iter):
-                    
         #fit
         if(iteration==0):
             fqi.partial_fit(sast, r, **fit_params)
         else:
             fqi.partial_fit(None, None, **fit_params)
-            
+
         mod = fqi.estimator
         
+        
+        old_q = np.copy(new_q)
+        if iteration > 0:
+            for action in actions:
+                col_action = np.matrix([action]*data_size)
+                
+                state_action = np.concatenate((states, col_action.T), axis=1)
+                
+                new_q[action] = mod.predict(state_action)
+                
+            new_q = np.array(new_q)
+            
+            l1[iteration-1] = np.mean(np.abs(old_q - new_q))
+            l2[iteration-1] = np.mean((old_q - new_q)**2)
+            linf[iteration-1] = np.max(np.abs(old_q - new_q))
+            
+            
+            print("l2: " , l2)
+            np.save(sample.path + "/" + "l1_" + str(i), l1)
+            np.save(sample.path + "/" + "l2_" + str(i), l2)
+            np.save(sample.path + "/" + "linf_" + str(i), linf)
+        
         ## test on the simulator
-        environment.reset()
+        """environment.reset()
         print ("start running")
         assert(np.array_equal(init_state, environment.getState()))
         
@@ -293,11 +326,12 @@ for i in xrange(0,n_cycle):
         J.append(j)
         #loss.append(rhistory)
         if(s==1):
-            goal=1
+            goal=1"""
     
     
-    new_sast = np.array(runEpisodeToDS(fqi, environment, eps_out))   
-    
+    new_sast = np.array(runEpisodeToDS(environment,fqi_list, eps_out))   
+    #let's save the file every cycle
+    np.save(sample.path + "/sast" + str(i) ,new_sast)
     sast = np.append(sast,new_sast,axis=0)
     
     
