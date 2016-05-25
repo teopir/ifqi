@@ -26,7 +26,9 @@ class BlackBox(object):
         ret = bbox.get_score() - self.score 
         self.score = bbox.get_score() 
         return ret
-        
+    
+    def end(self):
+            bbox.finish(verbose=1)
 
     def reset(self):
         self.prepare_bbox()
