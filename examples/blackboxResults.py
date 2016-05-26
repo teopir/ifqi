@@ -355,7 +355,7 @@ for i in xrange(0,n_cycle):
     std_scores.append(np.std(scores))
     print("std_scores: ", std_scores[-1])
     #mean of the variance of the states
-    std_states.append(np.mean(np.std(states, axis=1)))
+    std_states.append(np.mean(np.std(states, axis=0)))
     print("std_states: ", std_states[-1])
     
     #sast collect data_size from new_sast. so it has the history. then we will again take a batch from it 
