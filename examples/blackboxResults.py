@@ -5,7 +5,7 @@ import sys
 #sys.path.append(os.path.abspath('../'))
 
 import numpy as np
-from ifqi.fqi.FQI_sam import FQI #I think you can safely use fqi.FQI
+from ifqi.fqi.FQI import FQI #I think you can safely use fqi.FQI
 from ifqi.models.mlp import MLP
 from ifqi.models.incr import IncRegression, MergedRegressor
 from ifqi.models.incr_inverse import ReverseIncRegression
@@ -86,25 +86,33 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
     return (t, J, test_succesful), rh
 
 def runOnTram(myfqi, environment, eps, sast):
-    rnd = np.random.rand()
-    while environment.next and eps<rnd:
+    rnd = 0 #np.random.rand()
+    while environment.next and eps>rnd:
         state = environment.getState()
         action, _ = myfqi.predict(np.array(state))
         environment.step(action)
         next_state =  environment.getState()
         sast.append(state.tolist() + [action] + next_state.tolist() + [1-environment.next])
         rnd = np.random.rand()
+    return sast
     
-def runEpisodeToDS(environment, fqi_list,eps_out):   # (nstep, J, success)
+def runEpisodeToDS(environment, fqi_list,eps_out, eps_on_tram=0.00001):   # (nstep, J, success)
 
     sast = []
     while environment.next:
         state = environment.getState()
         #action, _ = myfqi.predict(np.array(state))
-        action = np.random.randint(4 + len(fqi_list))
-        if(action >= 4):
-            runOnTram(fqi_list[action-4], environment, eps_out, sast)
+        rnd = np.random.rand()
+        if rnd > eps_on_tram:
+            action = np.random.randint(4)
+        else:
+            action = np.random.randint(len(fqi_list))
+            len_before = len(sast)
+            sast = runOnTram(fqi_list[action], environment, eps_out, sast)
+            len_after =  len(sast)
+            assert(len_after>len_before)
             continue
+        
         environment.step(action)
         next_state =  environment.getState()
         sast.append(state.tolist() + [action] + next_state.tolist() + [1-environment.next])
@@ -137,8 +145,8 @@ data_size = 50000
 epsilon = 1         #TODO: set epsilon
 eps_out = 0.99
 n_cycle = 5
-min_split = 8
-min_leaf = 4
+min_split = 4
+min_leaf = 2
 
 
 #plotting configuration
@@ -225,14 +233,13 @@ data = data[0:data_size,:]
 #np.concatenate((data,np.array([0]*data.size).T),axis=1)
 
 
-len_data = data.size
 
 rewardpos = sdim + adim
 stateDim = sdim
 indicies = np.delete(np.arange(data.shape[1]), rewardpos)
 # select state, action, nextstate, absorbin
 sast_ = data[:, indicies]  
-actions = (np.arange(3)).tolist()
+actions = (np.arange(4)).tolist()
 
 fqi_list = []
 
@@ -245,7 +252,7 @@ for i in xrange(0,n_cycle):
     sast = sast_[0:data_size,:] 
     #print ("done!")
     states = np.array(sast[:,0:stateDim])
-    std_var = np.mean(np.std(states))
+    std_var = np.mean(np.std(states,axis=0))
     h = std_var* (4./(3.*data_size)) ** 0.2
     
     #old_scores = np.copy(scores)
@@ -275,7 +282,7 @@ for i in xrange(0,n_cycle):
               stateDim=sdim, actionDim=adim,
               discrete_actions=actions,
               #TODO: set scaled again
-              gamma=0.99,scaled=False, horizon=31, verbose=1))
+              gamma=0.9,scaled=scaled, horizon=31, verbose=1))
     
     fqi = fqi_list[i]
               
@@ -303,12 +310,17 @@ for i in xrange(0,n_cycle):
             for action in actions:
                 col_action = np.matrix([action]*data_size)
                 
-                state_action = np.concatenate((states, col_action.T), axis=1)
+                state_action = np.copy(np.concatenate((states, col_action.T), axis=1))
+                if scaled:
+                    state_action = fqi._sa_scaler.transform(state_action)
                 
                 new_q[action] = mod.predict(state_action)
                 
             new_q = np.array(new_q)
-            
+            print(np.max(old_q))
+            print(np.min(old_q))
+            print(np.max(new_q))
+            print(np.min(new_q))
             l1[iteration-1] = np.mean(np.abs(old_q - new_q))
             l2[iteration-1] = np.sqrt(np.mean((old_q - new_q)**2))
             linf[iteration-1] = np.max(np.abs(old_q - new_q))
@@ -360,6 +372,7 @@ for i in xrange(0,n_cycle):
     
     #sast collect data_size from new_sast. so it has the history. then we will again take a batch from it 
     sast_ = np.append(sast_,new_sast[0:data_size,:],axis=0)
+    
     #print("done!")
     
 
