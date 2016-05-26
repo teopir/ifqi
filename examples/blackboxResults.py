@@ -87,7 +87,7 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
 
 def runOnTram(myfqi, environment, eps, sast):
     rnd = np.random.rand()
-    while environment.next or eps<rnd:
+    while environment.next and eps<rnd:
         state = environment.getState()
         action, _ = myfqi.predict(np.array(state))
         environment.step(action)
@@ -228,7 +228,7 @@ rewardpos = sdim + adim
 stateDim = sdim
 indicies = np.delete(np.arange(data.shape[1]), rewardpos)
 # select state, action, nextstate, absorbin
-sast = data[:, indicies]  
+sast_ = data[:, indicies]  
 actions = (np.arange(3)).tolist()
 
 fqi_list = []
@@ -237,7 +237,10 @@ for i in xrange(0,n_cycle):
     alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                      min_samples_split=2, min_samples_leaf=1)
     
-    np.random.shuffle(sast)               
+    #print ("batching the data....")
+    np.random.shuffle(sast_)  
+    sast = sast_[0:data_size,:] 
+    #print ("done!")
     states = np.array(sast[:,0:stateDim])
     std_var = np.mean(np.std(states))
     h = std_var* (4./(3.*data_size)) ** 0.2
@@ -250,10 +253,13 @@ for i in xrange(0,n_cycle):
     
     #mean of the scores
     mean_scores.append(np.mean(scores))
+    print("mean_scores: ", mean_scores[-1])
     #variance of the scores
     std_scores.append(np.std(scores))
+    print("std_scores: ", std_scores[-1])
     #mean of the variance of the states
     std_states.append(np.mean(np.std(states, axis=1)))
+    print("std_states: ", std_states[-1])
     #precedence_diff = np.sum((scores-old_scores)**2)
     # select reward
     r =  -scores
@@ -301,11 +307,11 @@ for i in xrange(0,n_cycle):
             new_q = np.array(new_q)
             
             l1[iteration-1] = np.mean(np.abs(old_q - new_q))
-            l2[iteration-1] = np.mean((old_q - new_q)**2)
+            l2[iteration-1] = np.sqrt(np.mean((old_q - new_q)**2))
             linf[iteration-1] = np.max(np.abs(old_q - new_q))
             
             
-            print("l2: " , l2)
+            print("l2: " , l2[iteration-1])
             np.save(sample.path + "/" + "l1_" + str(i), l1)
             np.save(sample.path + "/" + "l2_" + str(i), l2)
             np.save(sample.path + "/" + "linf_" + str(i), linf)
@@ -328,12 +334,17 @@ for i in xrange(0,n_cycle):
         if(s==1):
             goal=1"""
     
-    
-    new_sast = np.array(runEpisodeToDS(environment,fqi_list, eps_out))   
+    print("running env")
+    new_sast = np.array(runEpisodeToDS(environment,fqi_list, eps_out)) 
+    environment.reset()    
+    print("done!")
+    #print("shuffle new_sast")
+    np.random.shuffle(new_sast)
     #let's save the file every cycle
     np.save(sample.path + "/sast" + str(i) ,new_sast)
-    sast = np.append(sast,new_sast,axis=0)
-    
+    #print("append a portion of new_sast")
+    sast_ = np.append(sast_,new_sast[0:data_size,:],axis=0)
+    #print("done!")
     
 
 """---------------------------------------------------------------------------
