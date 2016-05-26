@@ -137,6 +137,9 @@ data_size = 50000
 epsilon = 1         #TODO: set epsilon
 eps_out = 0.99
 n_cycle = 5
+min_split = 8
+min_leaf = 4
+
 
 #plotting configuration
 last_layer = False
@@ -173,7 +176,7 @@ adim=1
 estimator = model
 if estimator == 'extra':
     alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
-                                     min_samples_split=2, min_samples_leaf=1)
+                                     min_samples_split=min_split, min_samples_leaf=min_leaf)
     fit_params = dict()
 elif estimator == 'mlp':
     alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=n_neuron, h_layer=n_layer,
@@ -252,7 +255,7 @@ for i in xrange(0,n_cycle):
     scores = kde.score_samples(states)
     
     #mean of the scores
-    mean_scores.append(np.mean(scores))
+    """mean_scores.append(np.mean(scores))
     print("mean_scores: ", mean_scores[-1])
     #variance of the scores
     std_scores.append(np.std(scores))
@@ -260,7 +263,7 @@ for i in xrange(0,n_cycle):
     #mean of the variance of the states
     std_states.append(np.mean(np.std(states, axis=1)))
     print("std_states: ", std_states[-1])
-    #precedence_diff = np.sum((scores-old_scores)**2)
+    #precedence_diff = np.sum((scores-old_scores)**2)"""
     # select reward
     r =  -scores
     
@@ -343,6 +346,19 @@ for i in xrange(0,n_cycle):
     #let's save the file every cycle
     np.save(sample.path + "/sast" + str(i) ,new_sast)
     #print("append a portion of new_sast")
+    
+    
+    states = np.array(new_sast[:,0:stateDim])
+    mean_scores.append(np.mean(scores))
+    print("mean_scores: ", mean_scores[-1])
+    #variance of the scores
+    std_scores.append(np.std(scores))
+    print("std_scores: ", std_scores[-1])
+    #mean of the variance of the states
+    std_states.append(np.mean(np.std(states, axis=1)))
+    print("std_states: ", std_states[-1])
+    
+    #sast collect data_size from new_sast. so it has the history. then we will again take a batch from it 
     sast_ = np.append(sast_,new_sast[0:data_size,:],axis=0)
     #print("done!")
     
@@ -351,7 +367,12 @@ for i in xrange(0,n_cycle):
 Saving phase
 ---------------------------------------------------------------------------"""
 
+sample.addVariableResults("std_scores", np.array(std_scores))
+sample.addVariableResults("std_states", np.array(std_states))
+sample.addVariableResults("mean_scores", np.array(mean_scores))
+
 """
+sample.addVariableResults("")
 sample.addVariableResults("step",str(step))
 sample.addVariableResults("J",J)
 #sample.addVariableResult("loss",loss)
