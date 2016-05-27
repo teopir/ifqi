@@ -19,6 +19,7 @@ from keras.regularizers import l2
 import datetime
 import matplotlib.pyplot as plt
 from sklearn.neighbors.kde import KernelDensity
+import gc
 
 #https://github.com/SamuelePolimi/ExperimentManager.git
 from ExpMan.core.ExperimentManager import ExperimentManager
@@ -96,7 +97,7 @@ def runOnTram(myfqi, environment, eps, sast):
         rnd = np.random.rand()
     return sast
     
-def runEpisodeToDS(environment, fqi_list,eps_out, eps_on_tram=0.00001):   # (nstep, J, success)
+def runEpisodeToDS(environment, fqi_list,eps_out, eps_on_tram=0.):   # (nstep, J, success)
 
     sast = []
     while environment.next:
@@ -158,6 +159,8 @@ policy = False
 std_scores = []
 std_states = []
 mean_scores = []
+min_range = []
+max_range = []
 
 """---------------------------------------------------------------------------
 Connection with the test
@@ -243,7 +246,8 @@ actions = (np.arange(4)).tolist()
 
 fqi_list = []
 
-for i in xrange(0,n_cycle): 
+#TODO: n_cycle
+for i in xrange(0,2): 
     alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                      min_samples_split=2, min_samples_leaf=1)
     
@@ -256,9 +260,11 @@ for i in xrange(0,n_cycle):
     h = std_var* (4./(3.*data_size)) ** 0.2
     
     #old_scores = np.copy(scores)
-    
-    kde = KernelDensity(kernel="gaussian",bandwidth=h).fit(states)
-    
+    if(i==0):
+        kde = KernelDensity(kernel="gaussian",bandwidth=h).fit(states)
+    else:
+        kde = kde_
+        
     scores = kde.score_samples(states)
     
     #mean of the scores
@@ -317,10 +323,6 @@ for i in xrange(0,n_cycle):
                 new_q[action] = mod.predict(state_action)
                 
             new_q = np.array(new_q)
-            print(np.max(old_q))
-            print(np.min(old_q))
-            print(np.max(new_q))
-            print(np.min(new_q))
             l1[iteration-1] = np.mean(np.abs(old_q - new_q))
             l2[iteration-1] = np.sqrt(np.mean((old_q - new_q)**2))
             linf[iteration-1] = np.max(np.abs(old_q - new_q))
@@ -353,6 +355,8 @@ for i in xrange(0,n_cycle):
     new_sast = np.array(runEpisodeToDS(environment,fqi_list, eps_out)) 
     environment.reset()    
     print("done!")
+    
+    
     #print("shuffle new_sast")
     np.random.shuffle(new_sast)
     #let's save the file every cycle
@@ -360,19 +364,52 @@ for i in xrange(0,n_cycle):
     #print("append a portion of new_sast")
     
     
-    states = np.array(new_sast[:,0:stateDim])
-    mean_scores.append(np.mean(scores))
-    print("mean_scores: ", mean_scores[-1])
-    #variance of the scores
-    std_scores.append(np.std(scores))
-    print("std_scores: ", std_scores[-1])
-    #mean of the variance of the states
-    std_states.append(np.mean(np.std(states, axis=0)))
-    print("std_states: ", std_states[-1])
+    
     
     #sast collect data_size from new_sast. so it has the history. then we will again take a batch from it 
-    sast_ = np.append(sast_,new_sast[0:data_size,:],axis=0)
+    sast_ = np.append(sast_,np.copy(new_sast[0:data_size*10,:]),axis=0)
     
+    print("kernel computing")
+    kde_ = KernelDensity(kernel="gaussian",bandwidth=h).fit(sast_[:,0:stateDim])
+    print("done!")
+    
+    if(i!=0):
+        old_last_states_min = np.copy(last_states_min)
+        old_last_states_max = np.copy(last_states_max)
+    
+    print("vqriable compiting:")
+    last_states = np.copy(new_sast[0:data_size,0:stateDim])
+
+    #free some memory
+    del new_sast
+    gc.collect()
+    
+    last_states_max = np.max(last_states,axis= 0)
+    last_states_min = np.min(last_states,axis= 0)
+    last_scores = kde_.score_samples(last_states)
+    
+    if(i!=0):
+        min_range.append(np.sqrt(
+                        np.mean( 
+                                (old_last_states_min-last_states_min)**2 
+                                )))
+        max_range.append(np.sqrt(
+                        np.mean( 
+                                (old_last_states_max-last_states_max)**2 
+                                )))
+        print("Difference between two mins: ", min_range)
+        print("Difference between two maxs: ", max_range)
+    
+    mean_scores.append(np.mean(last_scores))
+    print("mean_scores: ", mean_scores[-1])
+    #variance of the scoresp.
+    std_scores.append(np.std(last_scores))
+    print("std_scores: ", std_scores[-1])
+    #mean of the variance of the states
+    std_states.append(np.mean(np.std(last_states, axis=0)))
+    print("std_states: ", std_states[-1])
+    print("end cycle")
+    #TODO: printare qua le variabili
     #print("done!")
     
 
@@ -383,7 +420,10 @@ Saving phase
 sample.addVariableResults("std_scores", np.array(std_scores))
 sample.addVariableResults("std_states", np.array(std_states))
 sample.addVariableResults("mean_scores", np.array(mean_scores))
+sample.addVariableResults("min_range", np.array(min_range))
+sample.addVariableResults("max_range", np.array(max_range))
 
+sample.plotVariable("std_scores")
 """
 sample.addVariableResults("")
 sample.addVariableResults("step",str(step))
