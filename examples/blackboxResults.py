@@ -86,23 +86,24 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
     print("time: " + str(time))
     return (t, J, test_succesful), rh
 
-def runOnTram(myfqi, environment, eps, sast,t, horizont=10000):
+def runOnTram(myfqi, environment, eps, sast,t,r, horizont=10000):
     rnd = 0 #np.random.rand()
-    while t<horizont and eps>rnd:
+    while t<horizont and environment.next and eps>rnd:
         state = environment.getState()
         action, _ = myfqi.predict(np.array(state))
-        environment.step(action)
+        r.append(environment.step(action))
         next_state =  environment.getState()
         sast.append(state.tolist() + [action] + next_state.tolist() + [1-environment.next])
         rnd = np.random.rand()
         t+=1
-    return sast, t
+    return sast, t, r
     
 def runEpisodeToDS(environment, fqi_list,eps_out,horizont, eps_on_tram=0.01):   # (nstep, J, success)
 
     sast = []
+    r = []
     t=0
-    while t<horizont:
+    while t<horizont and environment.next:
         state = environment.getState()
         #action, _ = myfqi.predict(np.array(state))
         rnd = np.random.rand()
@@ -111,16 +112,16 @@ def runEpisodeToDS(environment, fqi_list,eps_out,horizont, eps_on_tram=0.01):   
         else:
             action = np.random.randint(len(fqi_list))
             len_before = len(sast)
-            sast, t = runOnTram(fqi_list[action], environment, eps_out, sast,t, horizont)
+            sast, t, r = runOnTram(fqi_list[action], environment, eps_out, sast,t,r, horizont)
             len_after =  len(sast)
             assert(len_after>len_before)
             continue
         
-        environment.step(action)
+        r.append(environment.step(action))
         next_state =  environment.getState()
         sast.append(state.tolist() + [action] + next_state.tolist() + [1-environment.next])
         t+=1
-    return sast
+    return sast,r
 
        
 """---------------------------------------------------------------------------
@@ -356,7 +357,7 @@ for i in xrange(0,n_cycle):
             goal=1"""
     
     print("running env")
-    temp_sast = runEpisodeToDS(environment,fqi_list, eps_out,data_size*(i+1))
+    temp_sast, _ = runEpisodeToDS(environment,fqi_list, eps_out,data_size*(i+1))
     
     new_sast = np.array(temp_sast) 
     print("new_sast: ", new_sast.shape)
@@ -378,6 +379,7 @@ for i in xrange(0,n_cycle):
     #sast collect data_size from new_sast. so it has the history. then we will again take a batch from it 
     sast = np.append(sast_,np.copy(new_sast[:,:]),axis=0)
     
+    #all the states of the history
     all_states = sast[:,0:stateDim]
     
     print("kernel computing")
@@ -393,17 +395,22 @@ for i in xrange(0,n_cycle):
         old_last_states_max = np.copy(states_max)
     
     print("vqriable compiting:")
+    #just a batch of the last episode's states
     last_states = np.copy(new_sast[:,0:stateDim])
 
     #free some memory
-    #del new_sast
-    #gc.collect()
+    del new_sast
+    gc.collect()
     
+    #computing the ranges max and min of all the set
     states_max = np.max(all_states,axis= 0)
     states_min = np.min(all_states,axis= 0)
     last_scores = kde_.score_samples(last_states)
     
     if(i!=0):
+        #quadratic error on previous range of states: 
+        #-----sqrt of mean of square
+        #-----like all others mesures it is inaccurate because it involves just a batch of the data
         min_range.append(np.sqrt(
                         np.mean( 
                                 (old_last_states_min-states_min)**2 
@@ -415,6 +422,7 @@ for i in xrange(0,n_cycle):
         print("Difference between two mins: ", min_range)
         print("Difference between two maxs: ", max_range)
     
+    #let's save the relatives data
     mean_scores.append(np.mean(last_scores)/mean_all_scores)
     print("mean_scores: ", mean_scores[-1])
     #variance of the scoresp.
@@ -432,6 +440,8 @@ for i in xrange(0,n_cycle):
 Saving phase
 ---------------------------------------------------------------------------"""
 
+
+
 sample.addVariableResults("std_scores", np.array(std_scores))
 sample.addVariableResults("std_states", np.array(std_states))
 sample.addVariableResults("mean_scores", np.array(mean_scores))
@@ -443,6 +453,17 @@ sample.plotVariable("std_states")
 sample.plotVariable("mean_scores")
 sample.plotVariable("min_range")
 sample.plotVariable("max_range")
+
+#running the last episode
+#saving the data so that we can use normal FQI then
+
+print("Running the last experiment")
+temp_sast, r = runEpisodeToDS(fqi_list[-1],environment,1,[],[], 13000000)
+#runOnTram(myfqi, environment, eps, sast,t,r, horizont=10000):
+
+np.save(sample.path + "/fqidata", new_sast)
+np.save(sample.path + "/rewards", r)
+
 """
 sample.addVariableResults("")
 sample.addVariableResults("step",str(step))
