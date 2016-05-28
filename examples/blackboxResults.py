@@ -86,21 +86,23 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
     print("time: " + str(time))
     return (t, J, test_succesful), rh
 
-def runOnTram(myfqi, environment, eps, sast):
+def runOnTram(myfqi, environment, eps, sast,t, horizont=10000):
     rnd = 0 #np.random.rand()
-    while environment.next and eps>rnd:
+    while t<horizont and eps>rnd:
         state = environment.getState()
         action, _ = myfqi.predict(np.array(state))
         environment.step(action)
         next_state =  environment.getState()
         sast.append(state.tolist() + [action] + next_state.tolist() + [1-environment.next])
         rnd = np.random.rand()
-    return sast
+        t+=1
+    return sast, t
     
-def runEpisodeToDS(environment, fqi_list,eps_out, eps_on_tram=0.):   # (nstep, J, success)
+def runEpisodeToDS(environment, fqi_list,eps_out,horizont, eps_on_tram=0.01):   # (nstep, J, success)
 
     sast = []
-    while environment.next:
+    t=0
+    while t<horizont:
         state = environment.getState()
         #action, _ = myfqi.predict(np.array(state))
         rnd = np.random.rand()
@@ -109,7 +111,7 @@ def runEpisodeToDS(environment, fqi_list,eps_out, eps_on_tram=0.):   # (nstep, J
         else:
             action = np.random.randint(len(fqi_list))
             len_before = len(sast)
-            sast = runOnTram(fqi_list[action], environment, eps_out, sast)
+            sast, t = runOnTram(fqi_list[action], environment, eps_out, sast,t, horizont)
             len_after =  len(sast)
             assert(len_after>len_before)
             continue
@@ -117,6 +119,7 @@ def runEpisodeToDS(environment, fqi_list,eps_out, eps_on_tram=0.):   # (nstep, J
         environment.step(action)
         next_state =  environment.getState()
         sast.append(state.tolist() + [action] + next_state.tolist() + [1-environment.next])
+        t+=1
     return sast
 
        
@@ -247,7 +250,7 @@ actions = (np.arange(4)).tolist()
 fqi_list = []
 
 #TODO: n_cycle
-for i in xrange(0,2): 
+for i in xrange(0,n_cycle): 
     alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                      min_samples_split=2, min_samples_leaf=1)
     
@@ -301,6 +304,7 @@ for i in xrange(0,2):
     linf=[0]*(n_iter-1)
     
     new_q = np.zeros((4,data_size))
+    #TODO:remove
     for iteration in range(n_iter):
         #fit
         if(iteration==0):
@@ -352,7 +356,10 @@ for i in xrange(0,2):
             goal=1"""
     
     print("running env")
-    new_sast = np.array(runEpisodeToDS(environment,fqi_list, eps_out)) 
+    temp_sast = runEpisodeToDS(environment,fqi_list, eps_out,data_size*(i+1))
+    
+    new_sast = np.array(temp_sast) 
+    print("new_sast: ", new_sast.shape)
     environment.reset()    
     print("done!")
     
@@ -363,50 +370,58 @@ for i in xrange(0,2):
     np.save(sample.path + "/sast" + str(i) ,new_sast)
     #print("append a portion of new_sast")
     
+    #JUST TAKE A BATCH
+    new_sast = np.copy(new_sast[0:data_size,:])
     
     
     
     #sast collect data_size from new_sast. so it has the history. then we will again take a batch from it 
-    sast_ = np.append(sast_,np.copy(new_sast[0:data_size*10,:]),axis=0)
+    sast = np.append(sast_,np.copy(new_sast[:,:]),axis=0)
+    
+    all_states = sast[:,0:stateDim]
     
     print("kernel computing")
-    kde_ = KernelDensity(kernel="gaussian",bandwidth=h).fit(sast_[:,0:stateDim])
+    kde_ = KernelDensity(kernel="gaussian",bandwidth=h).fit(all_states)
+    all_scores = kde_.score_samples(all_states)
+    std_all_states = np.mean(np.std(all_states, axis = 0))
+    std_all_scores = np.std(all_scores)
+    mean_all_scores = np.mean(all_scores)
     print("done!")
     
     if(i!=0):
-        old_last_states_min = np.copy(last_states_min)
-        old_last_states_max = np.copy(last_states_max)
+        old_last_states_min = np.copy(states_min)
+        old_last_states_max = np.copy(states_max)
     
     print("vqriable compiting:")
-    last_states = np.copy(new_sast[0:data_size,0:stateDim])
+    last_states = np.copy(new_sast[:,0:stateDim])
 
     #free some memory
-    del new_sast
-    gc.collect()
+    #del new_sast
+    #gc.collect()
     
-    last_states_max = np.max(last_states,axis= 0)
-    last_states_min = np.min(last_states,axis= 0)
+    states_max = np.max(all_states,axis= 0)
+    states_min = np.min(all_states,axis= 0)
     last_scores = kde_.score_samples(last_states)
     
     if(i!=0):
         min_range.append(np.sqrt(
                         np.mean( 
-                                (old_last_states_min-last_states_min)**2 
+                                (old_last_states_min-states_min)**2 
                                 )))
         max_range.append(np.sqrt(
                         np.mean( 
-                                (old_last_states_max-last_states_max)**2 
+                                (old_last_states_max-states_max)**2 
                                 )))
         print("Difference between two mins: ", min_range)
         print("Difference between two maxs: ", max_range)
     
-    mean_scores.append(np.mean(last_scores))
+    mean_scores.append(np.mean(last_scores)/mean_all_scores)
     print("mean_scores: ", mean_scores[-1])
     #variance of the scoresp.
-    std_scores.append(np.std(last_scores))
+    std_scores.append(np.std(last_scores)/std_all_scores)
     print("std_scores: ", std_scores[-1])
     #mean of the variance of the states
-    std_states.append(np.mean(np.std(last_states, axis=0)))
+    std_states.append(np.mean(np.std(last_states, axis=0))/std_all_states)
     print("std_states: ", std_states[-1])
     print("end cycle")
     #TODO: printare qua le variabili
@@ -424,6 +439,10 @@ sample.addVariableResults("min_range", np.array(min_range))
 sample.addVariableResults("max_range", np.array(max_range))
 
 sample.plotVariable("std_scores")
+sample.plotVariable("std_states")
+sample.plotVariable("mean_scores")
+sample.plotVariable("min_range")
+sample.plotVariable("max_range")
 """
 sample.addVariableResults("")
 sample.addVariableResults("step",str(step))
