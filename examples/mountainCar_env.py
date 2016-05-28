@@ -8,7 +8,7 @@ import unittest
 import numpy as np
 from ifqi.fqi.FQI import FQI
 from ifqi.models.mlp import MLP
-from ifqi.models.incr import IncRegression
+from ifqi.models.incr import MergedRegressor
 from ifqi.preprocessors.mountainCarPreprocessor import MountainCarPreprocessor
 from ifqi.envs.mountainCar import MountainCar
 import ifqi.utils.parser as parser
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     # select reward
     r = data[:, rewardpos]
 
-    nExperiments = 3
+    nExperiments = 1
     nIterations = 20
     discRewardsPerExperiment = np.zeros((nExperiments, nIterations))
     for exp in xrange(nExperiments):
@@ -66,22 +66,22 @@ if __name__ == '__main__':
                                              min_samples_split=4, min_samples_leaf=2)
             fit_params = dict()
         elif estimator == 'mlp':
-            alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=10, h_layer=1,
+            alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=10, h_layer=2,
                       optimizer='rmsprop', act_function="relu").getModel()
             fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
             # it is equivalente to call
             #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
         elif estimator == 'incr':
-            alg = IncRegression(n_input=sdim+adim, n_output=1,
+            alg = MergedRegressor(n_input=sdim+adim, n_output=1,
                                 hidden_neurons=[10] * (nIterations + 1),
-                                n_h_layer_beginning=1,
+                                n_h_layer_beginning=2,
                                 optimizer='rmsprop',
                                 act_function=['relu'] * (nIterations + 1),
                                 reLearn=False)
-            fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':0}
+            fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
         else:
             raise ValueError('Unknown estimator type.')
-    
+
         actions = 2
         fqi = FQI(estimator=alg,
                   stateDim=sdim, actionDim=adim,
