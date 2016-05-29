@@ -248,6 +248,13 @@ indicies = np.delete(np.arange(data.shape[1]), rewardpos)
 sast_ = data[:, indicies]  
 actions = (np.arange(4)).tolist()
 
+np.random.shuffle(sast_)  
+sast = sast_[0:,:] 
+
+all_states = sast[:,0:stateDim]
+std_all_states = np.mean(np.std(all_states,axis=0))
+h = std_all_states* (4./(3.*data_size)) ** 0.2
+kde_ = KernelDensity(kernel="gaussian",bandwidth=h).fit(all_states)
 fqi_list = []
 
 #TODO: n_cycle
@@ -256,31 +263,13 @@ for i in xrange(0,n_cycle):
                                      min_samples_split=2, min_samples_leaf=1)
     
     #print ("batching the data....")
-    np.random.shuffle(sast_)  
-    sast = sast_[0:data_size,:] 
+    #np.random.shuffle(sast_)  
+    #sast = sast_[0:,:] 
+    
     #print ("done!")
-    states = np.array(sast[:,0:stateDim])
-    std_var = np.mean(np.std(states,axis=0))
-    h = std_var* (4./(3.*data_size)) ** 0.2
-    
-    #old_scores = np.copy(scores)
-    if(i==0):
-        kde = KernelDensity(kernel="gaussian",bandwidth=h).fit(states)
-    else:
-        kde = kde_
         
-    scores = kde.score_samples(states)
+    scores = kde_.score_samples(all_states)
     
-    #mean of the scores
-    """mean_scores.append(np.mean(scores))
-    print("mean_scores: ", mean_scores[-1])
-    #variance of the scores
-    std_scores.append(np.std(scores))
-    print("std_scores: ", std_scores[-1])
-    #mean of the variance of the states
-    std_states.append(np.mean(np.std(states, axis=1)))
-    print("std_states: ", std_states[-1])
-    #precedence_diff = np.sum((scores-old_scores)**2)"""
     # select reward
     r =  -scores
     
@@ -304,7 +293,8 @@ for i in xrange(0,n_cycle):
     l2=[0]*(n_iter-1)
     linf=[0]*(n_iter-1)
     
-    new_q = np.zeros((4,data_size))
+    sast_dim = sast.shape[0]
+    new_q = np.zeros((4,sast_dim))
     #TODO:remove
     for iteration in range(n_iter):
         #fit
@@ -319,9 +309,9 @@ for i in xrange(0,n_cycle):
         old_q = np.copy(new_q)
         if iteration > 0:
             for action in actions:
-                col_action = np.matrix([action]*data_size)
+                col_action = np.matrix([action]*sast_dim)
                 
-                state_action = np.copy(np.concatenate((states, col_action.T), axis=1))
+                state_action = np.copy(np.concatenate((all_states, col_action.T), axis=1))
                 if scaled:
                     state_action = fqi._sa_scaler.transform(state_action)
                 
@@ -377,15 +367,19 @@ for i in xrange(0,n_cycle):
     
     
     #sast collect data_size from new_sast. so it has the history. then we will again take a batch from it 
-    sast = np.append(sast_,np.copy(new_sast[:,:]),axis=0)
+    sast = np.append(sast,np.copy(new_sast[:,:]),axis=0)
     
     #all the states of the history
     all_states = sast[:,0:stateDim]
     
     print("kernel computing")
+    
+    std_all_states = np.mean(np.std(all_states,axis=0))
+    h = std_all_states* (4./(3.*data_size)) ** 0.2
+    
     kde_ = KernelDensity(kernel="gaussian",bandwidth=h).fit(all_states)
     all_scores = kde_.score_samples(all_states)
-    std_all_states = np.mean(np.std(all_states, axis = 0))
+    
     std_all_scores = np.std(all_scores)
     mean_all_scores = np.mean(all_scores)
     print("done!")
@@ -458,7 +452,7 @@ sample.plotVariable("max_range")
 #saving the data so that we can use normal FQI then
 
 print("Running the last experiment")
-temp_sast, r = runEpisodeToDS(fqi_list[-1],environment,1,[],[], 13000000)
+temp_sast, r = runOnTram(fqi_list[-1],environment,1,[],[],[], horizont=13000000)
 #runOnTram(myfqi, environment, eps, sast,t,r, horizont=10000):
 
 np.save(sample.path + "/fqidata", new_sast)
