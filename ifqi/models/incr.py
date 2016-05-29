@@ -19,6 +19,7 @@ class IncRegression:
         self.n_h_layer_beginning = n_h_layer_beginning
         self.activation = act_function
         self.regularizer = regularizer
+        self.dense_id = 0
         self.model = self.initModel()
         
     def fit(self, X, y, **kwargs):
@@ -64,19 +65,24 @@ class IncRegression:
                         input_shape=(self.n_input,),
                         activation=self.activation[0],
                         W_regularizer = self.regularizer,
-                        b_regularizer = self.regularizer))
+                        b_regularizer = self.regularizer,
+                        name='dense_' + str(self.dense_id)))
+        self.dense_id += 1
         for i in range(1, self.n_h_layer_beginning):
             model.add(Dense(self.hidden_neurons[i],
                         activation=self.activation[i],
                         W_regularizer = self.regularizer,
-                        b_regularizer = self.regularizer))
+                        b_regularizer = self.regularizer,
+                        name='dense_' + str(self.dense_id)))
+            self.dense_id += 1
         model.add(Dense(self.n_output,
                         activation='linear',
                         W_regularizer = self.regularizer,
-                        b_regularizer = self.regularizer))
+                        b_regularizer = self.regularizer,
+                        name='dense_' + str(self.dense_id)))
+        self.dense_id += 1
 
         model.compile(loss='mse', optimizer=self.optimizer)
-        
         return model
     
 class MergedRegressor(IncRegression):
@@ -102,7 +108,6 @@ class MergedRegressor(IncRegression):
         model = Model(input=[self.model.layers[0].input], output=final_loss)
         model.compile(loss='mse', optimizer=self.optimizer)
         self.n_steps += 1
-        
         return model
 
 class WideRegressor(IncRegression):
@@ -115,18 +120,22 @@ class WideRegressor(IncRegression):
         for i in range(nlayers):
             self.model.layers[i].trainable = self.reLearn
 
-        new_in = self.model.get_layer(name='dense_' + str(self.n_h_layer_beginning)).input
+        new_in = self.model.get_layer(name='dense_' + str(self.n_h_layer_beginning - 1)).input
         new_out = Dense(self.hidden_neurons[idx],
                         activation=self.activation[idx],
                         trainable=True,
                         W_regularizer = self.regularizer,
-                        b_regularizer = self.regularizer)(new_in)
+                        b_regularizer = self.regularizer,
+                        name='dense_' + str(self.dense_id))(new_in)
+        self.dense_id += 1
 
         mid_loss = Dense(self.n_output,
                          activation='linear',
                          trainable=True,
                          W_regularizer = self.regularizer,
-                         b_regularizer = self.regularizer)(new_out)
+                         b_regularizer = self.regularizer,
+                         name='dense_' + str(self.dense_id))(new_out)
+        self.dense_id += 1
 
         lay = -1 if self.n_steps == self.n_h_layer_beginning else -2
         merged_loss = merge([self.model.layers[lay].output, mid_loss], mode='concat')
@@ -135,10 +144,19 @@ class WideRegressor(IncRegression):
         final_loss = Dense(self.n_output,
                            activation='linear',
                            trainable=False,
-                           weights=[w, np.array([0.])])(merged_loss)
+                           weights=[w, np.array([0.])],
+                           name='dense_' + str(self.dense_id))(merged_loss)
+        self.dense_id += 1
 
         model = Model(input=[self.model.layers[0].input], output=final_loss)
         model.compile(loss='mse', optimizer=self.optimizer)
         self.n_steps += 1
+        
+        from keras.utils.visualize_util import plot
+        plot(model,
+             to_file='/home/shirokuma/Desktop/model' +
+                     str(self.n_steps - self.n_h_layer_beginning + 1) +
+                     '.png',
+             show_shapes=True)
         
         return model

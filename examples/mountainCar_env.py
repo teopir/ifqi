@@ -55,18 +55,18 @@ if __name__ == '__main__':
     # select reward
     r = data[:, rewardpos]
 
-    nExperiments = 1
+    nExperiments = 20
     nIterations = 20
+    estimator = input('Method: ')
     discRewardsPerExperiment = np.zeros((nExperiments, nIterations))
     for exp in xrange(nExperiments):
-        print('Experiment: ' + str(exp))
-        estimator = 'wide'
+        print('Experiment: ' + str(exp))        
         if estimator == 'extra':
             alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                              min_samples_split=4, min_samples_leaf=2)
             fit_params = dict()
         elif estimator == 'mlp':
-            alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=1,
+            alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=2,
                       optimizer='rmsprop', act_function="sigmoid").getModel()
             fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
             # it is equivalente to call
@@ -82,7 +82,7 @@ if __name__ == '__main__':
         elif estimator == 'wide':
             alg = WideRegressor(n_input=sdim+adim, n_output=1,
                                 hidden_neurons=[5] * (nIterations + 1),
-                                n_h_layer_beginning=1,
+                                n_h_layer_beginning=2,
                                 optimizer='rmsprop',
                                 act_function=['sigmoid'] * (nIterations + 1),
                                 reLearn=False)
