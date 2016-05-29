@@ -8,7 +8,7 @@ import unittest
 import numpy as np
 from ifqi.fqi.FQI import FQI
 from ifqi.models.mlp import MLP
-from ifqi.models.incr import MergedRegressor
+from ifqi.models.incr import MergedRegressor, WideRegressor
 from ifqi.preprocessors.mountainCarPreprocessor import MountainCarPreprocessor
 from ifqi.envs.mountainCar import MountainCar
 import ifqi.utils.parser as parser
@@ -60,23 +60,31 @@ if __name__ == '__main__':
     discRewardsPerExperiment = np.zeros((nExperiments, nIterations))
     for exp in xrange(nExperiments):
         print('Experiment: ' + str(exp))
-        estimator = 'incr'
+        estimator = 'wide'
         if estimator == 'extra':
             alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                              min_samples_split=4, min_samples_leaf=2)
             fit_params = dict()
         elif estimator == 'mlp':
-            alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=10, h_layer=2,
-                      optimizer='rmsprop', act_function="relu").getModel()
+            alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=1,
+                      optimizer='rmsprop', act_function="sigmoid").getModel()
             fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
             # it is equivalente to call
             #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
         elif estimator == 'incr':
             alg = MergedRegressor(n_input=sdim+adim, n_output=1,
-                                hidden_neurons=[10] * (nIterations + 1),
+                                hidden_neurons=[5] * (nIterations + 1),
                                 n_h_layer_beginning=2,
                                 optimizer='rmsprop',
-                                act_function=['relu'] * (nIterations + 1),
+                                act_function=['sigmoid'] * (nIterations + 1),
+                                reLearn=False)
+            fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
+        elif estimator == 'wide':
+            alg = WideRegressor(n_input=sdim+adim, n_output=1,
+                                hidden_neurons=[5] * (nIterations + 1),
+                                n_h_layer_beginning=1,
+                                optimizer='rmsprop',
+                                act_function=['sigmoid'] * (nIterations + 1),
                                 reLearn=False)
             fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
         else:
@@ -124,4 +132,4 @@ if __name__ == '__main__':
                     counter += 1
         discRewardsPerExperiment[exp, :] = np.mean(discRewards, axis=0)
                 
-    np.save('incr', discRewardsPerExperiment)
+    np.save(estimator, discRewardsPerExperiment)

@@ -1,6 +1,6 @@
 from keras.models import Sequential, Model
-from keras.layers import Dense, Merge, merge
-from keras.utils.layer_utils import layer_from_config
+from keras.layers import Dense, merge
+import numpy as np
 # Python 2 and 3: forward-compatible
 #from builtins import range
 
@@ -66,13 +66,17 @@ class IncRegression:
                         W_regularizer = self.regularizer,
                         b_regularizer = self.regularizer))
         for i in range(1, self.n_h_layer_beginning):
-            model.add(Dense(self.hidden_neurons[0],
-                        activation=self.activation[0],
+            model.add(Dense(self.hidden_neurons[i],
+                        activation=self.activation[i],
                         W_regularizer = self.regularizer,
                         b_regularizer = self.regularizer))
-        model.add(Dense(self.n_output, activation='linear'))
+        model.add(Dense(self.n_output,
+                        activation='linear',
+                        W_regularizer = self.regularizer,
+                        b_regularizer = self.regularizer))
 
         model.compile(loss='mse', optimizer=self.optimizer)
+        
         return model
     
 class MergedRegressor(IncRegression):
@@ -86,8 +90,6 @@ class MergedRegressor(IncRegression):
             self.model.layers[i].trainable = self.reLearn
         
         output = self.model.layers[-2].output
-        print(self.n_steps)
-        print(self.hidden_neurons[idx])
         new_out = Dense(self.hidden_neurons[idx],
                         activation=self.activation[idx],
                         trainable=True,
@@ -100,5 +102,43 @@ class MergedRegressor(IncRegression):
         model = Model(input=[self.model.layers[0].input], output=final_loss)
         model.compile(loss='mse', optimizer=self.optimizer)
         self.n_steps += 1
+        
         return model
 
+class WideRegressor(IncRegression):
+
+    def addLayer(self):
+        if not hasattr(self, 'n_steps'):
+            self.n_steps = self.n_h_layer_beginning
+        nlayers = len(self.model.layers)
+        idx = self.n_steps
+        for i in range(nlayers):
+            self.model.layers[i].trainable = self.reLearn
+
+        new_in = self.model.get_layer(name='dense_' + str(self.n_h_layer_beginning)).input
+        new_out = Dense(self.hidden_neurons[idx],
+                        activation=self.activation[idx],
+                        trainable=True,
+                        W_regularizer = self.regularizer,
+                        b_regularizer = self.regularizer)(new_in)
+
+        mid_loss = Dense(self.n_output,
+                         activation='linear',
+                         trainable=True,
+                         W_regularizer = self.regularizer,
+                         b_regularizer = self.regularizer)(new_out)
+
+        lay = -1 if self.n_steps == self.n_h_layer_beginning else -2
+        merged_loss = merge([self.model.layers[lay].output, mid_loss], mode='concat')
+        w = np.ones(self.n_steps - self.n_h_layer_beginning + 2)
+        w = w.reshape(w.size, 1)
+        final_loss = Dense(self.n_output,
+                           activation='linear',
+                           trainable=False,
+                           weights=[w, np.array([0.])])(merged_loss)
+
+        model = Model(input=[self.model.layers[0].input], output=final_loss)
+        model.compile(loss='mse', optimizer=self.optimizer)
+        self.n_steps += 1
+        
+        return model
