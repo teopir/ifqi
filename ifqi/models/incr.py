@@ -120,14 +120,22 @@ class WideRegressor(IncRegression):
         for i in range(nlayers):
             self.model.layers[i].trainable = self.reLearn
 
-        new_in = self.model.get_layer(name='dense_' + str(self.n_h_layer_beginning - 1)).input
+        new_in = self.model.get_layer(name='dense_0').input
         new_out = Dense(self.hidden_neurons[idx],
-                        activation=self.activation[idx],
-                        trainable=True,
-                        W_regularizer = self.regularizer,
-                        b_regularizer = self.regularizer,
-                        name='dense_' + str(self.dense_id))(new_in)
+                activation=self.activation[idx],
+                trainable=True,
+                W_regularizer = self.regularizer,
+                b_regularizer = self.regularizer,
+                name='dense_' + str(self.dense_id))(new_in)
         self.dense_id += 1
+        for i in xrange(1, self.n_h_layer_beginning):
+            new_out = Dense(self.hidden_neurons[idx],
+                            activation=self.activation[idx],
+                            trainable=True,
+                            W_regularizer = self.regularizer,
+                            b_regularizer = self.regularizer,
+                            name='dense_' + str(self.dense_id))(new_out)
+            self.dense_id += 1
 
         mid_loss = Dense(self.n_output,
                          activation='linear',
