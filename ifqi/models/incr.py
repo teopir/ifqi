@@ -122,13 +122,13 @@ class WideRegressor(IncRegression):
         for i in range(nlayers):
             self.model.layers[i].trainable = self.reLearn
 
-        new_in = self.model.get_layer(name='dense_00').input
+        new_in = self.model.get_layer(name='dense_0-0').input
         if self.use_trained_weights:
             old_w = self.model.get_layer(name='dense_0-' + str(self.dense_id - 1)).get_weights()
         new_out = Dense(self.hidden_neurons[idx],
                 activation=self.activation[idx],
                 trainable=True,
-                weights='glorot_uniform' if not self.use_trained_weights else old_w,
+                weights=None if not self.use_trained_weights else old_w,
                 W_regularizer = self.regularizer,
                 b_regularizer = self.regularizer,
                 name='dense_0-' + str(self.dense_id))(new_in)
@@ -139,7 +139,7 @@ class WideRegressor(IncRegression):
             new_out = Dense(self.hidden_neurons[idx],
                             activation=self.activation[idx],
                             trainable=True,
-                            weights='glorot_uniform' if not self.use_trained_weights else old_w,
+                            weights=None if not self.use_trained_weights else old_w,
                             W_regularizer = self.regularizer,
                             b_regularizer = self.regularizer,
                             name='dense_' + str(i) + '-' + str(self.dense_id))(new_out)
@@ -150,7 +150,7 @@ class WideRegressor(IncRegression):
         mid_loss = Dense(self.n_output,
                          activation='linear',
                          trainable=True,
-                         weights='glorot_uniform' if not self.use_trained_weights else old_w,
+                         weights=None if not self.use_trained_weights else old_w,
                          W_regularizer = self.regularizer,
                          b_regularizer = self.regularizer,
                          name='dense_' + str(self.n_h_layer_beginning) + '-' +
