@@ -38,13 +38,14 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
 
 if __name__ == '__main__':
 
-    nDatasets = 10
-    nExperiments = 20
-    nIterations = 20
+    nDatasets = 2
+    nExperiments = 2
+    nIterations = 2
     estimator = input('Method: ')
     discRewardsPerExperiment = np.zeros((nExperiments, nDatasets))
 
     for dataset in range(nDatasets):
+        print('Dataset: ' + str(dataset))
         data, sdim, adim, rdim = parser.parseReLeDataset(
             '../dataset/mc/mc_' + str(dataset) + '.log')
         assert(sdim == 2)
@@ -72,7 +73,7 @@ if __name__ == '__main__':
             elif estimator == 'mlp':
                 alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=10, h_layer=1,
                           optimizer='rmsprop', act_function="relu").getModel()
-                fit_params = {'nb_epoch':50, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
+                fit_params = {'nb_epoch':1, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
                 # it is equivalente to call
                 #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
             elif estimator == 'incr':
@@ -105,11 +106,11 @@ if __name__ == '__main__':
         
             environment = MountainCar()
             
-            discRewards = np.zeros((289, nDatasets))
+            discRewards = np.zeros((289))
             fqi.partial_fit(sast, r, **fit_params)
             for t in xrange(1, nIterations):
                 fqi.partial_fit(None, None, **fit_params)
-                
+        
             mod = fqi.estimator
             counter = 0
             for i in xrange(-8, 9):
@@ -122,9 +123,9 @@ if __name__ == '__main__':
                     #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
                     #plt.show()
                 
-                    discRewards[counter, dataset] = tupla[1]
+                    discRewards[counter] = tupla[1]
                     counter += 1
                     
-            discRewardsPerExperiment[exp, :] = np.mean(discRewards, axis=0)
+            discRewardsPerExperiment[exp, dataset] = np.mean(discRewards)
 
     np.save(estimator, discRewardsPerExperiment)
