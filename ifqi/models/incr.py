@@ -12,8 +12,7 @@ class IncRegression:
                     act_function=["sigmoid","sigmoid"] + ["relu"]*8,
                     reLearn=False,
                     optimizer=None,
-                    regularizer=None,
-                    use_trained_weights=False):
+                    regularizer=None):
         self.n_input = n_input
         self.n_output = n_output
         self.optimizer = optimizer
@@ -23,7 +22,6 @@ class IncRegression:
         self.activation = act_function
         self.regularizer = regularizer
         self.dense_id = 0
-        self.use_trained_weights = use_trained_weights
         self.model = self.initModel()
         
     def fit(self, X, y, **kwargs):
@@ -123,34 +121,23 @@ class WideRegressor(IncRegression):
             self.model.layers[i].trainable = self.reLearn
 
         new_in = self.model.get_layer(name='dense_0-0').input
-        if self.use_trained_weights:
-            old_w = self.model.get_layer(name='dense_0-' + str(self.dense_id - 1)).get_weights()
         new_out = Dense(self.hidden_neurons[idx],
                 activation=self.activation[idx],
                 trainable=True,
-                weights=None if not self.use_trained_weights else old_w,
                 W_regularizer = self.regularizer,
                 b_regularizer = self.regularizer,
                 name='dense_0-' + str(self.dense_id))(new_in)
         for i in xrange(1, self.n_h_layer_beginning):
-            if self.use_trained_weights:
-                old_w = self.model.get_layer(name='dense_' + str(i) + '-' +
-                                                             str(self.dense_id - 1)).get_weights()
             new_out = Dense(self.hidden_neurons[idx],
                             activation=self.activation[idx],
                             trainable=True,
-                            weights=None if not self.use_trained_weights else old_w,
                             W_regularizer = self.regularizer,
                             b_regularizer = self.regularizer,
                             name='dense_' + str(i) + '-' + str(self.dense_id))(new_out)
         
-        if self.use_trained_weights:
-            old_w = self.model.get_layer(name='dense_' + str(self.n_h_layer_beginning) + '-' +
-                                                         str(self.dense_id - 1)).get_weights()
         mid_loss = Dense(self.n_output,
                          activation='linear',
                          trainable=True,
-                         weights=None if not self.use_trained_weights else old_w,
                          W_regularizer = self.regularizer,
                          b_regularizer = self.regularizer,
                          name='dense_' + str(self.n_h_layer_beginning) + '-' +

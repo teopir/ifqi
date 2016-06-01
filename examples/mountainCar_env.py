@@ -39,7 +39,7 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
 if __name__ == '__main__':
 
     nDatasets = 10
-    nExperiments = 10
+    nExperiments = 20
     nIterations = 20
     estimator = input('Method: ')
     discRewardsPerExperiment = np.zeros((nExperiments, nDatasets))
@@ -71,8 +71,13 @@ if __name__ == '__main__':
                                                  min_samples_split=4, min_samples_leaf=2)
                 fit_params = dict()
             elif estimator == 'mlp':
-                alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=10, h_layer=1,
-                          optimizer='rmsprop', act_function="relu").getModel()
+                alg = MLP(n_input=sdim+adim,
+                          n_output=1,
+                          hidden_neurons=10,
+                          h_layer=1,
+                          optimizer='rmsprop',
+                          act_function="relu",
+                          reinitialize_weights=True)
                 fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
                 # it is equivalente to call
                 #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
@@ -90,8 +95,7 @@ if __name__ == '__main__':
                                     n_h_layer_beginning=1,
                                     optimizer='rmsprop',
                                     act_function=['relu'] * (nIterations + 1),
-                                    reLearn=False,
-                                    use_trained_weights=False)
+                                    reLearn=False)
                 fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
             else:
                 raise ValueError('Unknown estimator type.')
