@@ -70,7 +70,7 @@ if __name__ == '__main__':
                 alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                                  min_samples_split=4, min_samples_leaf=2)
                 fit_params = dict()
-            elif estimator == 'mlp':
+            elif estimator == 'mlpReset':
                 alg = MLP(n_input=sdim+adim,
                           n_output=1,
                           hidden_neurons=10,
@@ -78,6 +78,17 @@ if __name__ == '__main__':
                           optimizer='rmsprop',
                           act_function="relu",
                           reinitialize_weights=True)
+                fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
+                # it is equivalente to call
+                #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
+            elif estimator == 'mlp':
+                alg = MLP(n_input=sdim+adim,
+                          n_output=1,
+                          hidden_neurons=10,
+                          h_layer=1,
+                          optimizer='rmsprop',
+                          act_function="relu",
+                          reinitialize_weights=False)
                 fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
                 # it is equivalente to call
                 #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
