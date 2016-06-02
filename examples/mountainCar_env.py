@@ -41,106 +41,106 @@ if __name__ == '__main__':
     nDatasets = 10
     nExperiments = 20
     nIterations = 20
-    estimator = input('Method: ')
     discRewardsPerExperiment = np.zeros((nExperiments, nDatasets))
 
-    for dataset in range(nDatasets):
-        print('Dataset: ' + str(dataset))
-        data, sdim, adim, rdim = parser.parseReLeDataset(
-            '../dataset/mc/mc_' + str(dataset) + '.log')
-        assert(sdim == 2)
-        assert(adim == 1)
-        assert(rdim == 1)
-    
-        rewardpos = sdim + adim
-        indicies = np.delete(np.arange(data.shape[1]), rewardpos)
-    
-        # select state, action, nextstate, absorbin
-        sast = data[:, indicies]
-    
-        prep = MountainCarPreprocessor()
-        sast[:,:3] = prep.preprocess(sast[:,:3])
-    
-        # select reward
-        r = data[:, rewardpos]
-
-        for exp in xrange(nExperiments):
-            print('Experiment: ' + str(exp))        
-            if estimator == 'extra':
-                alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
-                                                 min_samples_split=4, min_samples_leaf=2)
-                fit_params = dict()
-            elif estimator == 'mlpReset':
-                alg = MLP(n_input=sdim+adim,
-                          n_output=1,
-                          hidden_neurons=10,
-                          h_layer=1,
-                          optimizer='rmsprop',
-                          act_function="relu",
-                          reinitialize_weights=True)
-                fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
-                # it is equivalente to call
-                #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
-            elif estimator == 'mlp':
-                alg = MLP(n_input=sdim+adim,
-                          n_output=1,
-                          hidden_neurons=10,
-                          h_layer=1,
-                          optimizer='rmsprop',
-                          act_function="relu",
-                          reinitialize_weights=False)
-                fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
-                # it is equivalente to call
-                #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
-            elif estimator == 'incr':
-                alg = MergedRegressor(n_input=sdim+adim, n_output=1,
-                                    hidden_neurons=[5] * (nIterations + 1),
-                                    n_h_layer_beginning=2,
-                                    optimizer='rmsprop',
-                                    act_function=['sigmoid'] * (nIterations + 1),
-                                    reLearn=False)
-                fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
-            elif estimator == 'wide':
-                alg = WideRegressor(n_input=sdim+adim, n_output=1,
-                                    hidden_neurons=[10] * (nIterations + 1),
-                                    n_h_layer_beginning=1,
-                                    optimizer='rmsprop',
-                                    act_function=['relu'] * (nIterations + 1),
-                                    reLearn=False)
-                fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
-            else:
-                raise ValueError('Unknown estimator type.')
-    
-            actions = 2
-            fqi = FQI(estimator=alg,
-                      stateDim=sdim, actionDim=adim,
-                      discrete_actions=actions,
-                      gamma=0.95, horizon=10, verbose=1,
-                      scaled=True)
-            #fqi.fit(sast, r, **fit_params)
+    for estimator in ['mlp', 'mlpReset', 'wide']:
+        for dataset in range(nDatasets):
+            print('Dataset: ' + str(dataset))
+            data, sdim, adim, rdim = parser.parseReLeDataset(
+                '../dataset/mc/mc_' + str(dataset) + '.log')
+            assert(sdim == 2)
+            assert(adim == 1)
+            assert(rdim == 1)
         
-            environment = MountainCar()
+            rewardpos = sdim + adim
+            indicies = np.delete(np.arange(data.shape[1]), rewardpos)
+        
+            # select state, action, nextstate, absorbin
+            sast = data[:, indicies]
+        
+            prep = MountainCarPreprocessor()
+            sast[:,:3] = prep.preprocess(sast[:,:3])
+        
+            # select reward
+            r = data[:, rewardpos]
+    
+            for exp in xrange(nExperiments):
+                print('Experiment: ' + str(exp))        
+                if estimator == 'extra':
+                    alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
+                                                     min_samples_split=4, min_samples_leaf=2)
+                    fit_params = dict()
+                elif estimator == 'mlpReset':
+                    alg = MLP(n_input=sdim+adim,
+                              n_output=1,
+                              hidden_neurons=10,
+                              h_layer=1,
+                              optimizer='rmsprop',
+                              act_function="relu",
+                              reinitialize_weights=True)
+                    fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
+                    # it is equivalente to call
+                    #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
+                elif estimator == 'mlp':
+                    alg = MLP(n_input=sdim+adim,
+                              n_output=1,
+                              hidden_neurons=10,
+                              h_layer=1,
+                              optimizer='rmsprop',
+                              act_function="relu",
+                              reinitialize_weights=False)
+                    fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
+                    # it is equivalente to call
+                    #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
+                elif estimator == 'incr':
+                    alg = MergedRegressor(n_input=sdim+adim, n_output=1,
+                                        hidden_neurons=[5] * (nIterations + 1),
+                                        n_h_layer_beginning=2,
+                                        optimizer='rmsprop',
+                                        act_function=['sigmoid'] * (nIterations + 1),
+                                        reLearn=False)
+                    fit_params = {'nb_epoch':20, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
+                elif estimator == 'wide':
+                    alg = WideRegressor(n_input=sdim+adim, n_output=1,
+                                        hidden_neurons=[10] * (nIterations + 1),
+                                        n_h_layer_beginning=1,
+                                        optimizer='rmsprop',
+                                        act_function=['relu'] * (nIterations + 1),
+                                        reLearn=False)
+                    fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
+                else:
+                    raise ValueError('Unknown estimator type.')
+        
+                actions = 2
+                fqi = FQI(estimator=alg,
+                          stateDim=sdim, actionDim=adim,
+                          discrete_actions=actions,
+                          gamma=0.95, horizon=10, verbose=1,
+                          scaled=True)
+                #fqi.fit(sast, r, **fit_params)
             
-            discRewards = np.zeros((289))
-            fqi.partial_fit(sast, r, **fit_params)
-            for t in xrange(1, nIterations):
-                fqi.partial_fit(None, None, **fit_params)
-        
-            mod = fqi.estimator
-            counter = 0
-            for i in xrange(-8, 9):
-                for j in xrange(-8, 9):
-                    position = 0.125 * i
-                    velocity = 0.375 * j
-                    ## test on the simulator
-                    environment.reset(position, velocity)
-                    tupla, rhistory = runEpisode(fqi, environment, environment.gamma)
-                    #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
-                    #plt.show()
+                environment = MountainCar()
                 
-                    discRewards[counter] = tupla[1]
-                    counter += 1
+                discRewards = np.zeros((289))
+                fqi.partial_fit(sast, r, **fit_params)
+                for t in xrange(1, nIterations):
+                    fqi.partial_fit(None, None, **fit_params)
+            
+                mod = fqi.estimator
+                counter = 0
+                for i in xrange(-8, 9):
+                    for j in xrange(-8, 9):
+                        position = 0.125 * i
+                        velocity = 0.375 * j
+                        ## test on the simulator
+                        environment.reset(position, velocity)
+                        tupla, rhistory = runEpisode(fqi, environment, environment.gamma)
+                        #plt.scatter(np.arange(len(rhistory)), np.array(rhistory))
+                        #plt.show()
                     
-            discRewardsPerExperiment[exp, dataset] = np.mean(discRewards)
-
-    np.save(estimator, discRewardsPerExperiment)
+                        discRewards[counter] = tupla[1]
+                        counter += 1
+                        
+                discRewardsPerExperiment[exp, dataset] = np.mean(discRewards)
+    
+        np.save(estimator, discRewardsPerExperiment)
