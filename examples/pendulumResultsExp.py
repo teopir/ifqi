@@ -5,7 +5,7 @@ import sys
 #sys.path.append(os.path.abspath('../'))
 
 import numpy as np
-from ifqi.fqi.FQI_sam import FQI
+from ifqi.fqi.FQI import FQI
 from ifqi.models.mlp import MLP
 from ifqi.models.incr import IncRegression, MergedRegressor, WideRegressor
 from ifqi.models.incr_inverse import ReverseIncRegression
@@ -115,7 +115,7 @@ nsample=0
 #This will be overwritten by retreiveParams()
 n_neuron = 5
 n_layer = 2
-n_increment = 1
+n_increment = 2
 activation = "sigmoid"
 inc_activation = "sigmoid"
 n_epoch = 300
@@ -186,7 +186,7 @@ The experiment phase
 if(env=="pen"):
     test_file = "dataset/pendulum_data/"+dataset+"/data"+str(nsample)+".log"
 else:
-    test_file = 'dataset/mountainCar.txt'
+    test_file = 'dataset/mc/mc_0.log'
     
 data, sdim, adim, rdim = parser.parseReLeDataset(test_file)
 
