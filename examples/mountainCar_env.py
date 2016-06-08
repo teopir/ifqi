@@ -17,6 +17,9 @@ from sklearn.ensemble import ExtraTreesRegressor
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
+# Python 2 and 3: forward-compatible
+from builtins import range
+
 def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
     J = 0
     t = 0
@@ -64,7 +67,7 @@ if __name__ == '__main__':
         # select reward
         r = data[:, rewardpos]
 
-        for exp in xrange(nExperiments):
+        for exp in range(nExperiments):
             print('Experiment: ' + str(exp))        
             if estimator == 'extra':
                 alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
@@ -123,13 +126,13 @@ if __name__ == '__main__':
             
             discRewards = np.zeros((289))
             fqi.partial_fit(sast, r, **fit_params)
-            for t in xrange(1, nIterations):
+            for t in range(1, nIterations):
                 fqi.partial_fit(None, None, **fit_params)
         
             mod = fqi.estimator
             counter = 0
-            for i in xrange(-8, 9):
-                for j in xrange(-8, 9):
+            for i in range(-8, 9):
+                for j in range(-8, 9):
                     position = 0.125 * i
                     velocity = 0.375 * j
                     ## test on the simulator

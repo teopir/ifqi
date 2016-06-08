@@ -2,7 +2,7 @@ from keras.models import Sequential, Model
 from keras.layers import Dense, merge
 import numpy as np
 # Python 2 and 3: forward-compatible
-#from builtins import range
+from builtins import range
 
 class IncRegression:
     def __init__(self, n_input=2,
@@ -127,7 +127,7 @@ class WideRegressor(IncRegression):
                 W_regularizer = self.regularizer,
                 b_regularizer = self.regularizer,
                 name='dense_0-' + str(self.dense_id))(new_in)
-        for i in xrange(1, self.n_h_layer_beginning):
+        for i in range(1, self.n_h_layer_beginning):
             new_out = Dense(self.hidden_neurons[idx],
                             activation=self.activation[idx],
                             trainable=True,
