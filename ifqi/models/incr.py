@@ -121,7 +121,8 @@ class WideRegressor(IncRegression):
     def addLayer(self):
         if not hasattr(self, 'n_steps'):
             self.n_steps = self.n_h_layer_beginning
-            assert(self.n_steps < self.wideness)            
+            if self.wideness is not None:
+                assert(self.n_steps < self.wideness)            
 
         if self.wideness is None or self.n_steps < self.wideness:
             nlayers = len(self.model.layers)
