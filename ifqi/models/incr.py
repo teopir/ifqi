@@ -169,6 +169,7 @@ class WideRegressor(IncRegression):
             model.compile(loss='mse', optimizer=self.optimizer)
             self.n_steps += 1
             
+            """
             from keras.utils.visualize_util import plot
             plot(model,
                  to_file='/home/shirokuma/Desktop/model' +
@@ -177,6 +178,7 @@ class WideRegressor(IncRegression):
                  show_shapes=True)
             
             return model
+            """
             
         else:
             return self.model
