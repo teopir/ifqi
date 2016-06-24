@@ -176,9 +176,9 @@ class WideRegressor(IncRegression):
                          str(self.n_steps - self.n_h_layer_beginning + 1) +
                          '.png',
                  show_shapes=True)
+            """
             
             return model
-            """
             
         else:
             return self.model
