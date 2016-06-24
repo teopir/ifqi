@@ -2,14 +2,14 @@ from keras.models import Sequential, Model
 from keras.layers import Dense, merge
 import numpy as np
 # Python 2 and 3: forward-compatible
-from builtins import range
+#from builtins import range
 
-class IncRegression:
+class IncRegression(object):
     def __init__(self, n_input=2,
                     n_output=1,
                     hidden_neurons=[15] * 10,
                     n_h_layer_beginning=1,
-                    act_function=["sigmoid","sigmoid"] + ["relu"]*8,
+                    act_function=["sigmoid","sigmoid"] + ["relu"] * 8,
                     reLearn=False,
                     optimizer=None,
                     regularizer=None):
@@ -111,59 +111,71 @@ class MergedRegressor(IncRegression):
         return model
 
 class WideRegressor(IncRegression):
-
+    
+    def __init__(self,
+                 wideness=None,
+                 **kwargs):
+        self.wideness = wideness
+        super(WideRegressor, self).__init__(**kwargs)
+                
     def addLayer(self):
         if not hasattr(self, 'n_steps'):
             self.n_steps = self.n_h_layer_beginning
-        nlayers = len(self.model.layers)
-        idx = self.n_steps
-        for i in range(nlayers):
-            self.model.layers[i].trainable = self.reLearn
+            assert(self.n_steps < self.wideness)            
 
-        new_in = self.model.get_layer(name='dense_0-0').input
-        new_out = Dense(self.hidden_neurons[idx],
-                activation=self.activation[idx],
-                trainable=True,
-                W_regularizer = self.regularizer,
-                b_regularizer = self.regularizer,
-                name='dense_0-' + str(self.dense_id))(new_in)
-        for i in range(1, self.n_h_layer_beginning):
+        if self.wideness is None or self.n_steps < self.wideness:
+            nlayers = len(self.model.layers)
+            idx = self.n_steps
+            for i in range(nlayers):
+                self.model.layers[i].trainable = self.reLearn
+    
+            new_in = self.model.get_layer(name='dense_0-0').input
             new_out = Dense(self.hidden_neurons[idx],
-                            activation=self.activation[idx],
-                            trainable=True,
-                            W_regularizer = self.regularizer,
-                            b_regularizer = self.regularizer,
-                            name='dense_' + str(i) + '-' + str(self.dense_id))(new_out)
-        
-        mid_loss = Dense(self.n_output,
-                         activation='linear',
-                         trainable=True,
-                         W_regularizer = self.regularizer,
-                         b_regularizer = self.regularizer,
-                         name='dense_' + str(self.n_h_layer_beginning) + '-' +
-                                         str(self.dense_id))(new_out)
-
-        lay = -1 if self.n_steps == self.n_h_layer_beginning else -2
-        merged_loss = merge([self.model.layers[lay].output, mid_loss], mode='concat')
-        w = np.ones(self.n_steps - self.n_h_layer_beginning + 2)
-        w = w.reshape(w.size, 1)
-        final_loss = Dense(self.n_output,
-                           activation='linear',
-                           trainable=False,
-                           weights=[w, np.array([0.])],
-                           name='dense_' + str(self.n_h_layer_beginning + 1) + '-' +
-                                           str(self.dense_id))(merged_loss)
-        self.dense_id += 1
-
-        model = Model(input=[self.model.layers[0].input], output=final_loss)
-        model.compile(loss='mse', optimizer=self.optimizer)
-        self.n_steps += 1
-        
-        #from keras.utils.visualize_util import plot
-        #plot(model,
-        #     to_file='/home/shirokuma/Desktop/model' +
-        #             str(self.n_steps - self.n_h_layer_beginning + 1) +
-        #             '.png',
-        #     show_shapes=True)
-        
-        return model
+                    activation=self.activation[idx],
+                    trainable=True,
+                    W_regularizer = self.regularizer,
+                    b_regularizer = self.regularizer,
+                    name='dense_0-' + str(self.dense_id))(new_in)
+            for i in range(1, self.n_h_layer_beginning):
+                new_out = Dense(self.hidden_neurons[idx],
+                                activation=self.activation[idx],
+                                trainable=True,
+                                W_regularizer = self.regularizer,
+                                b_regularizer = self.regularizer,
+                                name='dense_' + str(i) + '-' + str(self.dense_id))(new_out)
+            
+            mid_loss = Dense(self.n_output,
+                             activation='linear',
+                             trainable=True,
+                             W_regularizer = self.regularizer,
+                             b_regularizer = self.regularizer,
+                             name='dense_' + str(self.n_h_layer_beginning) + '-' +
+                                             str(self.dense_id))(new_out)
+    
+            lay = -1 if self.n_steps == self.n_h_layer_beginning else -2
+            merged_loss = merge([self.model.layers[lay].output, mid_loss], mode='concat')
+            w = np.ones(self.n_steps - self.n_h_layer_beginning + 2)
+            w = w.reshape(w.size, 1)
+            final_loss = Dense(self.n_output,
+                               activation='linear',
+                               trainable=False,
+                               weights=[w, np.array([0.])],
+                               name='dense_' + str(self.n_h_layer_beginning + 1) + '-' +
+                                               str(self.dense_id))(merged_loss)
+            self.dense_id += 1
+    
+            model = Model(input=[self.model.layers[0].input], output=final_loss)
+            model.compile(loss='mse', optimizer=self.optimizer)
+            self.n_steps += 1
+            
+            from keras.utils.visualize_util import plot
+            plot(model,
+                 to_file='/home/shirokuma/Desktop/model' +
+                         str(self.n_steps - self.n_h_layer_beginning + 1) +
+                         '.png',
+                 show_shapes=True)
+            
+            return model
+            
+        else:
+            return self.model

@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
 # Python 2 and 3: forward-compatible
-from builtins import range
+#from builtins import range
 
 def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
     J = 0
@@ -111,6 +111,15 @@ if __name__ == '__main__':
                                     act_function=['relu'] * (nIterations + 1),
                                     reLearn=False)
                 fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}
+            elif estimator == 'rWide':
+                alg = WideRegressor(wideness=2,
+                                    n_input=sdim+adim, n_output=1,
+                                    hidden_neurons=[10] * (nIterations + 1),
+                                    n_h_layer_beginning=1,
+                                    optimizer='rmsprop',
+                                    act_function=['relu'] * (nIterations + 1),
+                                    reLearn=False)
+                fit_params = {'nb_epoch':25, 'batch_size':50, 'validation_split':0.1, 'verbose':1}                
             else:
                 raise ValueError('Unknown estimator type.')
     
