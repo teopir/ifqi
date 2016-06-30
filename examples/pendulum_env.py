@@ -8,6 +8,7 @@ import unittest
 import numpy as np
 from ifqi.fqi.FQI import FQI
 from ifqi.models.mlp import MLP
+from ifqi.models.incr import WideRegressor
 from ifqi.preprocessors.invPendulumPreprocessor import InvertedPendulumPreprocessor
 from ifqi.envs.invertedPendulum import InvPendulum
 import ifqi.utils.parser as parser
@@ -37,7 +38,7 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
 if __name__ == '__main__':
 
     #data, sdim, adim, rdim = parser.parseReLeDataset('../dataset/episodicPendulum.txt')
-    data, sdim, adim, rdim = parser.parseReLeDataset('../dataset/pendulum_data/A/data0.log')
+    data, sdim, adim, rdim = parser.parseReLeDataset('../dataset/pendulum_data/F/data0.log')
     assert(sdim == 2)
     assert(adim == 1)
     assert(rdim == 1)
@@ -55,16 +56,21 @@ if __name__ == '__main__':
     r = data[:, rewardpos]
 
     estimator = 'mlp'
+    niteration = 20
     if estimator == 'extra':
         alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                          min_samples_split=2, min_samples_leaf=1)
         fit_params = dict()
     elif estimator == 'mlp':
         alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=5, h_layer=2,
-                  optimizer='rmsprop', act_function="sigmoid").getModel()
+                  optimizer='rmsprop', act_function="sigmoid")
         fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
         # it is equivalente to call
         #fqi.fit(sast,r,nb_epoch=12,batch_size=50, verbose=1)
+    elif estimator == "wide":
+        alg = WideRegressor(n_input=sdim+adim, n_output=1, hidden_neurons=[5]*niteration,
+                            n_h_layer_beginning=1, optimizer='rmsprop', act_function=["sigmoid"]*niteration)
+        fit_params = {'nb_epoch':300, 'batch_size':50, 'verbose':0}
     else:
         raise ValueError('Unknown estimator type.')
 
@@ -72,14 +78,14 @@ if __name__ == '__main__':
     fqi = FQI(estimator=alg,
               stateDim=sdim, actionDim=adim,
               discrete_actions=actions,
-              gamma=0.95, horizon=10, verbose=1, scaled=True)
+              gamma=0.99, horizon=10, verbose=1, scaled=True)
     #fqi.fit(sast, r, **fit_params)
 
     environment = InvPendulum()
 
 
     fqi.partial_fit(sast, r, **fit_params)
-    for t in range(1, 100):
+    for t in range(1, niteration):
         fqi.partial_fit(None, None, **fit_params)
         mod = fqi.estimator
         ## test on the simulator
