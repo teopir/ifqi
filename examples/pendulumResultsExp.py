@@ -1,5 +1,13 @@
-from __future__ import print_function
+"""PendulumResultsExp.py
 
+This source code (interfaced with ExpMan) run FQI with a given dataset and a given model.
+It provides the results to ExpMan library, which collects all the results from different running and automatically
+plot some statistics
+"""
+
+
+from __future__ import print_function
+from ifqi.models.loss_history import LossHistory
 import os
 import sys
 #sys.path.append(os.path.abspath('../'))
@@ -135,6 +143,7 @@ step = []                                               #history dim=0
 J = []                                                  #history dim=0
 goal = 0                                                #single dim=0
 loss = [[]]                                             #history dim=1 (we will plot a video)
+last_loss = []
 
 """---------------------------------------------------------------------------
 Connection with the test
@@ -151,26 +160,28 @@ sdim=2
 adim=1
 
 estimator = model
+history = LossHistory()
+
 if estimator == 'extra':
     alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
                                      min_samples_split=2, min_samples_leaf=1)
-    fit_params = dict()
+    fit_params = {"callbacks":[history]}
 elif estimator == 'mlp':
     alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=n_neuron, h_layer=n_layer,
               optimizer='rmsprop', act_function=activation).getModel()
-    fit_params = {'nb_epoch':n_epoch, 'batch_size':batch_size, 'verbose':0}
+    fit_params = {'nb_epoch':n_epoch, 'batch_size':batch_size, 'verbose':0,"callbacks":[history]}
 elif estimator == 'frozen-incr':
     alg = MergedRegressor(n_input=sdim+adim, n_output=1, hidden_neurons=[n_neuron]*(n_iter+2), 
               n_h_layer_beginning=n_layer,optimizer='rmsprop', act_function=[activation]*2+[inc_activation]*(n_iter*n_increment))
-    fit_params = {'nb_epoch':n_epoch, 'batch_size':batch_size, 'verbose':0}
+    fit_params = {'nb_epoch':n_epoch, 'batch_size':batch_size, 'verbose':0,"callbacks":[history]}
 elif estimator == 'unfrozen-incr':
     alg = MergedRegressor(n_input=sdim+adim, n_output=1, hidden_neurons=[n_neuron]*(n_iter+2), 
               n_h_layer_beginning=n_layer,optimizer='rmsprop', act_function=[activation]*2+[inc_activation]*(n_iter*n_increment),reLearn=True)
-    fit_params = {'nb_epoch':n_epoch, 'batch_size':batch_size, 'verbose':0}
+    fit_params = {'nb_epoch':n_epoch, 'batch_size':batch_size, 'verbose':0,"callbacks":[history]}
 elif estimator == 'wide':
     alg = WideRegressor(n_input=sdim+adim, n_output=1, hidden_neurons=[n_neuron]*(n_iter+2), 
               n_h_layer_beginning=n_layer,optimizer='rmsprop', act_function=[activation]*2+[inc_activation]*(n_iter*n_increment))
-    fit_params = {'nb_epoch':n_epoch, 'batch_size':batch_size, 'verbose':0}
+    fit_params = {'nb_epoch':n_epoch, 'batch_size':batch_size, 'verbose':0,"callbacks":[history]}
 else:
     raise ValueError('Unknown estimator type.')
 
@@ -222,6 +233,7 @@ if not os.path.exists(sample.path):
 #Run FQI
 #-----------------------------------------------------------------------------
 
+
 fqi = FQI(estimator=alg,
           stateDim=sdim, actionDim=adim,
           discrete_actions=actions,
@@ -253,16 +265,21 @@ for iteration in range(n_iter):
     #keep track of the results
     step.append(t) 
     J.append(j)
+    last_loss.append(history.losses[-1].tolist())
+    
     #loss.append(rhistory)
     if(s==1):
         goal=1
+        
+    
 
 """---------------------------------------------------------------------------
 Saving phase
 ---------------------------------------------------------------------------"""
 
-sample.addVariableResults("step",step)
-sample.addVariableResults("J",J)
+sample.addVariableResults("step", step)
+sample.addVariableResults("J", J)
+sample.addVariableResults("last_loss", last_loss)
 #sample.addVariableResult("loss",loss)
 sample.addVariableResults("goal",goal)
 
