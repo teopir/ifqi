@@ -16,8 +16,8 @@ data = sys.argv[4].split(",")
 n_test = int(sys.argv[5])
 
 params = []
-for arg in sys.argv[6:]:
-    params.append(arg)
+#for arg in sys.argv[6:]:
+#    params.append(arg)
     
 man = ExperimentManager()
 man.loadExperiment(folder)
@@ -27,8 +27,8 @@ comment = raw_input("Insert a comment: ")
 for model in models:
     #addTestCase(self, name, cmd, params, comment)
     #TODO: set program name
-    case = expTest.addTestCase(model, "examples.blackboxResults", ["model="+model] +  params, comment)
-    
+    case = expTest.addTestCase(model, "examples.blackboxResults", ["model="+model] , comment)
+    #case = expTest.addTestCase(model, "examples.blackboxResults", ["model="+model] +  params, comment)
     for dt in data:
         for n in xrange(0,n_test):
             case.addSample(["dataset=" + dt],"nsample="+str(n))

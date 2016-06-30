@@ -86,16 +86,30 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
     print("time: " + str(time))
     return (t, J, test_succesful), rh
 
+def runAction(environment, action,t,horizon, n=100):
+    i = 0
+    r = 0
+    while t<horizon and environment.next:
+        r += environment.step(action)
+        i+=1
+        if i>=n:
+            break
+    return r
+    
 def runOnTram(myfqi, environment, eps, sast,t,r, horizont=10000):
     rnd = 0 #np.random.rand()
     while t<horizont and environment.next and eps>rnd:
+        #print("tram started" , t)
         state = environment.getState()
         action, _ = myfqi.predict(np.array(state))
-        r.append(environment.step(action))
+        #r.append(environment.step(action))
+        r.append(runAction(environment, action,t, horizont))
         next_state =  environment.getState()
         sast.append(state.tolist() + [action] + next_state.tolist() + [1-environment.next])
         rnd = np.random.rand()
         t+=1
+        
+        #print("tram finished" , t)
     return sast, t, r
     
 def runEpisodeToDS(environment, fqi_list,eps_out,horizont, eps_on_tram=0.01):   # (nstep, J, success)
@@ -116,8 +130,8 @@ def runEpisodeToDS(environment, fqi_list,eps_out,horizont, eps_on_tram=0.01):   
             len_after =  len(sast)
             assert(len_after>len_before)
             continue
-        
-        r.append(environment.step(action))
+        #r.append(environment.step(action))
+        r.append(runAction(environment, action,t, horizont))
         next_state =  environment.getState()
         sast.append(state.tolist() + [action] + next_state.tolist() + [1-environment.next])
         t+=1
@@ -150,8 +164,8 @@ data_size = 50000
 epsilon = 1         #TODO: set epsilon
 eps_out = 0.99
 n_cycle = 5
-min_split = 4
-min_leaf = 2
+min_split = 100
+min_leaf = 36
 
 
 #plotting configuration
@@ -259,8 +273,8 @@ fqi_list = []
 
 #TODO: n_cycle
 for i in xrange(0,n_cycle): 
-    alg = ExtraTreesRegressor(n_estimators=50, criterion='mse',
-                                     min_samples_split=2, min_samples_leaf=1)
+    alg = ExtraTreesRegressor(n_estimators=10, criterion='mse',
+                                     min_samples_split=8, min_samples_leaf=4)
     
     #print ("batching the data....")
     #np.random.shuffle(sast_)  
@@ -347,8 +361,9 @@ for i in xrange(0,n_cycle):
             goal=1"""
     
     print("running env")
-    temp_sast, _ = runEpisodeToDS(environment,fqi_list, eps_out,data_size*(i+1))
+    temp_sast, r = runEpisodeToDS(environment,fqi_list, eps_out,data_size*(i+1))
     
+    print("ho esplorato fino a: " + str(environment.get_time()))
     new_sast = np.array(temp_sast) 
     print("new_sast: ", new_sast.shape)
     environment.reset()    
@@ -358,16 +373,23 @@ for i in xrange(0,n_cycle):
     #print("shuffle new_sast")
     np.random.shuffle(new_sast)
     #let's save the file every cycle
-    np.save(sample.path + "/sast" + str(i) ,new_sast)
+    """np.save(sample.path + "/sast" + str(i) ,new_sast)    
+    np.save(sample.path + "/sastReward" + str(i) ,r)"""
     #print("append a portion of new_sast")
     
     #JUST TAKE A BATCH
-    new_sast = np.copy(new_sast[0:data_size,:])
-    
+    #new_sast = np.copy(new_sast[0:data_size,:])
     
     
     #sast collect data_size from new_sast. so it has the history. then we will again take a batch from it 
     sast = np.append(sast,np.copy(new_sast[:,:]),axis=0)
+    
+    #Just take a piece---------------------------------------------------------
+    #np.random.shuffle(sast)
+    #batch_size = int(sast.shape[0] * 0.5)
+    #sast = sast[:batch_size,:]
+    #Faster computation--------------------------------------------------------
+
     
     #all the states of the history
     all_states = sast[:,0:stateDim]
@@ -388,7 +410,7 @@ for i in xrange(0,n_cycle):
         old_last_states_min = np.copy(states_min)
         old_last_states_max = np.copy(states_max)
     
-    print("vqriable compiting:")
+    print("variable computing:")
     #just a batch of the last episode's states
     last_states = np.copy(new_sast[:,0:stateDim])
 
@@ -429,6 +451,14 @@ for i in xrange(0,n_cycle):
     #TODO: printare qua le variabili
     #print("done!")
     
+    print ("Run Episode and save it")
+    temp_sast, t, r = runOnTram(fqi_list[-1],environment,1,[],0,[], horizont=13000000)
+    #runOnTram(myfqi, environment, eps, sast,t,r, horizont=10000):
+    
+    np.save(sample.path + "/fqidata" + str(i), np.array(temp_sast))
+    np.save(sample.path + "/rewards" + str(i), r)
+    print ("done")
+    
 
 """---------------------------------------------------------------------------
 Saving phase
@@ -452,10 +482,10 @@ sample.plotVariable("max_range")
 #saving the data so that we can use normal FQI then
 
 print("Running the last experiment")
-temp_sast, r = runOnTram(fqi_list[-1],environment,1,[],[],[], horizont=13000000)
+temp_sast, t, r = runOnTram(fqi_list[-1],environment,1,[],0,[], horizont=13000000)
 #runOnTram(myfqi, environment, eps, sast,t,r, horizont=10000):
 
-np.save(sample.path + "/fqidata", new_sast)
+np.save(sample.path + "/fqidata", np.array(temp_sast))
 np.save(sample.path + "/rewards", r)
 
 """
