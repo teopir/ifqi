@@ -16,8 +16,8 @@ import numpy as np
 from ifqi.fqi.FQI import FQI
 from ifqi.models.mlp import MLP
 from ifqi.models.incr import IncRegression, MergedRegressor, WideRegressor
-from ifqi.models.incr_inverse import ReverseIncRegression
 from ifqi.envs.invertedPendulum import InvPendulum
+from ifqi.envs.bicycle import Bicycle
 import utils.net_serializer as serializer
 import utils.QSerTest as qserializer
 import ifqi.utils.parser as parser
@@ -90,6 +90,25 @@ def runCarEpisode(myfqi, environment, gamma):   # (nstep, J, success)
             test_succesful = 1
 
     return (t, J, test_succesful), rh
+
+def runBicycleEpisode(myfqi, environment, gamma):   # (nstep, J, success)
+    J = 0
+    t = 0
+    test_succesful = 0
+    rh = []
+    while(not environment.isAbsorbing()):
+        state = environment.getState()
+        action, _ = myfqi.predict(np.array(state))
+        r = environment.step(action)
+        J += gamma ** t * r
+        t += 1
+        rh += [r]
+        
+        if environment.isAtGoal():
+            print('Goal reached')
+            test_succesful = 1
+
+    return (t, J, test_succesful), rh
     
 def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
     J = 0
@@ -130,8 +149,8 @@ n_epoch = 300
 batch_size = 100
 n_iter = 5
 model = "mlp"
-env = "pen"#"car"
-scaled=True
+env = "pen"#"car"#"bic"
+scaled=False
 
 #plotting configuration
 last_layer = False
@@ -155,9 +174,18 @@ sample = loadSample()
 """---------------------------------------------------------------------------
 Init the regressor
 ---------------------------------------------------------------------------"""
+#-----------------------------------------------------------------------------
+#Retrive the data
+#-----------------------------------------------------------------------------
 
-sdim=2
-adim=1
+if(env=="pen"):
+    test_file = "dataset/pendulum_data/"+dataset+"/data"+str(nsample)+".log"
+elif(env=="car"):
+    test_file = 'dataset/mc/mc_0.log'
+else:
+    test_file = 'dataset/bicycle_data/episodicBicycle.log'
+    
+data, sdim, adim, rdim = parser.parseReLeDataset(test_file)
 
 estimator = model
 history = LossHistory()
@@ -168,7 +196,7 @@ if estimator == 'extra':
     fit_params = {"callbacks":[history]}
 elif estimator == 'mlp':
     alg = MLP(n_input=sdim+adim, n_output=1, hidden_neurons=n_neuron, h_layer=n_layer,
-              optimizer='rmsprop', act_function=activation).getModel()
+              optimizer='rmsprop', act_function=activation)
     fit_params = {'nb_epoch':n_epoch, 'batch_size':batch_size, 'verbose':0,"callbacks":[history]}
 elif estimator == 'frozen-incr':
     alg = MergedRegressor(n_input=sdim+adim, n_output=1, hidden_neurons=[n_neuron]*(n_iter+2), 
@@ -190,21 +218,8 @@ The experiment phase
 ----------------------------------------------------------------------------"""
 
 
-#-----------------------------------------------------------------------------
-#Retrive the data
-#-----------------------------------------------------------------------------
-
-if(env=="pen"):
-    test_file = "dataset/pendulum_data/"+dataset+"/data"+str(nsample)+".log"
-else:
-    test_file = 'dataset/mc/mc_0.log'
-    
-data, sdim, adim, rdim = parser.parseReLeDataset(test_file)
-
 len_data = data.size
-assert(sdim == 2)
-assert(adim == 1)
-assert(rdim == 1)
+
 
 rewardpos = sdim + adim
 indicies = np.delete(np.arange(data.shape[1]), rewardpos)
@@ -221,8 +236,10 @@ r = data[:, rewardpos]
 
 if(env=="pen"):            
     actions = (np.arange(3)).tolist()
-else:
+elif(env=="car"):
     actions = (np.arange(2)).tolist()
+else:
+    actions = (np.arange(9)).tolist()
 
 
 #initialize folder
@@ -233,7 +250,6 @@ if not os.path.exists(sample.path):
 #Run FQI
 #-----------------------------------------------------------------------------
 
-
 fqi = FQI(estimator=alg,
           stateDim=sdim, actionDim=adim,
           discrete_actions=actions,
@@ -241,8 +257,10 @@ fqi = FQI(estimator=alg,
           
 if(env=="pen"):
     environment = InvPendulum()
-else:
+elif(env=="car"):
     environment = MountainCar()
+else:
+    environment = Bicycle()
 
 for iteration in range(n_iter):
                 
@@ -256,10 +274,15 @@ for iteration in range(n_iter):
     
     ## test on the simulator
     environment.reset()
+    print("Environment Execution")
     if(env=="pen"):
         tupla, rhistory = runEpisode(fqi, environment, 0.95)
-    else:
+    elif(env=="car"):
         tupla, rhistory = runCarEpisode(fqi, environment, 0.95)
+    else:
+        tupla, rhistory = runBicycleEpisode(fqi,environment,0.95)
+    
+    print("End Environment Execution")
     t, j, s = tupla
     
     #keep track of the results

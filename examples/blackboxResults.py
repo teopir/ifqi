@@ -1,3 +1,10 @@
+"""blackboxResults.py
+
+it uses ExpMan lybrary and run one experiment of blackbox. it forwards the results found to ExpMan
+
+
+"""
+
 from __future__ import print_function
 
 import os

@@ -1,3 +1,10 @@
+"""blackboxGenerator.py
+
+this script interfaces with ExpMan library, and creates in automated way a number of "experiments"
+to run. The regards "blackboxResults.py".
+
+"""
+
 import sys
 
 #https://github.com/SamuelePolimi/ExperimentManager.git
