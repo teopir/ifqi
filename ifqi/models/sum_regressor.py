@@ -57,24 +57,24 @@ class SumRegressor:
     def adapt(self, iteration=1):
         self.addModel()
     
-    def addModel(self):
-        self.model.append(self.generateModel())
+    def addModel(self,iteration=1):
+        self.model.append(self.generateModel(iteration))
         
     def initModel(self):
         model = self.generateModel()
         return [model]
     
-    def generateModel(self):
+    def generateModel(self,iteration):
         model = Sequential()
-        model.add(Dense(self.hidden_neurons[0],
+        model.add(Dense(self.hidden_neurons[iteration],
                         input_shape=(self.n_input,),
-                        activation=self.activation[0],
+                        activation=self.activation[iteration],
                         W_regularizer = self.regularizer,
                         b_regularizer = self.regularizer,
                         name='dense_0-' + str(self.dense_id)))
         for i in range(1, self.n_h_layer_beginning):
-            model.add(Dense(self.hidden_neurons[i],
-                        activation=self.activation[i],
+            model.add(Dense(self.hidden_neurons[iteration],
+                        activation=self.activation[iteration],
                         W_regularizer = self.regularizer,
                         b_regularizer = self.regularizer,
                         name='dense_' + str(i) + '-' + str(self.dense_id)))
