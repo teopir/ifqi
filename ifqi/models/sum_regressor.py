@@ -5,7 +5,6 @@ import numpy as np
 class SumRegressor:
     """Sum regressor - i-th model not parametrizable
     """
-
     def __init__(self, n_input=2,
                     n_output=1,
                     hidden_neurons=[15] * 10,
@@ -30,17 +29,13 @@ class SumRegressor:
     def fit(self, X, y, **kwargs):
         #learn delta
         delta = y-self.predictLast(X)
-        print(X.shape)
-        print(delta.shape)
         return self.model[-1].fit(X, delta, **kwargs)
       
     def predict(self, x, **kwargs):
         #Sum of all predictive model found till now
         len_ = x.shape[0]
         sum_ = np.zeros((len_,1))
-        print("predict_sum",sum_.shape)
         for model in self.model[:]:
-            print("predict_predict",model.predict(x, **kwargs).shape)
             sum_ = sum_ + model.predict(x, **kwargs)
             #print("predict shape", model.predict(x, **kwargs).shape)
         return sum_
@@ -61,7 +56,7 @@ class SumRegressor:
         self.model.append(self.generateModel(iteration))
         
     def initModel(self):
-        model = self.generateModel()
+        model = self.generateModel(0)
         return [model]
     
     def generateModel(self,iteration):
