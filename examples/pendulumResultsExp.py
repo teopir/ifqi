@@ -99,7 +99,7 @@ def runBicycleEpisode(myfqi, environment, gamma):   # (nstep, J, success)
     while(not environment.isAbsorbing()):
         state = environment.getState()
         action, _ = myfqi.predict(np.array(state))
-        r = environment.step(action)
+        r = environment.step(action[0])
         J += gamma ** t * r
         t += 1
         rh += [r]
@@ -183,7 +183,7 @@ if(env=="pen"):
 elif(env=="car"):
     test_file = 'dataset/mc/mc_0.log'
 else:
-    test_file = 'dataset/bicycle_data/episodicBicycle.log'
+    test_file = 'dataset/bicycle_data/bicycle' + str(nsample) +'.txt'
     
 data, sdim, adim, rdim = parser.parseReLeDataset(test_file)
 
