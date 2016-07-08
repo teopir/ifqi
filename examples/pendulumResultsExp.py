@@ -29,23 +29,30 @@ import matplotlib.pyplot as plt
 from ifqi.envs.mountainCar import MountainCar
 
 #https://github.com/SamuelePolimi/ExperimentManager.git
-from ExpMan.core.ExperimentManager import ExperimentManager
-
+try:
+    from ExpMan.core.ExperimentManager import ExperimentManager
+    library=True
+except:
+    library=False
+print("library", library)    
 """---------------------------------------------------------------------------
 Retrive parameter and load the ExpMan.core.ExperimentSample
 ---------------------------------------------------------------------------"""
 
 def retreiveParams():
-    global folder,test,case,code, number
-    if len(sys.argv) < 6:
-        raise "Number of parameters not sufficient"
-    folder = sys.argv[1]
-    test = int(sys.argv[2])
-    case = sys.argv[3]
-    code = sys.argv[4]
-    number = int(sys.argv[5])
-    
-    for arg in sys.argv[6:]:
+    global folder,test,case,code, number, library
+    commands = sys.argv[:]
+    if library:
+        if len(sys.argv) < 6:
+            raise "Number of parameters not sufficient"
+        folder = sys.argv[1]
+        test = int(sys.argv[2])
+        case = sys.argv[3]
+        code = sys.argv[4]
+        number = int(sys.argv[5])
+        commands = sys.argv[6:]
+        
+    for arg in commands:
         s = arg.split("=")    
         name = s[0]
         value = s[1]
@@ -56,7 +63,7 @@ def retreiveParams():
                 globals()[name] = int(value)
         except:
             globals()[name] = str(value)
-            
+                            
 def loadSample():
     global folder, test, case, code, number
     man = ExperimentManager()
@@ -169,7 +176,8 @@ Connection with the test
 ---------------------------------------------------------------------------"""
 
 retreiveParams()
-sample = loadSample()
+if library:
+    sample = loadSample()
 
 """---------------------------------------------------------------------------
 Init the regressor
@@ -217,93 +225,100 @@ else:
 The experiment phase
 ----------------------------------------------------------------------------"""
 
-
-len_data = data.size
-
-
-rewardpos = sdim + adim
-indicies = np.delete(np.arange(data.shape[1]), rewardpos)
-
-#-----------------------------------------------------------------------------
-#Prepare sast matrix
-#-----------------------------------------------------------------------------
-
-# select state, action, nextstate, absorbin
-sast = data[:, indicies]
-
-# select reward
-r = data[:, rewardpos]
-
-if(env=="pen"):            
-    actions = (np.arange(3)).tolist()
-elif(env=="car"):
-    actions = (np.arange(2)).tolist()
-else:
-    actions = (np.arange(9)).tolist()
-
-
-#initialize folder
-if not os.path.exists(sample.path):
-    os.makedirs(sample.path)
-            
-#-----------------------------------------------------------------------------
-#Run FQI
-#-----------------------------------------------------------------------------
-
-fqi = FQI(estimator=alg,
-          stateDim=sdim, actionDim=adim,
-          discrete_actions=actions,
-          gamma=0.95,scaled=scaled, horizon=31, verbose=1)
-          
-if(env=="pen"):
-    environment = InvPendulum()
-elif(env=="car"):
-    environment = MountainCar()
-else:
-    environment = Bicycle()
-
-for iteration in range(n_iter):
-                
-    #fit
-    if(iteration==0):
-        fqi.partial_fit(sast, r, **fit_params)
-    else:
-        fqi.partial_fit(None, None, **fit_params)
-        
-    mod = fqi.estimator
+if not sample.close:
+    len_data = data.size
     
-    ## test on the simulator
-    environment.reset()
-    print("Environment Execution")
-    if(env=="pen"):
-        tupla, rhistory = runEpisode(fqi, environment, 0.95)
+    
+    rewardpos = sdim + adim
+    indicies = np.delete(np.arange(data.shape[1]), rewardpos)
+    
+    #-----------------------------------------------------------------------------
+    #Prepare sast matrix
+    #-----------------------------------------------------------------------------
+    
+    # select state, action, nextstate, absorbin
+    sast = data[:, indicies]
+    
+    # select reward
+    r = data[:, rewardpos]
+    
+    if(env=="pen"):            
+        actions = (np.arange(3)).tolist()
     elif(env=="car"):
-        tupla, rhistory = runCarEpisode(fqi, environment, 0.95)
+        actions = (np.arange(2)).tolist()
     else:
-        tupla, rhistory = runBicycleEpisode(fqi,environment,0.95)
+        actions = (np.arange(9)).tolist()
     
-    print("End Environment Execution")
-    t, j, s = tupla
     
-    #keep track of the results
-    step.append(t) 
-    J.append(j)
-    last_loss.append(history.losses[-1].tolist())
+    #initialize folder
+    if not os.path.exists(sample.path):
+        os.makedirs(sample.path)
+                
+    #-----------------------------------------------------------------------------
+    #Run FQI
+    #-----------------------------------------------------------------------------
     
-    #loss.append(rhistory)
-    if(s==1):
-        goal=1
+    fqi = FQI(estimator=alg,
+              stateDim=sdim, actionDim=adim,
+              discrete_actions=actions,
+              gamma=0.95,scaled=scaled, horizon=31, verbose=1)
+              
+    if(env=="pen"):
+        environment = InvPendulum()
+    elif(env=="car"):
+        environment = MountainCar()
+    else:
+        environment = Bicycle()
+    
+    for iteration in range(n_iter):
+                    
+        #fit
+        if(iteration==0):
+            fqi.partial_fit(sast, r, **fit_params)
+        else:
+            fqi.partial_fit(None, None, **fit_params)
+            
+        mod = fqi.estimator
+        
+        ## test on the simulator
+        environment.reset()
+        print("Environment Execution")
+        if(env=="pen"):
+            tupla, rhistory = runEpisode(fqi, environment, 0.95)
+        elif(env=="car"):
+            tupla, rhistory = runCarEpisode(fqi, environment, 0.95)
+        else:
+            tupla, rhistory = runBicycleEpisode(fqi,environment,0.95)
+        
+        print("End Environment Execution")
+        t, j, s = tupla
+        
+        #keep track of the results
+        step.append(t) 
+        J.append(j)
+        last_loss.append(history.losses[-1].tolist())
+        
+        #loss.append(rhistory)
+        if(s==1):
+            goal=1
+            
         
     
-
-"""---------------------------------------------------------------------------
-Saving phase
----------------------------------------------------------------------------"""
-
-sample.addVariableResults("step", step)
-sample.addVariableResults("J", J)
-sample.addVariableResults("last_loss", last_loss)
-#sample.addVariableResult("loss",loss)
-sample.addVariableResults("goal",goal)
-
-sample.closeSample()
+    """---------------------------------------------------------------------------
+    Saving phase
+    ---------------------------------------------------------------------------"""
+    if library:
+        sample.addVariableResults("step", step)
+        sample.addVariableResults("J", J)
+        sample.addVariableResults("last_loss", last_loss)
+        #sample.addVariableResult("loss",loss)
+        sample.addVariableResults("goal",goal)
+        
+        sample.closeSample()
+    else:
+        path = raw_input("select the path where you wish to save the variables")
+        np.save("step",step)
+        np.save("J",J)
+        np.save("last_loss", last_loss)
+        np.save("goal",goal)
+        print("Variables correctly saved. Bye  :)")
