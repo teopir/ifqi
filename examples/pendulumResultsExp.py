@@ -10,22 +10,15 @@ from __future__ import print_function
 from ifqi.models.loss_history import LossHistory
 import os
 import sys
-#sys.path.append(os.path.abspath('../'))
-
 import numpy as np
 from ifqi.fqi.FQI import FQI
 from ifqi.models.mlp import MLP
-from ifqi.models.incr import IncRegression, MergedRegressor, WideRegressor
+from ifqi.models.incr import  MergedRegressor, WideRegressor
 from ifqi.envs.invertedPendulum import InvPendulum
 from ifqi.envs.bicycle import Bicycle
-import utils.net_serializer as serializer
-import utils.QSerTest as qserializer
+from ifqi.envs.gym_env import GymEnv
 import ifqi.utils.parser as parser
 from sklearn.ensemble import ExtraTreesRegressor
-import time
-from keras.regularizers import l2
-import datetime
-import matplotlib.pyplot as plt
 from ifqi.envs.mountainCar import MountainCar
 
 #https://github.com/SamuelePolimi/ExperimentManager.git
@@ -34,7 +27,7 @@ try:
     library=True
 except:
     library=False
-print("library", library)    
+    
 """---------------------------------------------------------------------------
 Retrive parameter and load the ExpMan.core.ExperimentSample
 ---------------------------------------------------------------------------"""
@@ -117,7 +110,7 @@ def runBicycleEpisode(myfqi, environment, gamma):   # (nstep, J, success)
 
     return (t, J, test_succesful), rh
     
-def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
+def runPendulumEpisode(myfqi, environment, gamma):   # (nstep, J, success)
     J = 0
     t=0
     test_succesful = 0
@@ -188,10 +181,25 @@ Init the regressor
 
 if(env=="pen"):
     test_file = "dataset/pendulum_data/"+dataset+"/data"+str(nsample)+".log"
+    actions = (np.arange(3)).tolist()
+    environment = InvPendulum()
+    run = runPendulumEpisode
 elif(env=="car"):
     test_file = 'dataset/mc/mc_0.log'
-else:
+    actions = (np.arange(2)).tolist()
+    environment = MountainCar
+    run = runCarEpisode
+elif(env=="bic"):
     test_file = 'dataset/bicycle_data/bicycle' + str(nsample) +'.txt'
+    actions = (np.arange(9)).tolist()
+    environment = Bicycle()
+    run = runBicycleEpisode
+elif(env=="pol"):
+    test_file = 'dataset/bicycle_data/cart-pole' + str(nsample) +'.txt'
+    actions = (np.arange(3)).tolist()
+    environment = GymEnv("CartPole-v0")
+    
+    
     
 data, sdim, adim, rdim = parser.parseReLeDataset(test_file)
 
@@ -241,13 +249,6 @@ if not sample.close:
     
     # select reward
     r = data[:, rewardpos]
-    
-    if(env=="pen"):            
-        actions = (np.arange(3)).tolist()
-    elif(env=="car"):
-        actions = (np.arange(2)).tolist()
-    else:
-        actions = (np.arange(9)).tolist()
     
     
     #initialize folder
