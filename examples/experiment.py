@@ -27,7 +27,7 @@ Indeed one could prefer to iterates over different number of FQI
 steps and so on.
 """
 if __name__ == '__main__':
-    config_file = './MountainCar/exp2.json'
+    config_file = './MountainCar/exp1.json'
 
     exp = Experiment(config_file)
 

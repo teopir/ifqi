@@ -4,31 +4,34 @@ from sklearn.ensemble import ExtraTreesRegressor
 import numpy as np
 
 class Ensemble(object):
+    def __init__(self):
+        self.models = self.initModel()
+    
     def fit(self, X, y, **kwargs):
         delta = y - self.predictLast(X)
         
-        return self.model[-1].fit(X, delta, **kwargs)
+        return self.models[-1].fit(X, delta, **kwargs)
       
     def predict(self, x, **kwargs):
         n_samples = x.shape[0]
-        output = np.zeros((n_samples, 1))
+        output = np.zeros((n_samples,))
         
-        for model in self.model:
-            output += model.predict(x, **kwargs)
+        for model in self.models:
+            output += model.predict(x, **kwargs).ravel()
             
         return output
         
     def predictLast(self, x, **kwargs):
         n_samples = x.shape[0]
-        output = np.zeros((n_samples, 1))
+        output = np.zeros((n_samples,))
         
-        for model in self.model[:-1]:
+        for model in self.models[:-1]:
             output += model.predict(x, **kwargs).ravel()
 
         return output
         
     def adapt(self, iteration):
-        self.model.append(self.generateModel(iteration))
+        self.models.append(self.generateModel(iteration))
         
     def initModel(self):
         model = self.generateModel(0)
@@ -46,7 +49,7 @@ class ExtraTreeEnsemble(Ensemble):
         self.criterion = criterion
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
-        self.model = self.initModel()
+        super(ExtraTreeEnsemble, self).__init__()
                      
     def generateModel(self, iteration):
         model = ExtraTreesRegressor(n_estimators=self.n_estimators,
@@ -75,18 +78,18 @@ class MLPEnsemble(Ensemble):
         self.loss = loss
         self.optimizer = optimizer
         self.regularizer = regularizer
-        self.model = self.initModel()    
+        super(MLPEnsemble, self).__init__()
 
     def generateModel(self, iteration):
         model = Sequential()
-        model.add(Dense(self.hidden_neurons[iteration],
+        model.add(Dense(self.hidden_neurons,
                         input_shape=(self.n_input,),
-                        activation=self.activation[iteration],
+                        activation=self.activation,
                         W_regularizer = self.regularizer,
                         b_regularizer = self.regularizer))
         for i in range(1, self.n_layers):
-            model.add(Dense(self.hidden_neurons[iteration],
-                            activation=self.activation[iteration],
+            model.add(Dense(self.hidden_neurons,
+                            activation=self.activation,
                             W_regularizer = self.regularizer,
                             b_regularizer = self.regularizer))
         model.add(Dense(self.n_output,
