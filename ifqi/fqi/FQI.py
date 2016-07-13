@@ -5,7 +5,7 @@ import numpy.matlib
 import sklearn.preprocessing as preprocessing
 
 class FQI:
-    def __init__(self, estimator, stateDim, actionDim,
+    def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions=10,
                  gamma=0.9, horizon=10,
                  scaled=False, verbose=0):
@@ -13,18 +13,18 @@ class FQI:
         self.gamma = gamma
         self.horizon = horizon
 
-        self.stateDim = stateDim
-        self.actionDim = actionDim
+        self.state_dim = state_dim
+        self.action_dim = action_dim
 
         self.verbose = verbose
         self.discrete_actions = discrete_actions
         if isinstance(discrete_actions, np.ndarray):
-            assert discrete_actions.shape[1] == actionDim
+            assert discrete_actions.shape[1] == action_dim
             assert discrete_actions.shape[0] > 1
             self._actions = discrete_actions
         elif isinstance(discrete_actions, list):
             assert len(discrete_actions) > 1, 'Error: at least two actions are required'
-            self._actions = np.array(discrete_actions, dtype='float32').reshape(-1, actionDim)
+            self._actions = np.array(discrete_actions, dtype='float32').reshape(-1, action_dim)
         elif isinstance(discrete_actions, int):
             assert discrete_actions > 1, 'Error: at least two actions are required'
         else:
@@ -35,17 +35,17 @@ class FQI:
         self.scaled = scaled
 
     def _check_states(self, X, copy=True):
-        return X.reshape(-1, self.stateDim)
+        return X.reshape(-1, self.state_dim)
 
     def _compute_actions(self, sast):
-        action_po = self.stateDim
-        nextstate_pos = self.stateDim + self.actionDim
+        action_po = self.state_dim
+        nextstate_pos = self.state_dim + self.action_dim
         #select unique actions
         if isinstance(self.discrete_actions, int):
-            actions = sast[:, action_po:nextstate_pos].reshape(-1, self.actionDim)
+            actions = sast[:, action_po:nextstate_pos].reshape(-1, self.action_dim)
             ubound = np.amax(actions, axis=0)
             lbound = np.amin(actions, axis=0)
-            if self.actionDim == 1:
+            if self.action_dim == 1:
                 self._actions = np.linspace(lbound, ubound, self.discrete_actions).reshape(-1,1)
             else:
                 print("not implemented in the general case (action_dim > 1")
@@ -56,9 +56,9 @@ class FQI:
         if sast is not None and r is not None:
             # get number of samples
             nSamples = sast.shape[0]
-            action_po = self.stateDim
-            nextstate_pos = self.stateDim + self.actionDim
-            absorbing_pos = nextstate_pos + self.stateDim
+            action_po = self.state_dim
+            nextstate_pos = self.state_dim + self.action_dim
+            absorbing_pos = nextstate_pos + self.state_dim
 
             sa = np.copy(sast[:, 0:nextstate_pos]).reshape(nSamples,-1)
             snext = sast[:, nextstate_pos:absorbing_pos].reshape(nSamples,-1)
@@ -149,7 +149,7 @@ class FQI:
 
         Q = np.zeros((nbstates, self._actions.shape[0]))
         for idx in range(self._actions.shape[0]):
-            a = self._actions[idx,:].reshape(1, self.actionDim)
+            a = self._actions[idx,:].reshape(1, self.action_dim)
             actions = np.matlib.repmat(a, nbstates, 1)
 
             # concatenate [newstate, action] and scalarize them

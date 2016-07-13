@@ -1,0 +1,41 @@
+{
+    "experiment": {
+        "name": "exp1",
+        "date": "..."
+    },
+    
+    "experiment_setting": {
+        "load_path": "mc/mc_",
+        "save_path": "extraTree",
+        "n_datasets": 10,
+        "n_experiments": 20
+    },
+
+    "model": {
+        "model_name": "WideMLP",
+        "n_hidden_neurons": [10],
+        "n_layers": 2,
+        "optimizer": "rmsprop",
+        "activation": ["relu"]
+    },
+
+    "mdp": {
+        "mdp_name": "MountainCar"
+    },
+
+    "supervised_algorithm": {
+        "n_epochs": 20,
+        "batch_size": 100,
+        "validation_split": 0.1,
+        "verbosity": 1
+    },
+
+    "rl_algorithm": {
+        "algorithm": "FQI",
+        "n_iterations": 2,
+        "gamma": 0.95,
+        "verbosity": 1,
+        "horizon": 30,
+        "scaled": 1 
+    }
+}

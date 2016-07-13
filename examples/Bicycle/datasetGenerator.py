@@ -1,9 +1,9 @@
-"""bicycleDatasetGenerator.py
-
-This source generate dataset for the bycicle
 """
-import numpy as np
+This source generates dataset for the bicycle environment
 
+"""
+
+import numpy as np
 
 def runBicycleEpisode(environment, o_file, n_action,  t_max):
     fout = o_file
@@ -22,7 +22,7 @@ def runBicycleEpisode(environment, o_file, n_action,  t_max):
             fout.write(str(s)+",")
         fout.write(str(action)+",")
         fout.write(str(r)+"\n")
-        if(t>=t_max):
+        if(t >= t_max):
             interrupted = True
             break
         t+=1

@@ -1,9 +1,6 @@
 import gym
 
-
-
-class GymEnv:
-
+class GymEnv(object):
     def __init__(self, env_name):
         self.env = gym.make(env_name)
         self.env.reset()
@@ -11,9 +8,8 @@ class GymEnv:
     def reset(self):
         self.env.reset()
 
-
     def step(self, action):
-        observation, reward, done, info =  self.env.step(action) 
+        observation, reward, done, info = self.env.step(action) 
         self.nextState = observation
         self.abs = done
         return reward

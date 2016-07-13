@@ -12,7 +12,7 @@ def parseReLeDataset(dataPath):
     """
     fileName = os.path.realpath(dataPath)
 
-    print("Reading dataset ...")
+    print("Loading dataset...")
     dataList = list()
     with open(fileName, 'r') as f:
         csvReader = csv.reader(f, delimiter=',')
@@ -29,7 +29,7 @@ def parseReLeDataset(dataPath):
                     dataList.append(currentRow)
                 else:
                     dataList.append(row)
-    print("File red")
+    print("Dataset loaded")
 
     data = np.array(dataList, dtype='float32')
 
@@ -48,7 +48,7 @@ def parseReLeDataset(dataPath):
 
     return sars, stateDim, actionDim, rewardDim
 
-
+"""
 def parsejson(dataPath):
 
     with open(dataPath, 'r') as infile:
@@ -61,3 +61,4 @@ def parsejson(dataPath):
         data = np.array(flatlist, dtype='float32')
 
         return data, jsondata['statedim'], jsondata['actiondim'], jsondata['rewarddim']
+"""
