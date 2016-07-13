@@ -76,4 +76,4 @@ if __name__ == '__main__':
                 
             score[e, d] = exp.mdp.evaluate(fqi)
 
-    np.save(exp.config['experiment_settings']['save_path'], score)
+    np.save(exp.config['experiment_setting']['save_path'], score)

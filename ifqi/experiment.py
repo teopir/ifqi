@@ -40,13 +40,21 @@ class Experiment(object):
                                         criterion=self.config['supervised_algorithm']['criterion'],
                                         min_samples_split=model_config['min_samples_split'],
                                         min_samples_leaf=model_config['min_samples_leaf'])
+        elif model_config['model_name'] == 'ExtraTreeEnsemble':
+            model = ExtraTreeEnsemble(n_estimators=model_config['n_estimators'] *
+                                                   self.config['rl_algorithm']['n_iterations'],
+                                      criterion=self.config['supervised_algorithm']['criterion'],
+                                      min_samples_split=model_config['min_samples_split'] *
+                                                        self.config['rl_algorithm']['n_iterations'],
+                                      min_samples_leaf=model_config['min_samples_leaf'] *
+                                                       self.config['rl_algorithm']['n_iterations'])
         elif model_config['model_name'] == 'MLP':
-            model = ExtraTreesRegressor(n_input=self.mdp.state_dim + self.mdp.action_dim,
-                                        n_output=1,
-                                        hidden_neurons=model_config['n_hidden_neurons'],
-                                        n_layers=model_config['n_layers'],
-                                        optimizer=model_config['optimizer'],
-                                        act_function=model_config['activation'])
+            model = MLP(n_input=self.mdp.state_dim + self.mdp.action_dim,
+                        n_output=1,
+                        hidden_neurons=model_config['n_hidden_neurons'],
+                        n_layers=model_config['n_layers'],
+                        optimizer=model_config['optimizer'],
+                        act_function=model_config['activation'])
         elif model_config['model_name'] == 'MLPEnsemble':
             model = MLPEnsemble(n_input=self.mdp.state_dim + self.mdp.action_dim,
                                 n_output=1,
@@ -56,14 +64,6 @@ class Experiment(object):
                                 optimizer=model_config['optimizer'],
                                 act_function=model_config['activation'] *
                                              self.config['rl_algorithm']['n_iterations'])
-        elif model_config['model_name'] == 'ExtraTreeEnsemble':
-            model = ExtraTreeEnsemble(n_estimators=model_config['n_estimators'] *
-                                                   self.config['rl_algorithm']['n_iterations'],
-                                      criterion=self.config['supervised_algorithm']['criterion'],
-                                      min_samples_split=model_config['min_samples_split'] *
-                                                       self.config['rl_algorithm']['n_iterations'],
-                                      min_samples_leaf=model_config['min_samples_leaf'] *
-                                                       self.config['rl_algorithm']['n_iterations'],)
         else:
             raise ValueError('Unknown estimator type.')
             

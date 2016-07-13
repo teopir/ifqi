@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon May  2 20:47:34 2016
-
-@author: samuele
-"""
 import numpy as np
 
 class MountainCarPreprocessor(object):    
