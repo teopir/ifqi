@@ -1,23 +1,5 @@
 import numpy as np
 
-class MountainCarPreprocessor(object):    
-    """
-    This class contains the function to preprocess data contained in the
-    dataset.
-    
-    """
-    def preprocess(self, state):
-        """
-        The action id is concatenated with the value of the state features.
-        Args:
-            state (tuple): the state features
-        Returns:
-            a tuple containing the value of state features and the action id
-        
-        """
-        actions = (state[:, 2]).reshape(-1, 1)
-        return np.concatenate((state[:, 0:2], actions), axis=1)
-
 class MountainCar(object):
     """
     The Mountain Car environment as presented in:
@@ -28,9 +10,7 @@ class MountainCar(object):
         """
         Constructor.
         
-        """        
-        # Preprocessor
-        self.preprocessor = MountainCarPreprocessor()
+        """
         # Properties
         self.state_dim = 2
         self.action_dim = 1        

@@ -4,7 +4,6 @@ import os
 import sys
 sys.path.append(os.path.abspath('../'))
 
-import unittest
 import numpy as np
 from ifqi.fqi.FQI import FQI
 from ifqi.models.mlp import MLP
@@ -25,7 +24,7 @@ def runEpisode(myfqi, environment, gamma):   # (nstep, J, success)
     t = 0
     test_succesful = 0
     rh = []
-    while(t < 500 and not environment.isAbsorbing()):
+    while t < 500 and not environment.isAbsorbing():
         state = environment.getState()
         action, _ = myfqi.predict(np.array(state))
         position, velocity, r = environment.step(action)

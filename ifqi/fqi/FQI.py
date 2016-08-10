@@ -4,7 +4,24 @@ import sys
 import numpy.matlib
 import sklearn.preprocessing as preprocessing
 
+"""
+This class implements the function to run Fitted Q-Iteration algorithm.
+
+"""
 class FQI:
+    """
+    Constructor.
+    Args:
+        estimator (object): the model to be trained
+        state_dim (int): state dimensionality
+        action_dim (int): action dimensionality
+        discrete_actions (int): number of actions
+        gamma (float): discount factor
+        horizon (int): horizon
+        scaled (bool): true if the input/output are normalized
+        verbose (int): verbosity level
+    
+    """
     def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions=10,
                  gamma=0.9, horizon=10,
@@ -35,14 +52,30 @@ class FQI:
         self.scaled = scaled
 
     def _check_states(self, X, copy=True):
+        """
+        Check the correctness of the matrix containing the dataset.
+        Args:
+            X (numpy.array): the dataset
+            copy (bool): ...
+        Returns:
+            The matrix containing the dataset reshaped in the proper way.
+        
+        """
         return X.reshape(-1, self.state_dim)
 
     def _compute_actions(self, sast):
-        action_po = self.state_dim
+        """
+        Return the action IDs according to the number of actions of the
+        problem.
+        Args:
+            sast (numpy.array): the dataset
+        
+        """        
+        action_pos = self.state_dim
         nextstate_pos = self.state_dim + self.action_dim
-        #select unique actions
+        # select unique actions
         if isinstance(self.discrete_actions, int):
-            actions = sast[:, action_po:nextstate_pos].reshape(-1, self.action_dim)
+            actions = sast[:, action_pos:nextstate_pos].reshape(-1, self.action_dim)
             ubound = np.amax(actions, axis=0)
             lbound = np.amin(actions, axis=0)
             if self.action_dim == 1:
@@ -52,11 +85,18 @@ class FQI:
                 exit(9)
 
     def _preprocess_data(self, sast=None, r=None):
+        """
+        Function to normalize data.
+        Args:
+            sast (numpy.array): the input in the dataset
+            r (numpy.array): the output in the dataset
+
+        """
 
         if sast is not None and r is not None:
             # get number of samples
             nSamples = sast.shape[0]
-            action_po = self.state_dim
+            action_pos = self.state_dim
             nextstate_pos = self.state_dim + self.action_dim
             absorbing_pos = nextstate_pos + self.state_dim
 
@@ -76,13 +116,22 @@ class FQI:
 
 
     def _partial_fit(self, sast=None, r=None, **kwargs):
+        """
+        Perform a step of FQI.
+        Args:
+            sast (numpy.array): the input in the dataset
+            r (numpy.array): the output in the dataset
+            
+        Returns:
+            the preprocessed input and output
+        """
         # compute the action list
         if not hasattr(self, '_actions'):
             self._compute_actions(sast)
 
         self._preprocess_data(sast, r)
 
-        #check if the estimator change the structure at each iteration
+        # check if the estimator change the structure at each iteration
         adaptive = False
         if hasattr(self.estimator, 'adapt'):
             adaptive = True
@@ -91,7 +140,17 @@ class FQI:
         if self.iteration == 0:
             if self.verbose > 0:
                 print('Iteration {}'.format(self.iteration+1))
-            self.estimator.fit(self.sa, self.r, **kwargs)
+                   
+            """
+            if self.scaled:
+                y = y.reshape(y.size, -1)
+                self._y_scaler = preprocessing.StandardScaler()
+                y = self._y_scaler.fit_transform(y)
+
+            y = y.ravel()
+            """
+            
+            self.estimator.fit(self.sa, y, **kwargs)
         else:
             maxq, maxa = self.maxQA(self.snext, self.absorbing)
             y = self.r + self.gamma * maxq
@@ -103,21 +162,31 @@ class FQI:
                 # update estimator structure
                 self.estimator.adapt(iteration=self.iteration)
 
+            """
+            if self.scaled:
+                y = y.reshape(y.size, -1)
+                self._y_scaler = preprocessing.StandardScaler()
+                y = self._y_scaler.fit_transform(y)
+
+            y = y.ravel()
+            """
+            
             self.estimator.fit(self.sa, y, **kwargs)
 
         self.iteration += 1
 
         return self.sa, y
 
+    """
     def _fit(self, sast, r, **kwargs):
-        """
+        '''
         :param sast: array-like, [nbsamples x nfeatures]
          Note that it stores the state, action, nextstate and absorbing flag, this means that
          nfeatures = state_dim*2 + action_dim + 1
         :param r: array-like, [nbsamples x 1]
          Note it stores the reward function associated to the transition sas
         :return: None
-        """
+        '''
         if self.verbose > 0:
             print("Starting complete FQI ...")
 
@@ -130,16 +199,17 @@ class FQI:
         self._partial_fit(sast, r)
         for t in range(1, self.horizon):
             self._partial_fit()
+    """
 
     def maxQA(self, states, absorbing=None):
         """
         Computes the maximum Q-function and the associated action
-        in the provided states
-
-        :param states: array-like, [nbstate x state_dim]
-        :param absorbing: array-like, [nbstate x 1]
-            {0,1} array representing if the state is absorbing
-        :return:
+        in the provided states.
+        Args:
+            states (numpy.array): the current state
+            absorbing (bool): true if the current state is absorbing
+        Returns:
+            the highest Q-value and the associated action
         """
         newstate = self._check_states(states, copy=True)
         nbstates = newstate.shape[0]
@@ -180,22 +250,35 @@ class FQI:
         return rQ, rA
 
     def partial_fit(self, X, y, **kwargs):
+        """
+        Perform a step of FQI.
+        Args:
+            X (numpy.array): the input in the dataset
+            y (numpy.array): the output in the dataset
+            
+        Returns:
+            the FQI object after one step
+            
+        """
         self._partial_fit(X, y, **kwargs)
         return self
 
+    """
     def fit(self, X, y, **kwargs):
-        """
-        :param sast: array-like, [nbsamples x nfeatures]
-         Note that it stores the state, action, nextstate and absorbing flag, this means that
-         nfeatures = state_dim*2 + action_dim + 1
-        :param r: array-like, [nbsamples x 1]
-         Note it stores the reward function associated to the transition sas
-        :return:
-        """
+
         self._fit(X, y, **kwargs)
         return self
+    """
 
     def predict(self, states):
+        """
+        Compute the action with the highest Q value.
+        Args:
+            states (numpy.array): the current state
+        Returns:
+            the argmax and the max Q value
+            
+        """
         if not hasattr(self, '_actions'):
             raise ValueError('The model must be trained before to be evaluated')
 
@@ -203,6 +286,10 @@ class FQI:
         return maxa, maxQ
 
     def reset(self):
+        """
+        Reset FQI.
+        
+        """
         self.iteration = 0
         self.sa = None
         self.snext = None

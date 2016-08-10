@@ -8,7 +8,7 @@
         "load_path": "mc/mc_",
         "save_path": "MLPEnsemble",
         "n_datasets": 10,
-        "n_experiments": 20
+        "n_experiments": 10
     },
 
     "model": {
@@ -32,7 +32,7 @@
 
     "rl_algorithm": {
         "algorithm": "FQI",
-        "n_iterations": 2,
+        "n_iterations": 20,
         "gamma": 0.95,
         "verbosity": 1,
         "horizon": 30,

@@ -2,13 +2,13 @@ from __future__ import print_function
 import os
 import csv
 import numpy as np
-import json
 
 def parseReLeDataset(dataPath):
     """
     Function to parse rele dataset and create
     a sars matrix with tuples with:
     state, action, reward, next state, absStateFlag
+    
     """
     fileName = os.path.realpath(dataPath)
 

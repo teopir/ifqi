@@ -23,21 +23,23 @@ The script computes and save the performance of the algorithm
 and model in the selected environment averaging on different
 experiments and different datasets. While the loop over experiments
 is likely to be used for every test, the loop over dataset is not.
-Indeed one could prefer to iterates over different number of FQI
+Indeed one could prefer to iterate over different number of FQI
 steps and so on.
+
 """
 if __name__ == '__main__':
-    config_file = './MountainCar/exp1.json'
+    config_file = './MountainCar/exp3.json'
 
     exp = Experiment(config_file)
 
-    fit_params = dict()
     if 'MLP' in exp.config['model']['model_name']:
         fit_params = {'nb_epoch': exp.config['supervised_algorithm']['n_epochs'],
                       'batch_size': exp.config['supervised_algorithm']['batch_size'],
                       'validation_split': exp.config['supervised_algorithm']['validation_split'],
                       'verbose': exp.config['supervised_algorithm']['verbosity']
                       }
+    else:
+        fit_params = dict()
 
     score = np.zeros((exp.config['experiment_setting']['n_experiments'],
                       exp.config['experiment_setting']['n_datasets']))
@@ -54,7 +56,6 @@ if __name__ == '__main__':
         indicies = np.delete(np.arange(data.shape[1]), rewardpos)
     
         sast = data[:, indicies]
-        sast[:, :3] = exp.mdp.preprocessor.preprocess(sast[:, :3])
 
         r = data[:, rewardpos]
 
