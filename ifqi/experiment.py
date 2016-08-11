@@ -2,8 +2,8 @@ import json
 
 from sklearn.ensemble import ExtraTreesRegressor
 from ifqi.models.mlp import MLP
-from ifqi.models.ensemble import ExtraTreeEnsemble, MLPEnsemble
-
+from ifqi.models.linear import Linear
+from ifqi.models.ensemble import ExtraTreeEnsemble, MLPEnsemble, LinearEnsemble
 from ifqi.envs.mountainCar import MountainCar
 from ifqi.envs.invertedPendulum import InvPendulum
 
@@ -25,6 +25,8 @@ class Experiment(object):
             self.config = json.load(f)
         
         self.mdp = self._getMDP()
+        
+    def loadModel(self):
         self.model = self._getModel()
     
     def _getModel(self):
@@ -59,9 +61,13 @@ class Experiment(object):
                                 n_layers=model_config['n_layers'],
                                 optimizer=model_config['optimizer'],
                                 activation=model_config['activation'])
+        elif model_config['model_name'] == 'Linear':
+            model = Linear(degree=model_config['degree'])
+        elif model_config['model_name'] == 'LinearEnsemble':
+            model = LinearEnsemble(degree=model_config['degree'])
         else:
             raise ValueError('Unknown estimator type.')
-            
+
         return model
         
     def _getMDP(self):

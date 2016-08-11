@@ -28,7 +28,7 @@ steps and so on.
 
 """
 if __name__ == '__main__':
-    config_file = './MountainCar/exp3.json'
+    config_file = './MountainCar/exp5.json'
 
     exp = Experiment(config_file)
 
@@ -61,6 +61,8 @@ if __name__ == '__main__':
 
         for e in range(exp.config['experiment_setting']['n_experiments']):
             print('Experiment: ' + str(e))
+            
+            exp.loadModel()
     
             fqi = FQI(estimator=exp.model,
                       state_dim=state_dim,

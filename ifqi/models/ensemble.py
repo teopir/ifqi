@@ -3,6 +3,8 @@ from keras.layers import Dense
 from sklearn.ensemble import ExtraTreesRegressor
 import numpy as np
 
+from ifqi.models.linear import Linear
+
 class Ensemble(object):
     def __init__(self):
         self.models = self.initModel()
@@ -20,7 +22,7 @@ class Ensemble(object):
             output += model.predict(x, **kwargs).ravel()
             
         return output
-        
+
     def predictLast(self, x, **kwargs):
         n_samples = x.shape[0]
         output = np.zeros((n_samples,))
@@ -97,5 +99,16 @@ class MLPEnsemble(Ensemble):
                         W_regularizer = self.regularizer,
                         b_regularizer = self.regularizer))
         model.compile(loss=self.loss, optimizer=self.optimizer)
+
+        return model
+        
+class LinearEnsemble(Ensemble):
+    def __init__(self,
+                 degree=3):
+        self.degree = degree
+        super(LinearEnsemble, self).__init__()
+
+    def generateModel(self, iteration):
+        model = Linear(self.degree)
 
         return model

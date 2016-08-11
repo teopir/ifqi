@@ -1,41 +1,30 @@
 {
     "experiment": {
-        "name": "exp4",
+        "name": "exp5",
         "date": "..."
     },
     
     "experiment_setting": {
         "load_path": "mc/mc_",
-        "save_path": "MLPEnsemble",
+        "save_path": "linear",
         "n_datasets": 10,
         "n_experiments": 10
     },
 
     "model": {
-        "model_name": "MLPEnsemble",
-        "n_hidden_neurons": 10,
-        "n_layers": 2,
-        "optimizer": "rmsprop",
-        "activation": "relu"
+        "model_name": "Linear",
+        "degree": 2
     },
 
     "mdp": {
         "mdp_name": "MountainCar"
     },
-
-    "supervised_algorithm": {
-        "n_epochs": 20,
-        "batch_size": 100,
-        "validation_split": 0.1,
-        "verbosity": 1
-    },
-
     "rl_algorithm": {
         "algorithm": "FQI",
         "n_iterations": 20,
         "gamma": 0.95,
         "verbosity": 1,
         "horizon": 30,
-        "scaled": 1 
+        "scaled": 1
     }
 }
