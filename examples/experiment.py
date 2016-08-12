@@ -28,7 +28,7 @@ steps and so on.
 
 """
 if __name__ == '__main__':
-    config_file = './MountainCar/exp5.json'
+    config_file = sys.argv[1]
 
     exp = Experiment(config_file)
 
