@@ -8,11 +8,18 @@ from ifqi.models.linear import Linear
 class Ensemble(object):
     def __init__(self):
         self.models = self.initModel()
+        self.sum_void = True
+        self.sum_=[]
     
     def fit(self, X, y, **kwargs):
-        delta = y - self.predictLast(X)
+        if self.sum_void:
+            self.sum_=np.zeros(y.shape)
+            self.sum_void=False
+        delta = y - self.sum_
         
-        return self.models[-1].fit(X, delta, **kwargs)
+        ret = self.models[-1].fit(X, delta, **kwargs)
+        self.sum_ += self.models[-1].predict(X).ravel()
+        return ret
       
     def predict(self, x, **kwargs):
         n_samples = x.shape[0]

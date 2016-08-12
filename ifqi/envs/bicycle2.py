@@ -48,12 +48,11 @@ class Bicycle:
         self.reward_goal = 0.01
         self.goal_rsqrd = 100.0 # Square of the radius around the goal (10m)^2
         self.navigate = kwargs.setdefault('navigate', True)
-        """if not self.navigate:
+        if not self.navigate:
             # Original balancing task
             self.reward_shaping = 0.001
         else:
-            self.reward_shaping = 0.00004"""
-        self.reward_shaping = 0.
+            self.reward_shaping = 0.00004
 
         self.goal_loc = numpy.array([1000., 0])
 
