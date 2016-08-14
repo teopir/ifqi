@@ -64,7 +64,7 @@ class CarOnHill(object):
             velocity (float): the initial velocity.
             
         """
-        self.absorbing=False
+        self.absorbing = False
         self.position = position
         self.velocity = velocity
 

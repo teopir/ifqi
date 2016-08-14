@@ -49,7 +49,7 @@ if __name__ == '__main__':
         data, state_dim, action_dim, reward_dim = parser.parseReLeDataset(
             path='../dataset/' + exp.config['experiment_setting']['load_path'] + 
                  '.log',
-            nEpisodes=(d + 1) * 100
+            nEpisodes=(d + 1) * exp.config['experiment_setting']['dataset_size_step']
             )
         assert(state_dim == exp.mdp.state_dim)
         assert(action_dim == exp.mdp.action_dim)

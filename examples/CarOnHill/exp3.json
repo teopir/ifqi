@@ -9,6 +9,7 @@
         "save_path": "extraTreeEnsemble",
         "n_datasets": 10,
         "n_experiments": 10
+        "dataset_size_step": 100
     },
 
     "model": {

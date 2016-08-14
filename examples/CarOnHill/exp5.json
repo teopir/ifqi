@@ -8,7 +8,8 @@
         "load_path": "coh/coh",
         "save_path": "linear",
         "n_datasets": 10,
-        "n_experiments": 10
+        "n_experiments": 10,
+        "dataset_size_step": 100
     },
 
     "model": {
@@ -24,7 +25,7 @@
         "n_iterations": 20,
         "gamma": 0.95,
         "verbosity": 1,
-        "horizon": 30,
+        "horizon": 300,
         "scaled": 1
     }
 }

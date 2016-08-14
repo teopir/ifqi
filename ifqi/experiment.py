@@ -6,7 +6,7 @@ from ifqi.models.linear import Linear
 from ifqi.models.ensemble import ExtraTreeEnsemble, MLPEnsemble, LinearEnsemble
 from ifqi.envs.carOnHill import CarOnHill
 from ifqi.envs.invertedPendulum import InvPendulum
-from ifqi.envs.acrobot import Acrobot
+from ifqi.envs.gymEnv import GymEnv
 
 class Experiment(object):
     """
@@ -83,6 +83,6 @@ class Experiment(object):
         elif self.config['mdp']['mdp_name'] == 'SwingUpPendulum':
             return InvPendulum()
         elif self.config['mdp']['mdp_name'] == 'AcroBot':
-            return Acrobot()
+            return GymEnv('Acrobot-v0')
         else:
             raise ValueError('Unknown mdp type.')
