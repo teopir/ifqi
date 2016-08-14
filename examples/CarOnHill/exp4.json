@@ -1,29 +1,33 @@
 {
     "experiment": {
-        "name": "exp3",
+        "name": "exp4",
         "date": "..."
     },
     
     "experiment_setting": {
-        "load_path": "mc/mc_",
-        "save_path": "extraTreeEnsemble",
+        "load_path": "coh/coh",
+        "save_path": "MLPEnsemble",
         "n_datasets": 10,
         "n_experiments": 10
     },
 
     "model": {
-        "model_name": "ExtraTreeEnsemble",
-        "n_estimators": 50,
-        "min_samples_split": 4,
-        "min_samples_leaf": 2
+        "model_name": "MLPEnsemble",
+        "n_hidden_neurons": 10,
+        "n_layers": 2,
+        "optimizer": "rmsprop",
+        "activation": "relu"
     },
 
     "mdp": {
-        "mdp_name": "MountainCar"
+        "mdp_name": "CarOnHill"
     },
 
     "supervised_algorithm": {
-        "criterion": "mse"
+        "n_epochs": 20,
+        "batch_size": 100,
+        "validation_split": 0.1,
+        "verbosity": 1
     },
 
     "rl_algorithm": {

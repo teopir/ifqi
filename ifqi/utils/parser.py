@@ -3,18 +3,19 @@ import os
 import csv
 import numpy as np
 
-def parseReLeDataset(dataPath):
+def parseReLeDataset(path, nEpisodes=None):
     """
     Function to parse rele dataset and create
     a sars matrix with tuples with:
     state, action, reward, next state, absStateFlag
     
     """
-    fileName = os.path.realpath(dataPath)
+    fileName = os.path.realpath(path)
 
     print("Loading dataset...")
     dataList = list()
     with open(fileName, 'r') as f:
+        episodesCounter = 0
         csvReader = csv.reader(f, delimiter=',')
         first = True
         for row in csvReader:
@@ -27,8 +28,13 @@ def parseReLeDataset(dataPath):
                 if len(row) == stateDim + 2:
                     currentRow = row + [0]*(actionDim+rewardDim)
                     dataList.append(currentRow)
+                    episodesCounter += 1
                 else:
                     dataList.append(row)
+            
+            if nEpisodes is not None and episodesCounter == nEpisodes:
+                break
+
     print("Dataset loaded")
 
     data = np.array(dataList, dtype='float32')
@@ -49,9 +55,9 @@ def parseReLeDataset(dataPath):
     return sars, stateDim, actionDim, rewardDim
 
 """
-def parsejson(dataPath):
+def parsejson(path):
 
-    with open(dataPath, 'r') as infile:
+    with open(path, 'r') as infile:
         jsondata = json.load(infile)
 
         dataList = jsondata['data']

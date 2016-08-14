@@ -1,24 +1,31 @@
 {
     "experiment": {
-        "name": "exp5",
+        "name": "exp2",
         "date": "..."
     },
     
     "experiment_setting": {
-        "load_path": "mc/mc_",
-        "save_path": "linear",
+        "load_path": "acro/acro_",
+        "save_path": "extraTree",
         "n_datasets": 10,
         "n_experiments": 10
     },
 
     "model": {
-        "model_name": "Linear",
-        "degree": 2
+        "model_name": "ExtraTree",
+        "n_estimators": 50,
+        "min_samples_split": 4,
+        "min_samples_leaf": 2
     },
 
     "mdp": {
-        "mdp_name": "MountainCar"
+        "mdp_name": "Acrobot"
     },
+
+    "supervised_algorithm": {
+        "criterion": "mse"
+    },
+
     "rl_algorithm": {
         "algorithm": "FQI",
         "n_iterations": 20,

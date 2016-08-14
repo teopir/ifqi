@@ -1,8 +1,9 @@
 import numpy as np
+from scipy.integrate import odeint
 
-class MountainCar(object):
+class CarOnHill(object):
     """
-    The Mountain Car environment as presented in:
+    The Car On Hill environment as presented in:
     "Tree-Based Batch Mode Reinforcement Learning, D. Ernst et. al."
     
     """
@@ -38,18 +39,12 @@ class MountainCar(object):
             the new position and velocity of the car.
             
         """
-        if self.position < 0.:
-            diffHill = 2 * self.position + 1
-            diff2Hill = 2
-        else:
-            diffHill = 1 / ((1 + 5 * self.position ** 2) ** 1.5)
-            diff2Hill = (-15 * self.position) / ((1 + 5 * self.position ** 2) ** 2.5)
-        act = -4. if u == 0 else 4.
-        acc = (act - self.g * self.m * diffHill - self.velocity ** 2 * self.m *
-                diffHill * diff2Hill) / (self.m * (1 + diffHill ** 2))
-    
-        self.position = self.position + self.dt * self.velocity + 0.5 * acc * self.dt ** 2
-        self.velocity = self.velocity + self.dt * acc
+        stateAction = np.append([self.position, self.velocity], u)
+        newState = odeint(self._dpds, stateAction, [0, self.dt])        
+        
+        newState = newState[-1]
+        self.position = newState[0]
+        self.velocity = newState[1]
         
         if(self.position < -1 or np.abs(self.velocity) > 3):
             self.absorbing = True
@@ -89,6 +84,26 @@ class MountainCar(object):
         
         """
         return self.absorbing
+        
+    def _dpds(self, stateAction, t):
+        position = stateAction[0]
+        velocity = stateAction[1]
+        action = stateAction[-1]
+
+        if position < 0.:
+            diffHill = 2 * position + 1
+            diff2Hill = 2
+        else:
+            diffHill = 1 / ((1 + 5 * position ** 2) ** 1.5)
+            diff2Hill = (-15 * position) / ((1 + 5 * position ** 2) ** 2.5)
+
+        u = -4. if action == 0 else 4.
+        
+        dp = velocity
+        ds = (u - self.g * self.m * diffHill - velocity ** 2 * self.m *
+             diffHill * diff2Hill) / (self.m * (1 + diffHill ** 2))
+             
+        return (dp, ds, 0.)
         
     def runEpisode(self, fqi):
         """
