@@ -36,7 +36,7 @@
         "n_iterations": 20,
         "gamma": 0.95,
         "verbosity": 1,
-        "horizon": 30,
+        "horizon": 300,
         "scaled": 1
     }
 }
