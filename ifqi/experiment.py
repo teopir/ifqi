@@ -4,15 +4,15 @@ from sklearn.ensemble import ExtraTreesRegressor
 from ifqi.models.mlp import MLP
 from ifqi.models.linear import Linear
 from ifqi.models.ensemble import ExtraTreeEnsemble, MLPEnsemble, LinearEnsemble
-from ifqi.envs.mountainCar import MountainCar
+from ifqi.envs.carOnHill import CarOnHill
 from ifqi.envs.invertedPendulum import InvPendulum
+from ifqi.envs.gymEnv import GymEnv
 
 class Experiment(object):
     """
     This class has the purpose to load the configuration
     file of the experiment and return the required model
     and mdp.
-
     """
     def __init__(self, config_file):
         """
@@ -77,9 +77,11 @@ class Experiment(object):
             the required mdp.
         
         """
-        if self.config['mdp']['mdp_name'] == 'MountainCar':
-            return MountainCar()
+        if self.config['mdp']['mdp_name'] == 'CarOnHill':
+            return CarOnHill()
         elif self.config['mdp']['mdp_name'] == 'SwingUpPendulum':
             return InvPendulum()
+        elif self.config['mdp']['mdp_name'] == 'AcroBot':
+            return GymEnv('Acrobot-v0')
         else:
             raise ValueError('Unknown mdp type.')
