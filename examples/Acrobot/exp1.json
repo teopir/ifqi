@@ -1,0 +1,38 @@
+{
+    "experiment": {
+        "name": "exp1",
+        "date": "..."
+    },
+    
+    "experiment_setting": {
+        "load_path": "acro/acro_",
+        "save_path": "extraTree",
+        "n_datasets": 10,
+        "n_experiments": 10,
+        "dataset_size_step": 100
+    },
+
+    "model": {
+        "model_name": "ExtraTree",
+        "n_estimators": 50,
+        "min_samples_split": 4,
+        "min_samples_leaf": 2
+    },
+
+    "mdp": {
+        "mdp_name": "Acrobot"
+    },
+
+    "supervised_algorithm": {
+        "criterion": "mse"
+    },
+
+    "rl_algorithm": {
+        "algorithm": "FQI",
+        "n_iterations": 20,
+        "gamma": 0.95,
+        "verbosity": 1,
+        "horizon": 30,
+        "scaled": 1
+    }
+}

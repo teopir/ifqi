@@ -9,13 +9,14 @@ class GymEnv(object):
         self.env.reset()
 
     def step(self, action):
-        observation, reward, done, info = self.env.step(action) 
-        self.nextState = observation
-        self.abs = done
-        return reward
+        nextState, reward, absorbing, info = self.env.step(action) 
+        self.nextState = nextState
+        self.absorbing = absorbing
+
+        return self.nextState, reward
     
     def isAbsorbing(self):
-        return self.abs
+        return self.absorbing
         
     def isAtGoal(self):
         return False

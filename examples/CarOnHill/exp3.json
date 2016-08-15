@@ -5,10 +5,11 @@
     },
     
     "experiment_setting": {
-        "load_path": "mc/mc_",
+        "load_path": "coh/coh",
         "save_path": "extraTreeEnsemble",
         "n_datasets": 10,
-        "n_experiments": 10
+        "n_experiments": 10,
+        "dataset_size_step": 100
     },
 
     "model": {
@@ -19,7 +20,7 @@
     },
 
     "mdp": {
-        "mdp_name": "MountainCar"
+        "mdp_name": "CarOnHill"
     },
 
     "supervised_algorithm": {
@@ -31,7 +32,7 @@
         "n_iterations": 20,
         "gamma": 0.95,
         "verbosity": 1,
-        "horizon": 30,
+        "horizon": 300,
         "scaled": 1 
     }
 }

@@ -47,7 +47,10 @@ if __name__ == '__main__':
     for d in range(exp.config['experiment_setting']['n_datasets']):
         print('Dataset: ' + str(d))
         data, state_dim, action_dim, reward_dim = parser.parseReLeDataset(
-            '../dataset/' + exp.config['experiment_setting']['load_path'] + str(d) + '.log')
+            path='../dataset/' + exp.config['experiment_setting']['load_path'] + 
+                 '.log',
+            nEpisodes=(d + 1) * exp.config['experiment_setting']['dataset_size_step']
+            )
         assert(state_dim == exp.mdp.state_dim)
         assert(action_dim == exp.mdp.action_dim)
         assert(reward_dim == 1)
