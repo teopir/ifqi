@@ -47,8 +47,17 @@ def retreiveParams():
         if name=="copy_from":
             retreiveParamsFromFile(value)
         else:
+            
+            if("[" in value):
+                value = value.replace("[", "")
+                value = value.replace("]","")
+                value = value.replace(" ","")
+                value = value.split(",")
+            
             try:
-                if "." in value:
+                if type(value) is list:
+                    globals()[name] = value
+                elif "." in value:
                     globals()[name] = float(value)
                 else:
                     globals()[name] = int(value)
@@ -76,8 +85,17 @@ n_iterations=20
 gamma=0.98
 horizon = 50000
 scaled = 1
+dataset_folders = []
+n_estimators = 50
+min_samples_split=16
+min_samples_leaf=8
+criterion="mse"
+save_iteration=1000
 
 retreiveParams()
+
+datasets = list(folder+str(num) for folder in dataset_folders for num in range(0,n_dataset))
+
 
 json_file = {
     "experiment": {
@@ -87,8 +105,9 @@ json_file = {
     "experiment_setting":{
         "load_path":load_path ,
         "save_path":save_path,
-        "n_datasets":n_dataset,
-        "n_experiments":n_experiments
+        "datasets":datasets,
+        "n_experiments":n_experiments,
+        "save_iteration":save_iteration
     },
     "model":{
         "model_name":model_name,
@@ -115,7 +134,16 @@ json_file = {
         "scaled":scaled
     }
 }
-
+if model_name != "MLP" and model_name != "MLPEnsemble":
+    json_file["model"] = {
+        "model_name": model_name,
+        "n_estimators": n_estimators,
+        "min_samples_split": min_samples_split,
+        "min_samples_leaf": min_samples_leaf
+    }
+    json_file["supervised_algorithm"] ={
+        "criterion":criterion    
+    }
 with open(json_path, 'w') as fp:
     json.dump(json_file, fp)
 
