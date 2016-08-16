@@ -1,36 +1,25 @@
 {
     "experiment": {
-        "name": "exp1",
+        "name": "exp6",
         "date": "..."
     },
     
     "experiment_setting": {
         "load_path": "coh/coh",
-        "save_path": "mlp",
+        "save_path": "linearEnsemble",
         "n_datasets": 10,
         "n_experiments": 10,
         "dataset_size_step": 100
     },
 
     "model": {
-        "model_name": "MLP",
-        "n_hidden_neurons": 10,
-        "n_layers": 1,
-        "optimizer": "rmsprop",
-        "activation": "relu"
+        "model_name": "LinearEnsemble",
+        "degree": 3
     },
 
     "mdp": {
         "mdp_name": "CarOnHill"
     },
-
-    "supervised_algorithm": {
-        "n_epochs": 20,
-        "batch_size": 100,
-        "validation_split": 0.1,
-        "verbosity": 0
-    },
-
     "rl_algorithm": {
         "algorithm": "FQI",
         "n_iterations": 20,

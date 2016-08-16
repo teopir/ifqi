@@ -15,7 +15,7 @@
     "model": {
         "model_name": "MLPEnsemble",
         "n_hidden_neurons": 10,
-        "n_layers": 2,
+        "n_layers": 1,
         "optimizer": "rmsprop",
         "activation": "relu"
     },
@@ -28,7 +28,7 @@
         "n_epochs": 20,
         "batch_size": 100,
         "validation_split": 0.1,
-        "verbosity": 1
+        "verbosity": 0
     },
 
     "rl_algorithm": {
@@ -36,7 +36,7 @@
         "n_iterations": 20,
         "gamma": 0.95,
         "verbosity": 1,
-        "horizon": 300,
+        "horizon": 100,
         "scaled": 1 
     }
 }

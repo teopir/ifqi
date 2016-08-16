@@ -9,13 +9,13 @@ class Ensemble(object):
     def __init__(self):
         self.models = self.initModel()
         self.sum_void = True
-        self.sum_=[]
+        self.sum_ = []
         self.test = False
     
     def fit(self, X, y, **kwargs):
         if self.sum_void:
-            self.sum_=np.zeros(y.shape)
-            self.sum_void=False
+            self.sum_ = np.zeros(y.shape)
+            self.sum_void = False
             
         delta = y - self.sum_
         if self.test:
@@ -25,6 +25,7 @@ class Ensemble(object):
         
         ret = self.models[-1].fit(X, delta, **kwargs)
         self.sum_ += self.models[-1].predict(X).ravel()
+
         return ret
       
     def predict(self, x, **kwargs):

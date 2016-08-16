@@ -4,7 +4,7 @@ from sklearn.ensemble import ExtraTreesRegressor
 from ifqi.models.mlp import MLP
 from ifqi.models.linear import Linear
 from ifqi.models.ensemble import ExtraTreeEnsemble, MLPEnsemble, LinearEnsemble
-from ifqi.envs.mountainCar import MountainCar
+from ifqi.envs.carOnHill import CarOnHill
 from ifqi.envs.invertedPendulum import InvPendulum
 from ifqi.envs.bicycle import Bicycle
 
@@ -79,8 +79,8 @@ class Experiment(object):
             the required mdp.
         
         """
-        if self.config['mdp']['mdp_name'] == 'MountainCar':
-            return MountainCar()
+        if self.config['mdp']['mdp_name'] == 'CarOnHill':
+            return CarOnHill()
         elif self.config['mdp']['mdp_name'] == 'SwingUpPendulum':
             return InvPendulum()
         elif self.config["mdp"]["mdp_name"] == "BicycleBalancing":

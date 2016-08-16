@@ -14,7 +14,7 @@
 
     "model": {
         "model_name": "Linear",
-        "degree": 2
+        "degree": 3
     },
 
     "mdp": {
@@ -25,7 +25,7 @@
         "n_iterations": 20,
         "gamma": 0.95,
         "verbosity": 1,
-        "horizon": 300,
+        "horizon": 100,
         "scaled": 1
     }
 }
