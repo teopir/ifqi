@@ -2,7 +2,7 @@ import json
 
 from sklearn.ensemble import ExtraTreesRegressor
 from ifqi.models.mlp import MLP
-from ifqi.models.linear import Linear
+from sklearn.linear_model import LinearRegression
 from ifqi.models.ensemble import ExtraTreeEnsemble, MLPEnsemble, LinearEnsemble
 from ifqi.envs.carOnHill import CarOnHill
 from ifqi.envs.invertedPendulum import InvPendulum
@@ -64,11 +64,9 @@ class Experiment(object):
                                 optimizer=model_config['optimizer'],
                                 activation=model_config['activation'])
         elif model_config['model_name'] == 'Linear':
-            model = Linear(nActions=self.mdp.n_actions,
-                           degree=model_config['degree'])
+            model = LinearRegression()
         elif model_config['model_name'] == 'LinearEnsemble':
-            model = LinearEnsemble(nActions=self.mdp.n_actions,
-                                   degree=model_config['degree'])
+            model = LinearEnsemble()
         else:
             raise ValueError('Unknown estimator type.')
 

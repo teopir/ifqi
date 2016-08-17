@@ -1,8 +1,11 @@
 from __future__ import print_function
 import numpy as np
-import sys
-import numpy.matlib
+import sys, os
 import sklearn.preprocessing as preprocessing
+
+sys.path.append(os.path.abspath('../'))
+
+from ifqi.preprocessors.features import selectFeatures
 
 """
 This class implements the function to run Fitted Q-Iteration algorithm.
@@ -25,7 +28,7 @@ class FQI:
     def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions=10,
                  gamma=0.9, horizon=10,
-                 scaled=False, verbose=0):
+                 scaled=False, features=None, verbose=0):
         self.estimator = estimator
         self.gamma = gamma
         self.horizon = horizon
@@ -50,6 +53,7 @@ class FQI:
         self.__name__ = "FittedQIteration"
         self.iteration = 0
         self.scaled = scaled
+        self.features = selectFeatures(features) if features is not None else features
 
     def _check_states(self, X, copy=True):
         """
@@ -108,6 +112,9 @@ class FQI:
                 # create scaler and fit it
                 self._sa_scaler = preprocessing.StandardScaler()
                 sa = self._sa_scaler.fit_transform(sa)
+                
+            if self.features is not None:
+                sa = self.features.extractFeaturesFit(sa)
 
             self.sa = sa
             self.snext = snext
@@ -140,15 +147,6 @@ class FQI:
         if self.iteration == 0:
             if self.verbose > 0:
                 print('Iteration {}'.format(self.iteration+1))
-                   
-            """
-            if self.scaled:
-                y = y.reshape(y.size, -1)
-                self._y_scaler = preprocessing.StandardScaler()
-                y = self._y_scaler.fit_transform(y)
-
-            y = y.ravel()
-            """
             
             self.estimator.fit(self.sa, y, **kwargs)
         else:
@@ -161,15 +159,6 @@ class FQI:
             if adaptive:
                 # update estimator structure
                 self.estimator.adapt(iteration=self.iteration)
-
-            """
-            if self.scaled:
-                y = y.reshape(y.size, -1)
-                self._y_scaler = preprocessing.StandardScaler()
-                y = self._y_scaler.fit_transform(y)
-
-            y = y.ravel()
-            """
             
             self.estimator.fit(self.sa, y, **kwargs)
 
@@ -229,6 +218,9 @@ class FQI:
                 )
             else:
                 samples = np.concatenate((newstate, actions), axis=1)
+                
+            if self.features is not None:
+                samples = self.features.extractFeaturesPredict(samples)
 
             # predict Q-function
             predictions = self.estimator.predict(samples)

@@ -66,6 +66,11 @@ if __name__ == '__main__':
             print('Experiment: ' + str(e))
             
             exp.loadModel()
+            
+            if 'features' in exp.config['model']:
+                features = exp.config['model']['features']
+            else:
+                features = None
     
             fqi = FQI(estimator=exp.model,
                       state_dim=state_dim,
@@ -74,6 +79,7 @@ if __name__ == '__main__':
                       gamma=exp.config['rl_algorithm']['gamma'],
                       horizon=exp.config['rl_algorithm']['horizon'],
                       verbose=exp.config['rl_algorithm']['verbosity'],
+                      features=features,
                       scaled=exp.config['rl_algorithm']['scaled'])
                       
             fqi.partial_fit(sast, r, **fit_params)

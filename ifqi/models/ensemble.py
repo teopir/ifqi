@@ -1,9 +1,8 @@
 from keras.models import Sequential
 from keras.layers import Dense
 from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.linear_model import LinearRegression
 import numpy as np
-
-from ifqi.models.linear import Linear
 
 class Ensemble(object):
     def __init__(self):
@@ -117,14 +116,10 @@ class MLPEnsemble(Ensemble):
         return model
         
 class LinearEnsemble(Ensemble):
-    def __init__(self,
-                 nActions,
-                 degree=3):
-        self.nActions = nActions
-        self.degree = degree
+    def __init__(self):
         super(LinearEnsemble, self).__init__()
 
     def generateModel(self, iteration):
-        model = Linear(self.nActions, self.degree)
+        model = LinearRegression()
 
         return model
