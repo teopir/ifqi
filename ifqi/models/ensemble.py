@@ -118,11 +118,13 @@ class MLPEnsemble(Ensemble):
         
 class LinearEnsemble(Ensemble):
     def __init__(self,
+                 nActions,
                  degree=3):
+        self.nActions = nActions
         self.degree = degree
         super(LinearEnsemble, self).__init__()
 
     def generateModel(self, iteration):
-        model = Linear(self.degree)
+        model = Linear(self.nActions, self.degree)
 
         return model

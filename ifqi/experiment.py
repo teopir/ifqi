@@ -64,9 +64,11 @@ class Experiment(object):
                                 optimizer=model_config['optimizer'],
                                 activation=model_config['activation'])
         elif model_config['model_name'] == 'Linear':
-            model = Linear(degree=model_config['degree'])
+            model = Linear(nActions=self.mdp.n_actions,
+                           degree=model_config['degree'])
         elif model_config['model_name'] == 'LinearEnsemble':
-            model = LinearEnsemble(degree=model_config['degree'])
+            model = LinearEnsemble(nActions=self.mdp.n_actions,
+                                   degree=model_config['degree'])
         else:
             raise ValueError('Unknown estimator type.')
 
