@@ -9,19 +9,13 @@ class Ensemble(object):
         self.models = self.initModel()
         self.sum_void = True
         self.sum_ = []
-        self.test = False
-    
+
     def fit(self, X, y, **kwargs):
         if self.sum_void:
             self.sum_ = np.zeros(y.shape)
             self.sum_void = False
-            
+
         delta = y - self.sum_
-        if self.test:
-            #I just changed the previous way to compute delta. if delta1 and delta are exactly the same, this model is equivalent to the previous one
-            delta1 = y - self.predictLast(X)
-            print "array equal:" , np.array_equal(delta,delta1)
-        
         ret = self.models[-1].fit(X, delta, **kwargs)
         self.sum_ += self.models[-1].predict(X).ravel()
 
@@ -32,15 +26,6 @@ class Ensemble(object):
         output = np.zeros((n_samples,))
         
         for model in self.models:
-            output += model.predict(x, **kwargs).ravel()
-            
-        return output
-
-    def predictLast(self, x, **kwargs):
-        n_samples = x.shape[0]
-        output = np.zeros((n_samples,))
-        
-        for model in self.models[:-1]:
             output += model.predict(x, **kwargs).ravel()
 
         return output

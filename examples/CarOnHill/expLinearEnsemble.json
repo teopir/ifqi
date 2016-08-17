@@ -16,7 +16,7 @@
         "model_name": "LinearEnsemble",
         "features": {
             "name": "poly",
-            "degree": 7
+            "degree": 5
         }
     },
 
