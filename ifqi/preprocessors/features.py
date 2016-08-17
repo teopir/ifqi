@@ -42,6 +42,8 @@ class PolyFeatures(object):
     def extractFeaturesPredict(self, x):
         features = self.poly.transform(x[:, :-1])
         actionId = np.argwhere(x[0, -1].round(4) == self.availableActions)
+        if len(actionId) == 0:
+            raise ValueError('Action to predict not seen in the training phase')
     
         rows = repmat(np.linspace(0, features.shape[0] - 1, features.shape[0]),
                       features.shape[1],

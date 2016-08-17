@@ -8,7 +8,7 @@
         "load_path": "coh/coh",
         "save_path": "linearEnsemble",
         "n_datasets": 10,
-        "n_experiments": 10,
+        "n_experiments": 20,
         "dataset_size_step": 100
     },
 
