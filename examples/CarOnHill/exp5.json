@@ -14,7 +14,7 @@
 
     "model": {
         "model_name": "Linear",
-        "degree": 5
+        "degree": 7
     },
 
     "mdp": {

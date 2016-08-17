@@ -14,7 +14,7 @@
 
     "model": {
         "model_name": "LinearEnsemble",
-        "degree": 5
+        "degree": 7
     },
 
     "mdp": {
