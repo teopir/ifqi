@@ -68,6 +68,7 @@ json_path="experiment.json"
 name="exp1"
 load_path = ""
 save_path = ""
+degree = 4
 n_dataset = 20
 n_experiments = 1
 model_name = "mlp"
@@ -134,7 +135,17 @@ json_file = {
         "scaled":scaled
     }
 }
-if model_name != "MLP" and model_name != "MLPEnsemble":
+if model_name == "ExtraTree" or model_name == "ExtraTreeEnsemble":
+    json_file["model"] = {
+        "model_name": model_name,
+        "n_estimators": n_estimators,
+        "min_samples_split": min_samples_split,
+        "min_samples_leaf": min_samples_leaf
+    }
+    json_file["supervised_algorithm"] ={
+        "criterion":criterion
+    }
+if model_name == "ExtraTree" or model_name == "ExtraTreeEnsemble":
     json_file["model"] = {
         "model_name": model_name,
         "n_estimators": n_estimators,
@@ -144,8 +155,20 @@ if model_name != "MLP" and model_name != "MLPEnsemble":
     json_file["supervised_algorithm"] ={
         "criterion":criterion    
     }
+if model_name == "Linear" or model_name == "LinearEnsemble":
+    json_file["model"] = {
+        "model_name": model_name,
+        "features": {
+            "name": "poly",
+            "degree": degree
+        }
+    }
+    json_file["supervised_algorithm"] ={
+        "criterion":criterion    
+    }
+    
 with open(json_path, 'w') as fp:
     json.dump(json_file, fp)
 
-cmd = "python experiment.py " + json_path
+cmd = "python experimentSam.py " + json_path
 os.system(cmd)
