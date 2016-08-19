@@ -46,7 +46,12 @@ def experiment_unit(exp,d,e):
     print('Experiment: ' + str(e))
             
     exp.loadModel()
-
+    
+    if 'features' in exp.config['model']:
+        features = exp.config['model']['features']
+    else:
+        features = None
+        
     fqi = FQI(estimator=exp.model,
               state_dim=state_dim,
               action_dim=action_dim,
@@ -54,6 +59,7 @@ def experiment_unit(exp,d,e):
               gamma=exp.config['rl_algorithm']['gamma'],
               horizon=exp.config['rl_algorithm']['horizon'],
               verbose=exp.config['rl_algorithm']['verbosity'],
+              features=features,
               scaled=exp.config['rl_algorithm']['scaled'])
               
     fqi.partial_fit(sast, r, **fit_params)
@@ -73,12 +79,12 @@ def experiment_unit(exp,d,e):
                 np.save(dir_+ "/" + "step_" + d + "_" + str(e) + "_" + str(t), step)
                 np.save(dir_+ "/" + "goal_" + d + "_" + str(e) + "_" + str(t), goal)
         
-    score = exp.mdp.evaluate(fqi)
+    score, step, goal = exp.mdp.evaluate(fqi)
     dir_ =exp.config["experiment_setting"]["save_path"]
     if not os.path.isdir(dir_): os.makedirs(dir_)
-    np.save(dir_+ "/" + "score_" + d + "_" + str(e) + "_" + str(t), score)
-    np.save(dir_+ "/" + "step_" + d + "_" + str(e) + "_" + str(t), step)
-    np.save(dir_+ "/" + "goal_" + d + "_" + str(e) + "_" + str(t), goal)
+    np.save(dir_+ "/" + "score_" + d + "_" + str(e) + "_last", score)
+    np.save(dir_+ "/" + "step_" + d + "_" + str(e) + "_last", step)
+    np.save(dir_+ "/" + "goal_" + d + "_" + str(e) + "_last", goal)
 
 if __name__ == '__main__':
     config_file = sys.argv[1]
@@ -101,34 +107,3 @@ if __name__ == '__main__':
     for d in exp.config['experiment_setting']['datasets']:
         for e in range(exp.config['experiment_setting']['n_experiments']):
             experiment_unit(exp,d,e)
-            #jobs.append(threading.Thread(target=experiment_unit,args=(exp,d,e,)))
-            
-    """try:
-        for j in jobs:
-            j.start()
-            started_job.add(j)
-            #if we have more than 3 job running, we must wait that oe finished
-    
-            if len(started_job) >= 4:
-                no_terminates=True
-                while True:
-                    time.sleep(1.)
-                    for j_wait in started_job:
-                        #let's check every one second                    
-                        if not j_wait.isAlive():
-                            #if one thread is done, we can again start the next one
-                            no_terminates=False
-                            j_terminates = started_job
-                            break
-                    if not no_terminates:
-                        print ("discard a job")
-                        started_job.discard(j_terminates)
-                        print ("len",len(started_job))
-                        break
-    except KeyboardInterrupt:
-        print("Keyboard interrupt catch")
-        for j in jobs:
-            j.kill()
-        exit()"""
-        
-    """np.save(exp.config['experiment_setting']['save_path'], score)"""
