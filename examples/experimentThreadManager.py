@@ -3,16 +3,10 @@ import os
 import sys
 import time
 
-import numpy as np
-import matplotlib.pyplot as plt
-plt.style.use('ggplot')
 
 sys.path.append(os.path.abspath('../'))
 
 from ifqi.experiment import Experiment
-from ifqi.fqi.FQI import FQI
-import ifqi.utils.parser as parser
-import threading 
 import subprocess
 from random import shuffle
 
@@ -35,8 +29,8 @@ This version allow multithreading
 """
 def execute(commands, nThread, refresh_time=.2,shuffled=True):
 
-        """if(shuffled):
-            shuffle(commands)"""
+        if(shuffled):
+            shuffle(commands)
             
         processes = set()
         #command should be a list
