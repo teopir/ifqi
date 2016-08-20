@@ -26,6 +26,13 @@ class Bicycle:
     name = "Bicycle"
 
     def __init__(self, **kwargs):
+        
+        self.state_dim = 5
+        self.action_dim = 1        
+        self.n_states = 0
+        self.n_actions = 9  
+        self.gamma =0.98
+        
         self.noise = kwargs.setdefault('noise', 0.04)
         self.random_start = kwargs.setdefault('random_start', False)
         
@@ -218,7 +225,7 @@ class Bicycle:
         x_f, y_f, x_b, y_b, psi = tuple(self.position)
         goal_angle = self.angle_between(self.goal_loc, numpy.array([x_f-x_b, y_f-y_b])) * numpy.pi / 180.
         """ modified to follow Ernst paper"""
-        return (omega, omega_dot, theta, theta_dot, goal_angle)
+        return [omega, omega_dot, theta, theta_dot, goal_angle]
         
     def angleWrapPi(self, x):
         while (x < -numpy.pi):
@@ -226,3 +233,58 @@ class Bicycle:
         while (x > numpy.pi):
     		x -= 2.0*numpy.pi
         return x
+    
+    def runEpisode(self, fqi):
+        """
+        This function runs an episode using the regressor in the provided
+        object parameter.
+        Params:
+            fqi (object): an object containing the trained regressor
+        Returns:
+            - a tuple containing:
+                - number of steps
+                - J
+                - a flag indicating if the goal state has been reached
+            - sum of collected reward
+        
+        """
+        J = 0
+        t = 0
+        test_succesful = 0
+        rh = []
+        horizon=50000
+        if self.navigate:
+            horizon=10000
+        while(t < horizon and not self.isAbsorbing()):
+            state = self.getState()
+            action, _ = fqi.predict(numpy.array(state))
+            r = self.step(action)
+            J += self.gamma ** t * r
+            t += 1
+            rh += [r]
+            
+            if r == 1:
+                print('Goal reached')
+                test_succesful = 1
+    
+        return (t, J, test_succesful), rh
+        
+    def evaluate(self, fqi):
+        """
+        This function evaluates the regressor in the provided object parameter.
+        This way of evaluation is just one of many possible ones.
+        Params:
+            fqi (object): an object containing the trained regressor.
+        Returns:
+            a numpy array containing the average score obtained starting from
+            289 different states
+        
+        """
+
+                
+        self.reset()
+        tupla, rhistory = self.runEpisode(fqi)
+               
+        #(J, step, goal)
+        return (tupla[1], tupla[0], tupla[2])
+        
