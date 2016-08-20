@@ -3,7 +3,6 @@ import os
 import sys
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 """
@@ -11,7 +10,6 @@ import matplotlib.pyplot as plt
 Single thread of experimentThreadManager
 """
 
-plt.style.use('ggplot')
 
 sys.path.append(os.path.abspath('../'))
 
