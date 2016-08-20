@@ -92,6 +92,7 @@ min_samples_split=16
 min_samples_leaf=8
 criterion="mse"
 save_iteration=1000
+nThread = 4
 
 retreiveParams()
 
@@ -170,5 +171,5 @@ if model_name == "Linear" or model_name == "LinearEnsemble":
 with open(json_path, 'w') as fp:
     json.dump(json_file, fp)
 
-cmd = "python experimentSam.py " + json_path
+cmd = "python experimentThreadManager.py " + json_path + " " +  str(nThread)
 os.system(cmd)
