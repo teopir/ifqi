@@ -69,7 +69,9 @@ for t in range(1, exp.config['rl_algorithm']['n_iterations']):
     fqi.partial_fit(None, None, **fit_params)
     if "save_iteration"  in exp.config['experiment_setting']:
         if t % exp.config['experiment_setting']["save_iteration"] == 0:
+            print("Start evaluation")
             score, step, goal = exp.mdp.evaluate(fqi)
+            print("End evaluation")
             dir_ =exp.config["experiment_setting"]["save_path"]
             directory =os.path.dirname(dir_+ "/" + "score_" + d + "_" + str(e) + "_" + str(t) + ".npy")
             if not os.path.isdir(directory): os.makedirs(directory)
@@ -80,8 +82,9 @@ for t in range(1, exp.config['rl_algorithm']['n_iterations']):
             np.save(dir_+ "/" + "score_" + d + "_" + str(e) + "_" + str(t), score)
             np.save(dir_+ "/" + "step_" + d + "_" + str(e) + "_" + str(t), step)
             np.save(dir_+ "/" + "goal_" + d + "_" + str(e) + "_" + str(t), goal)
-    
+print("Start evaluation")
 score, step, goal = exp.mdp.evaluate(fqi)
+print("End evaluation")
 dir_ =exp.config["experiment_setting"]["save_path"]
 if not os.path.isdir(dir_): os.makedirs(dir_)
 np.save(dir_+ "/" + "score_" + d + "_" + str(e) + "_last", score)
