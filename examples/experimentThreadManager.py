@@ -27,7 +27,7 @@ steps and so on.
 This version allow multithreading
 
 """
-def execute(commands, nThread, refresh_time=.2,shuffled=True):
+def execute(commands, nThread, refresh_time=10.,shuffled=False):
 
         if(shuffled):
             shuffle(commands)
@@ -36,6 +36,7 @@ def execute(commands, nThread, refresh_time=.2,shuffled=True):
         #command should be a list
         try:
             for command in commands:
+                print ("New Thread Executed")
                 processes.add(subprocess.Popen(command))
                 while len(processes) >= nThread:
                     time.sleep(refresh_time)
@@ -73,4 +74,4 @@ if __name__ == '__main__':
         for e in range(exp.config['experiment_setting']['n_experiments']):
             commands.append(["python","experimentThread.py" , config_file , str(d) ,  str(e)])
     
-    execute(commands,nThread,1.)
+    execute(commands,nThread,10.)
