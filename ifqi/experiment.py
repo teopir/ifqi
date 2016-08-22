@@ -52,14 +52,14 @@ class Experiment(object):
                                       min_samples_split=model_config['min_samples_split'],
                                       min_samples_leaf=model_config['min_samples_leaf'])
         elif model_config['model_name'] == 'MLP':
-            model = MLP(n_input=self.mdp.state_dim + self.mdp.action_dim,
+            model = MLP(n_input=self.mdp.state_dim,
                         n_output=1,
                         hidden_neurons=model_config['n_hidden_neurons'],
                         n_layers=model_config['n_layers'],
                         optimizer=model_config['optimizer'],
                         activation=model_config['activation'])
         elif model_config['model_name'] == 'MLPEnsemble':
-            model = MLPEnsemble(n_input=self.mdp.state_dim + self.mdp.action_dim,
+            model = MLPEnsemble(n_input=self.mdp.state_dim,
                                 n_output=1,
                                 hidden_neurons=model_config['n_hidden_neurons'],
                                 n_layers=model_config['n_layers'],
@@ -71,7 +71,7 @@ class Experiment(object):
             model = LinearEnsemble()
         else:
             raise ValueError('Unknown estimator type.')
-            
+
         return ActionRegressor(model, self.mdp.n_actions)
         
     def _getMDP(self):

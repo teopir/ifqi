@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 
 class ActionRegressor(object):
     def __init__(self, model, n_actions):
@@ -21,9 +22,8 @@ class ActionRegressor(object):
             self.models[i].adapt(iteration)
             
     def initModel(self, model):
-        modelType = type(model)
         models = list()
         for i in range(self.n_actions):
-            models.append(modelType())
+            models.append(deepcopy(model))
         
         return models

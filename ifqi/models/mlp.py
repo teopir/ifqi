@@ -1,7 +1,7 @@
 from keras.models import Sequential
 from keras.layers.core import Dense
 
-class MLP():
+class MLP(object):
     def __init__(self,
                  n_input=2,
                  n_output=1,

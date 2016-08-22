@@ -65,7 +65,7 @@ class Acrobot(object):
         else:
             return self.theta1, self.theta2, self.dTheta1, self.dTheta2, 0
 
-    def reset(self, theta1=None, theta2=None, dTheta1=None, dTheta2=None):
+    def reset(self, theta1=-2, theta2=0., dTheta1=0., dTheta2=0.):
         """
         This function set the position and velocity of the acrobot to the
         starting conditions provided.
@@ -77,8 +77,10 @@ class Acrobot(object):
 
         """
         self.absorbing = False
-        self.theta1 = uniform(-np.pi + 1, np.pi - 1)
-        self.theta2 = self.dTheta1 = self.dTheta2 = 0.
+        self.theta1 = theta1
+        self.theta2 = theta2
+        self.dTheta1 = dTheta1
+        self.dTheta2 = dTheta2
 
     def getState(self):
         """
@@ -170,14 +172,16 @@ class Acrobot(object):
             fqi (object): an object containing the trained regressor.
         Returns:
             a numpy array containing the average score obtained starting from
-            300 different states
+            41 different states
         
         """
-        discRewards = np.zeros((300))
+        states =  np.linspace(-2, 2, 41)
+
+        discRewards = np.zeros((states.size))
     
         counter = 0
-        for i in range(discRewards.size):
-            self.reset()
+        for theta1 in discRewards:
+            self.reset(theta1, 0., 0., 0.)
             tupla, rhistory = self.runEpisode(fqi)
         
             discRewards[counter] = tupla[1]

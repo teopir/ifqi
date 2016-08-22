@@ -9,7 +9,7 @@
         "save_path": "extraTree",
         "n_datasets": 10,
         "n_experiments": 10,
-        "dataset_size_step": 100
+        "dataset_size_step": 200
     },
 
     "model": {
@@ -29,10 +29,10 @@
 
     "rl_algorithm": {
         "algorithm": "FQI",
-        "n_iterations": 20,
+        "n_iterations": 50,
         "gamma": 0.95,
         "verbosity": 1,
-        "horizon": 30,
+        "horizon": 100,
         "scaled": 1
     }
 }
