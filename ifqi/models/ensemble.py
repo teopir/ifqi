@@ -8,7 +8,7 @@ class Ensemble(object):
     def __init__(self):
         self.models = self.initModel()
         self.sum_void = True
-        self.sum_ = []
+        self.sum_ = None
 
     def fit(self, X, y, **kwargs):
         if self.sum_void:
@@ -24,7 +24,7 @@ class Ensemble(object):
     def predict(self, x, **kwargs):
         n_samples = x.shape[0]
         output = np.zeros((n_samples,))
-        
+    
         for model in self.models:
             output += model.predict(x, **kwargs).ravel()
 

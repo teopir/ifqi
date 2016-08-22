@@ -4,6 +4,7 @@ from sklearn.ensemble import ExtraTreesRegressor
 from ifqi.models.mlp import MLP
 from sklearn.linear_model import LinearRegression
 from ifqi.models.ensemble import ExtraTreeEnsemble, MLPEnsemble, LinearEnsemble
+from ifqi.models.actionRegressor import ActionRegressor
 from ifqi.envs.carOnHill import CarOnHill
 from ifqi.envs.invertedPendulum import InvPendulum
 from ifqi.envs.bicycle import Bicycle
@@ -69,8 +70,8 @@ class Experiment(object):
             model = LinearEnsemble()
         else:
             raise ValueError('Unknown estimator type.')
-
-        return model
+            
+        return ActionRegressor(model, self.mdp.n_actions)
         
     def _getMDP(self):
         """

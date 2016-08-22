@@ -7,7 +7,7 @@
     "experiment_setting": {
         "load_path": "coh/coh",
         "save_path": "linear",
-        "n_datasets": 10,
+        "n_datasets": 4,
         "n_experiments": 1,
         "dataset_size_step": 100
     },
@@ -16,7 +16,7 @@
         "model_name": "Linear",
         "features": {
             "name": "poly",
-            "degree": 5
+            "degree": 7
         }
     },
 

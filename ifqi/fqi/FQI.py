@@ -1,5 +1,6 @@
 from __future__ import print_function
 import numpy as np
+from numpy.matlib import repmat
 import sys, os
 import sklearn.preprocessing as preprocessing
 
@@ -111,10 +112,10 @@ class FQI:
             if self.scaled and self.iteration == 0:
                 # create scaler and fit it
                 self._sa_scaler = preprocessing.StandardScaler()
-                sa = self._sa_scaler.fit_transform(sa)
+                sa[:, :-1] = self._sa_scaler.fit_transform(sa[:, :-1])
                 
             if self.features is not None:
-                sa = self.features.extractFeaturesFit(sa)
+                sa = self.features(sa)
 
             self.sa = sa
             self.snext = snext
@@ -140,7 +141,7 @@ class FQI:
 
         # check if the estimator change the structure at each iteration
         adaptive = False
-        if hasattr(self.estimator, 'adapt'):
+        if hasattr(self.estimator.models[0], 'adapt'):
             adaptive = True
 
         y = self.r
@@ -208,19 +209,19 @@ class FQI:
 
         Q = np.zeros((nbstates, self._actions.shape[0]))
         for idx in range(self._actions.shape[0]):
-            a = self._actions[idx,:].reshape(1, self.action_dim)
+            a = self._actions[idx, :].reshape(1, self.action_dim)
             actions = np.matlib.repmat(a, nbstates, 1)
 
             # concatenate [newstate, action] and scalarize them
             if self.scaled:
-                samples = self._sa_scaler.transform(
-                    np.concatenate((newstate, actions), axis=1)
-                )
+                samples = np.concatenate((self._sa_scaler.transform(newstate),
+                                          actions),
+                                          axis=1)
             else:
                 samples = np.concatenate((newstate, actions), axis=1)
                 
             if self.features is not None:
-                samples = self.features.extractFeaturesPredict(samples)
+                samples = self.features.testFeatures(samples)
 
             # predict Q-function
             predictions = self.estimator.predict(samples)
