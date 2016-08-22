@@ -16,7 +16,8 @@ class CarOnHill(object):
         self.state_dim = 2
         self.action_dim = 1        
         self.n_states = 0
-        self.n_actions = 2        
+        self.n_actions = 2
+        self.horizon = 100.
         # State
         self.position = -0.5
         self.velocity = 0.        
@@ -123,7 +124,7 @@ class CarOnHill(object):
         t = 0
         test_succesful = 0
         rh = []
-        while(t < 500 and not self.isAbsorbing()):
+        while(t < self.horizon and not self.isAbsorbing()):
             state = self.getState()
             action, _ = fqi.predict(np.array(state))
             position, velocity, r = self.step(action)

@@ -17,7 +17,8 @@ class Acrobot(object):
         self.state_dim = 4
         self.action_dim = 1        
         self.n_states = 0
-        self.n_actions = 2        
+        self.n_actions = 2     
+        self.horizon = 100.
         # State
         self.theta1 = uniform(-np.pi + 1, np.pi - 1)
         self.theta2 = self.dTheta1 = self.dTheta2 = 0.
@@ -54,10 +55,9 @@ class Acrobot(object):
         self.dTheta1 = newState[2]
         self.dTheta2 = newState[3]
         
-        k = np.floor(self.theta1 / (2 * np.pi))
+        k = round((self.theta1 - np.pi) / (2 * np.pi));
         x = np.array([self.theta1, self.theta2, self.dTheta1, self.dTheta2])
-        value = self.theta1 - 2 * k * np.pi - np.pi
-        o = np.array([value, 0., 0., 0.])
+        o = np.array([2 * k * np.pi + np.pi, 0., 0., 0.])
         d = np.linalg.norm(x - o)
         if(d < 1):
             self.absorbing = True
@@ -65,9 +65,9 @@ class Acrobot(object):
         else:
             return self.theta1, self.theta2, self.dTheta1, self.dTheta2, 0
 
-    def reset(self, theta1, theta2, dTheta1, dTheta2):
+    def reset(self, theta1=None, theta2=None, dTheta1=None, dTheta2=None):
         """
-        This function set the position and velocity of the car to the
+        This function set the position and velocity of the acrobot to the
         starting conditions provided.
         Args:
             theta1 (float),
@@ -148,15 +148,15 @@ class Acrobot(object):
         t = 0
         test_succesful = 0
         rh = []
-        while(t < 500 and not self.isAbsorbing()):
+        while(t < self.horizon and not self.isAbsorbing()):
             state = self.getState()
             action, _ = fqi.predict(np.array(state))
-            position, velocity, r = self.step(action)
+            _, _, _, _, r = self.step(action)
             J += self.gamma ** t * r
             t += 1
             rh += [r]
             
-            if r == 1:
+            if r > 0.:
                 print('Goal reached')
                 test_succesful = 1
     
@@ -170,21 +170,17 @@ class Acrobot(object):
             fqi (object): an object containing the trained regressor.
         Returns:
             a numpy array containing the average score obtained starting from
-            289 different states
+            300 different states
         
         """
-        discRewards = np.zeros((289))
+        discRewards = np.zeros((300))
     
         counter = 0
-        for i in range(-8, 9):
-            for j in range(-8, 9):
-                position = 0.125 * i
-                velocity = 0.375 * j
-                
-                self.reset(position, velocity)
-                tupla, rhistory = self.runEpisode(fqi)
-            
-                discRewards[counter] = tupla[1]
-                counter += 1
+        for i in range(discRewards.size):
+            self.reset()
+            tupla, rhistory = self.runEpisode(fqi)
+        
+            discRewards[counter] = tupla[1]
+            counter += 1
                 
         return np.mean(discRewards)

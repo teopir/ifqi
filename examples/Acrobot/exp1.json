@@ -5,7 +5,7 @@
     },
     
     "experiment_setting": {
-        "load_path": "acro/acro_",
+        "load_path": "acro/acro",
         "save_path": "extraTree",
         "n_datasets": 10,
         "n_experiments": 10,

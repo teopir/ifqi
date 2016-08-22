@@ -7,6 +7,7 @@ from ifqi.models.ensemble import ExtraTreeEnsemble, MLPEnsemble, LinearEnsemble
 from ifqi.models.actionRegressor import ActionRegressor
 from ifqi.envs.carOnHill import CarOnHill
 from ifqi.envs.invertedPendulum import InvPendulum
+from ifqi.envs.acrobot import Acrobot
 from ifqi.envs.bicycle import Bicycle
 
 
@@ -84,6 +85,8 @@ class Experiment(object):
             return CarOnHill()
         elif self.config['mdp']['mdp_name'] == 'SwingUpPendulum':
             return InvPendulum()
+        elif self.config['mdp']['mdp_name'] == 'Acrobot':
+            return Acrobot()
         elif self.config["mdp"]["mdp_name"] == "BicycleBalancing":
             return Bicycle(navigate=False)
         elif self.config["mdp"]["mdp_name"] == "BicycleNavigate":
