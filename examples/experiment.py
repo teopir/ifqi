@@ -3,8 +3,6 @@ import os
 import sys
 
 import numpy as np
-import matplotlib.pyplot as plt
-plt.style.use('ggplot')
 
 sys.path.append(os.path.abspath('../'))
 
