@@ -15,7 +15,7 @@
     "model": {
         "model_name": "ExtraTree",
         "n_estimators": 50,
-        "min_samples_split": 4,
+        "min_samples_split": 5,
         "min_samples_leaf": 2
     },
 
@@ -29,7 +29,7 @@
 
     "rl_algorithm": {
         "algorithm": "FQI",
-        "n_iterations": 50,
+        "n_iterations": 100,
         "gamma": 0.95,
         "verbosity": 1,
         "horizon": 100,
