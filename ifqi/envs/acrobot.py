@@ -132,6 +132,12 @@ class Acrobot(object):
              
         return (diffTheta1, diffTheta2, diffDiffTheta1, diffDiffTheta2, 0.)
         
+    def _wrap2pi(self, value):
+        tmp = value - -np.pi
+        width = 2 * np.pi
+        tmp -= width * np.floor(tmp / width);
+        return tmp + -np.pi;
+        
     def runEpisode(self, fqi):
         """
         This function runs an episode using the regressor in the provided
