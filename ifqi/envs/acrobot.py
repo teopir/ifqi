@@ -47,7 +47,12 @@ class Acrobot(object):
                                  self.theta2,
                                  self.dTheta1,
                                  self.dTheta2], u)
-        newState = odeint(self._dpds, stateAction, [0, self.dt], rtol=1e-6, atol=1e-6)        
+        newState = odeint(self._dpds,
+                          stateAction,
+                          [0, self.dt],
+                          rtol=1e-6,
+                          atol=1e-6,
+                          mxstep=5000)
         
         newState = newState[-1]
         self.theta1 = newState[0]
