@@ -61,9 +61,9 @@ class Acrobot(object):
         d = np.linalg.norm(x - o)
         if(d < 1):
             self.absorbing = True
-            return self.theta1, self.theta2, self.dTheta1, self.dTheta2, 1 - d
+            return self._wrap2pi(self.theta1), self._wrap2pi(self.theta2), self.dTheta1, self.dTheta2, 1 - d
         else:
-            return self.theta1, self.theta2, self.dTheta1, self.dTheta2, 0
+            return self._wrap2pi(self.theta1), self._wrap2pi(self.theta2), self.dTheta1, self.dTheta2, 0
 
     def reset(self, theta1=-2, theta2=0., dTheta1=0., dTheta2=0.):
         """
@@ -77,8 +77,8 @@ class Acrobot(object):
 
         """
         self.absorbing = False
-        self.theta1 = theta1
-        self.theta2 = theta2
+        self.theta1 = self._wrap2pi(theta1)
+        self.theta2 = self._wrap2pi(theta2)
         self.dTheta1 = dTheta1
         self.dTheta2 = dTheta2
 
@@ -136,6 +136,7 @@ class Acrobot(object):
         tmp = value - -np.pi
         width = 2 * np.pi
         tmp -= width * np.floor(tmp / width);
+
         return tmp + -np.pi;
         
     def runEpisode(self, fqi):
