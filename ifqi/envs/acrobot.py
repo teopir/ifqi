@@ -180,7 +180,7 @@ class Acrobot(object):
         discRewards = np.zeros((states.size))
     
         counter = 0
-        for theta1 in discRewards:
+        for theta1 in states:
             self.reset(theta1, 0., 0., 0.)
             tupla, rhistory = self.runEpisode(fqi)
         
