@@ -96,10 +96,11 @@ class Bicycle:
         self.abs=False
 
         psi=0        
-        if self.uniform_psi:
+        """if self.uniform_psi:
             psi = numpy.random.rand() * 2*numpy.pi - numpy.pi
         else:
             psi = [-numpy.pi, - 0.75 * numpy.pi , -0.5 * numpy.pi, -0.25 * numpy.pi, 0 ,numpy.pi, 0.75 * numpy.pi , 0.5 * numpy.pi, 0.25 * numpy.pi ][numpy.random.randint(9)]
+        """
         self.state.fill(0.0)
         self.position.fill(0.0)
         self.position[2] = self.l * numpy.cos(psi)
@@ -110,8 +111,8 @@ class Bicycle:
     def step(self, intAction):
         T = 2. * ((int(intAction)/3) - 1) # Torque on handle bars
         d = 0.02 * ((intAction % 3) - 1) # Displacement of center of mass (in meters)
-        if self.noise > 0:
-            d += (numpy.random.random()-0.5)*self.noise # Noise between [-0.02, 0.02] meters
+        #if self.noise > 0:
+        #    d += (numpy.random.random()-0.5)*self.noise # Noise between [-0.02, 0.02] meters
 
         omega, omega_dot, omega_ddot, theta, theta_dot = tuple(self.state)
         x_f, y_f, x_b, y_b, psi = tuple(self.position)
@@ -252,9 +253,9 @@ class Bicycle:
         t = 0
         test_succesful = 0
         rh = []
-        horizon=50000
+        horizon=1000#50000
         if self.navigate:
-            horizon=10000
+            horizon=1000#10000
         while(t < horizon and not self.isAbsorbing()):
             state = self.getState()
             action, _ = fqi.predict(numpy.array(state))

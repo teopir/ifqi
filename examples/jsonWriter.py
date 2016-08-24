@@ -5,6 +5,16 @@ Created on Fri Aug 12 17:38:03 2016
 @author: samuele
 
 Porting to json
+
+Example on usage
+
+python jsonWriter.py json_path=linear_thread.json load_path="bicycle_data" 
+    model_name="Linear" dataset_folders=[size_500/bicycle,size_1000/bicycle,size_1500/bicycle] 
+    save_path=bicycle_balanced_linear_thread n_dataset=10 save_iteration=1 n_experiments=1 n_iterations=40 
+    unsupervised_verbosity=1 mdp_name=BicycleBalancing scaled=1 degree=5
+    
+p.s is not necessary to use all the parameters :) if not specified, the parameter will be set to its default value
+
 """
 import sys
 import json
@@ -78,6 +88,7 @@ optimizer= "rmsprop"
 activation="relu"
 mdp_name="MountainCar"
 n_epoch=300
+save_fqi = 5
 batch_size=100
 validation_split=0.1
 supervised_verbosity=0
@@ -109,7 +120,8 @@ json_file = {
         "save_path":save_path,
         "datasets":datasets,
         "n_experiments":n_experiments,
-        "save_iteration":save_iteration
+        "save_iteration":save_iteration,
+        "save_fqi":save_fqi
     },
     "model":{
         "model_name":model_name,
