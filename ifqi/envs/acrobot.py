@@ -51,8 +51,7 @@ class Acrobot(object):
                           stateAction,
                           [0, self.dt],
                           rtol=1e-6,
-                          atol=1e-6,
-                          mxstep=5000)
+                          atol=1e-6)
         
         newState = newState[-1]
         self.theta1 = newState[0]
@@ -64,11 +63,14 @@ class Acrobot(object):
         x = np.array([self.theta1, self.theta2, self.dTheta1, self.dTheta2])
         o = np.array([2 * k * np.pi + np.pi, 0., 0., 0.])
         d = np.linalg.norm(x - o)
+        
+        self.theta1 = self._wrap2pi(self.theta1)
+        self.theta2 = self._wrap2pi(self.theta2)
         if(d < 1):
             self.absorbing = True
-            return self._wrap2pi(self.theta1), self._wrap2pi(self.theta2), self.dTheta1, self.dTheta2, 1 - d
+            return self.theta1, self.theta2, self.dTheta1, self.dTheta2, 1 - d
         else:
-            return self._wrap2pi(self.theta1), self._wrap2pi(self.theta2), self.dTheta1, self.dTheta2, 0
+            return self.theta1, self.theta2, self.dTheta1, self.dTheta2, 0
 
     def reset(self, theta1=-2, theta2=0., dTheta1=0., dTheta2=0.):
         """
@@ -140,9 +142,9 @@ class Acrobot(object):
     def _wrap2pi(self, value):
         tmp = value - -np.pi
         width = 2 * np.pi
-        tmp -= width * np.floor(tmp / width);
+        tmp -= width * np.floor(tmp / width)
 
-        return tmp + -np.pi;
+        return tmp + -np.pi
         
     def runEpisode(self, fqi):
         """
