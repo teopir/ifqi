@@ -20,14 +20,14 @@ class Ensemble(object):
       
     def predict(self, x, **kwargs):
         n_samples = x.shape[0]
-        
-        if not kwargs['runOnEnv']:            
+
+        if n_samples > 1:
             if not hasattr(self, 'sumNext_'):
                 self.sumNext_ = np.zeros((n_samples,))
-            self.sumNext_ += self.models[-1].predict(x).ravel()
+            self.sumNext_ += self.models[-1].predict(x, **kwargs).ravel()
             
             return self.sumNext_
-            
+        
         output = np.zeros((n_samples,))
         for model in self.models:
             output += model.predict(x).ravel()
