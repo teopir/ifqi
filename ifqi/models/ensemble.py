@@ -7,13 +7,10 @@ import numpy as np
 class Ensemble(object):
     def __init__(self):
         self.models = self.initModel()
-        self.sum_void = True
-        self.sum_ = None
 
     def fit(self, X, y, **kwargs):
-        if self.sum_void:
+        if not hasattr(self, 'sum_'):
             self.sum_ = np.zeros(y.shape)
-            self.sum_void = False
 
         delta = y - self.sum_
         ret = self.models[-1].fit(X, delta, **kwargs)
@@ -23,10 +20,19 @@ class Ensemble(object):
       
     def predict(self, x, **kwargs):
         n_samples = x.shape[0]
+        
+        if not kwargs['runOnEnv']:            
+            if not hasattr(self, 'sumNext_'):
+                self.sumNext_ = np.zeros((n_samples,))
+            self.sumNext_ += self.models[-1].predict(x).ravel()
+            
+            #return self.sumNext_
+            
         output = np.zeros((n_samples,))
-    
         for model in self.models:
-            output += model.predict(x, **kwargs).ravel()
+            output += model.predict(x).ravel()
+            
+        print(np.array_equal(self.sumNext_, output))
 
         return output
         

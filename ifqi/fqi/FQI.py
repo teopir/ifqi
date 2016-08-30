@@ -224,7 +224,7 @@ class FQI:
                 samples = self.features.testFeatures(samples)
 
             # predict Q-function
-            predictions = self.estimator.predict(samples)
+            predictions = self.estimator.predict(samples, runOnEnv=False)
 
             Q[:, idx] = predictions.ravel()
             Q[:, idx] = Q[:, idx] * (1 - absorbing)
