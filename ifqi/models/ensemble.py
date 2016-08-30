@@ -26,13 +26,11 @@ class Ensemble(object):
                 self.sumNext_ = np.zeros((n_samples,))
             self.sumNext_ += self.models[-1].predict(x).ravel()
             
-            #return self.sumNext_
+            return self.sumNext_
             
         output = np.zeros((n_samples,))
         for model in self.models:
             output += model.predict(x).ravel()
-            
-        print(np.array_equal(self.sumNext_, output))
 
         return output
         
