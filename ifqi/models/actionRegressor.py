@@ -2,9 +2,10 @@ import numpy as np
 from copy import deepcopy
 
 class ActionRegressor(object):
-    def __init__(self, model, n_actions):
+    def __init__(self, model, n_actions, **params):
         self.n_actions = n_actions
-        self.models = self.initModel(model)
+        self.models = self.initModel(model, **params)
+        
 
     def fit(self, X, y, **kwargs):
         for i in range(len(self.models)):
@@ -21,9 +22,8 @@ class ActionRegressor(object):
         for i in range(len(self.models)):
             self.models[i].adapt(iteration)
             
-    def initModel(self, model):
+    def initModel(self, model, **params):
         models = list()
         for i in range(self.n_actions):
-            models.append(deepcopy(model))
-        
+            models.append(model(**params))
         return models

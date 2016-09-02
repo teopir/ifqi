@@ -42,37 +42,43 @@ class Experiment(object):
         """
         model_config = self.config['model']
         if model_config['model_name'] == 'ExtraTree':
-            model = ExtraTreesRegressor(n_estimators=model_config['n_estimators'],
-                                        criterion=self.config['supervised_algorithm']['criterion'],
-                                        min_samples_split=model_config['min_samples_split'],
-                                        min_samples_leaf=model_config['min_samples_leaf'])
+            model = ExtraTreesRegressor
+            params = {'n_estimators':model_config['n_estimators'],
+                                        'criterion':self.config['supervised_algorithm']['criterion'],
+                                        'min_samples_split':model_config['min_samples_split'],
+                                        'min_samples_leaf':model_config['min_samples_leaf']}
         elif model_config['model_name'] == 'ExtraTreeEnsemble':
-            model = ExtraTreeEnsemble(n_estimators=model_config['n_estimators'],
-                                      criterion=self.config['supervised_algorithm']['criterion'],
-                                      min_samples_split=model_config['min_samples_split'],
-                                      min_samples_leaf=model_config['min_samples_leaf'])
+            model = ExtraTreeEnsemble
+            params = {'n_estimators':model_config['n_estimators'],
+                                      'criterion':self.config['supervised_algorithm']['criterion'],
+                                      'min_samples_split':model_config['min_samples_split'],
+                                      'min_samples_leaf':model_config['min_samples_leaf']}
         elif model_config['model_name'] == 'MLP':
-            model = MLP(n_input=self.mdp.state_dim,
-                        n_output=1,
-                        hidden_neurons=model_config['n_hidden_neurons'],
-                        n_layers=model_config['n_layers'],
-                        optimizer=model_config['optimizer'],
-                        activation=model_config['activation'])
+            model = MLP
+            params = {'n_input':self.mdp.state_dim,
+                        'n_output':1,
+                        'hidden_neurons':model_config['n_hidden_neurons'],
+                        'n_layers':model_config['n_layers'],
+                        'optimizer':model_config['optimizer'],
+                        'activation':model_config['activation']}
         elif model_config['model_name'] == 'MLPEnsemble':
-            model = MLPEnsemble(n_input=self.mdp.state_dim,
-                                n_output=1,
-                                hidden_neurons=model_config['n_hidden_neurons'],
-                                n_layers=model_config['n_layers'],
-                                optimizer=model_config['optimizer'],
-                                activation=model_config['activation'])
+            model = MLPEnsemble
+            params = {'n_input':self.mdp.state_dim,
+                                'n_output':1,
+                                'hidden_neurons':model_config['n_hidden_neurons'],
+                                'n_layers':model_config['n_layers'],
+                                'optimizer':model_config['optimizer'],
+                                'activation':model_config['activation']}
         elif model_config['model_name'] == 'Linear':
-            model = LinearRegression()
+            model = LinearRegression
+            params = {}
         elif model_config['model_name'] == 'LinearEnsemble':
-            model = LinearEnsemble()
+            model = LinearEnsemble
+            params = {}
         else:
             raise ValueError('Unknown estimator type.')
 
-        return ActionRegressor(model, self.mdp.n_actions)
+        return ActionRegressor(model, self.mdp.n_actions, **params)
         
     def _getMDP(self):
         """
