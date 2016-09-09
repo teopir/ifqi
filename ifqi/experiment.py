@@ -9,6 +9,7 @@ from ifqi.envs.carOnHill import CarOnHill
 from ifqi.envs.invertedPendulum import InvPendulum
 from ifqi.envs.acrobot import Acrobot
 from ifqi.envs.bicycle import Bicycle
+from ifqi.envs.swingPendulum import SwingPendulum
 
 
 class Experiment(object):
@@ -97,5 +98,7 @@ class Experiment(object):
             return Bicycle(navigate=False)
         elif self.config["mdp"]["mdp_name"] == "BicycleNavigate":
             return Bicycle(navigate=True)
+        elif self.config["mdp"]["mdp_name"] == "SwingPendulum":
+            return SwingPendulum()
         else:
             raise ValueError('Unknown mdp type.')

@@ -20,7 +20,8 @@ class SwingPendulum:
        self.mu = 0.01
        
        self.dt = 0.02
-       self.state = [0.,0.]
+       theta = np.random.uniform(-np.pi, np.pi)
+       self.state = [theta,0.]
        
        self.overTime = 0
        self.upTime = 0
@@ -28,7 +29,10 @@ class SwingPendulum:
        self.isGoal = False
        self.abs = False
        
-       self.reset()
+       self.state_dim = 2
+       self.action_dim = 1
+       self.n_actions = 11
+       self.gamma = 0.98
 
 
 
@@ -41,10 +45,13 @@ class SwingPendulum:
         self.isGoal = False
         self.abs = False
 
-    def step(self, u):
+    def step(self, action):
+        
+        u = action / 11. * 10. - 5.
+        
         theta, theta_dot = tuple(self.state)
        
-        theta_ddot = (- self.mu * theta_dot + self.m * self.l * self.g * np.sin(theta_dot))/ (self.m * self.l)
+        theta_ddot = (- self.mu * theta_dot + self.m * self.l * self.g * np.sin(theta_dot) + u)/ (self.m * self.l * self.l)
        
         theta_dot += theta_ddot * self.dt
         theta += theta_dot * self.dt        
@@ -61,6 +68,7 @@ class SwingPendulum:
             if abs(theta) < np.pi/4.:
                 self.upTime += 1
                 if self.upTime * self.dt >= 10:
+                    print "Goooooal!"
                     self.isGoal = True
                     return 1
             else:
@@ -108,7 +116,7 @@ class SwingPendulum:
             if r == 1:
                 print('Goal reached')
                 test_succesful = 1
-    
+        print "time: " , t
         return t, J, test_succesful
         
     def evaluate(self, fqi):
@@ -122,8 +130,6 @@ class SwingPendulum:
             289 different states
         
         """
-
-                
         self.reset()
         J, step, goal = self.runEpisode(fqi)
                
