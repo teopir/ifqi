@@ -252,7 +252,6 @@ class Bicycle:
         J = 0
         t = 0
         test_succesful = 0
-        rh = []
         horizon=1000#50000
         if self.navigate:
             horizon=1000#10000
@@ -262,13 +261,12 @@ class Bicycle:
             r = self.step(action)
             J += self.gamma ** t * r
             t += 1
-            rh += [r]
             
             if r == 1:
                 print('Goal reached')
                 test_succesful = 1
     
-        return (t, J, test_succesful), rh
+        return t, J, test_succesful
         
     def evaluate(self, fqi):
         """
@@ -284,8 +282,8 @@ class Bicycle:
 
                 
         self.reset()
-        tupla, rhistory = self.runEpisode(fqi)
+        J, step, goal = self.runEpisode(fqi)
                
         #(J, step, goal)
-        return (tupla[1], tupla[0], tupla[2])
+        return (J, step, goal)
         
