@@ -32,7 +32,12 @@ class SwingPendulum:
        self.state_dim = 2
        self.action_dim = 1
        self.n_actions = 11
-       self.gamma = 0.98
+       self.gamma = 0.9
+       self.previusTheta = 0
+       
+       self.overRotated = False
+       self.cumulatedRotation = 0 
+       self.overRotatedTime = 0
 
 
 
@@ -44,38 +49,55 @@ class SwingPendulum:
        
         self.isGoal = False
         self.abs = False
-
+        self.previusTheta = 0
+        self.overRotated = False
+        self.overRotatedTime =0
+        self.cumulatedRotation = 0
+        
     def step(self, action):
         
-        u = action / 11. * 10. - 5.
+        u = action[0]  / 11. * 10. - 5.
         
         theta, theta_dot = tuple(self.state)
        
-        theta_ddot = (- self.mu * theta_dot + self.m * self.l * self.g * np.sin(theta_dot) + u)/ (self.m * self.l * self.l)
-       
-        theta_dot += theta_ddot * self.dt
+        #theta_ddot = (- self.mu * theta_dot + self.m * self.l * self.g * np.sin(theta_dot) + u)/ (self.m * self.l * self.l)
+        theta_ddot = (- self.dt * theta_dot + self.m * self.l * self.g * np.sin(theta_dot) + u)#/ (self.m * self.l * self.l)
+
+        #bund theta_dot
+        theta_dot_temp = theta_dot + theta_ddot        
+        if theta_dot_temp > np.pi/self.dt:
+            theta_dot_temp = np.pi/self.dt
+        if theta_dot_temp < -np.pi/self.dt:
+            theta_dot_temp = -np.pi/self.dt
+        
+        theta_dot = theta_dot_temp#theta_ddot #* self.dt
         theta += theta_dot * self.dt        
         
+        #Adjust Theta        
+        if theta > np.pi:
+            theta -= 2*np.pi
+        if theta < -np.pi:
+            theta += 2*np.pi
+            
         self.state = [theta, theta_dot]
         
-        if abs(theta) > 5*np.pi:
-            self.overTime += 1
-            if self.overTime * self.dt >= 1:
-                self.abs = True
-                return -1.
-        else:
-            self.overTime = 0
-            if abs(theta) < np.pi/4.:
-                self.upTime += 1
-                if self.upTime * self.dt >= 10:
-                    print "Goooooal!"
-                    self.isGoal = True
-                    return 1
-            else:
-                self.upTime = 0
-                    
-        return np.cos(theta)
+        """signAngleDifference = np.arctan2(np.sin(theta - self.previusTheta), np.sin(theta - self.previusTheta))
+        self.cumulatedRotation += signAngleDifference
         
+        if (not self.overRotated and abs(self.cumulatedRotation) > 5.0 * np.pi):
+            self.overRotated = True
+        if (self.overRotated):
+            self.overRotatedTime += 1
+        
+        self.abs = self.overRotated and (self.overRotatedTime > 1.0 / self.dt)"""
+    
+    
+        """if not self.overRotated:
+            return np.cos(theta)
+        else:
+            return -1"""
+        return np.cos(theta)
+
        
     def isAbsorbing(self):
         return self.abs
@@ -102,7 +124,7 @@ class SwingPendulum:
             - sum of collected reward
         
         """
-        J = 0
+        J = []
         t = 0
         test_succesful = 0
         horizon= 400
@@ -110,14 +132,14 @@ class SwingPendulum:
             state = self.getState()
             action, _ = fqi.predict(np.array(state))
             r = self.step(action)
-            J += self.gamma ** t * r
+            #J += self.gamma ** t * r
+            J.append(r)
             t += 1
             
             if r == 1:
                 print('Goal reached')
                 test_succesful = 1
-        print "time: " , t
-        return t, J, test_succesful
+        return t, np.mean(J), test_succesful
         
     def evaluate(self, fqi):
         """
@@ -131,8 +153,11 @@ class SwingPendulum:
         
         """
         self.reset()
-        J, step, goal = self.runEpisode(fqi)
-               
+
+        step, J, goal = self.runEpisode(fqi)
+
+        print "step", step
+        print "J", J
         #(J, step, goal)
         return (J, step, goal)
         
