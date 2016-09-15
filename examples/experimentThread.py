@@ -17,6 +17,24 @@ from ifqi.experiment import Experiment
 from ifqi.fqi.FQI import FQI
 import ifqi.utils.parser as parser
 
+"""
+save the variable
+dir_ : path of the folder
+d : number of the dataset
+e : number of the experiment
+t : number of the iteration
+var_anme: name of the variable to save
+var: content of the variable
+"""
+def saveVariable(dir_,d,e,t,var_name,var):
+    directory =os.path.dirname(dir_+ "/" + "goal_" + d + "_" + str(e) + "_" + str(t) + ".npy")
+    if not os.path.isdir(directory): os.makedirs(directory)
+    np.save(dir_+ "/" + var_name +"_"+  d + "_" + str(e) + "_" + str(t), var)
+    
+    
+#------------------------------------------------------------------------------
+# Retrive params
+#------------------------------------------------------------------------------
 config_file = sys.argv[1]
 d = sys.argv[2]
 e = int(sys.argv[3])
@@ -43,8 +61,9 @@ rewardpos = state_dim + action_dim
 indicies = np.delete(np.arange(data.shape[1]), rewardpos)
 
 sast = data[:, indicies]
-
 r = data[:, rewardpos]
+
+
 print('Experiment: ' + str(e))
         
 exp.loadModel()
@@ -56,6 +75,10 @@ else:
 
 dir_ =exp.config["experiment_setting"]["save_path"]
 
+#-----------------------------------------------------------------------------
+# FQI Loading
+#-----------------------------------------------------------------------------
+
 if not os.path.isfile(dir_ + "/" +  d + "_" + str(e) + ".pkl"):    #if no fqi present in the directory
     fqi = FQI(estimator=exp.model,
           state_dim=state_dim,
@@ -66,39 +89,82 @@ if not os.path.isfile(dir_ + "/" +  d + "_" + str(e) + ".pkl"):    #if no fqi pr
           verbose=exp.config['rl_algorithm']['verbosity'],
           features=features,
           scaled=exp.config['rl_algorithm']['scaled'])
-    fqi.partial_fit(sast, r, **fit_params)
+    fqi.partial_fit(sast[:], r[:], **fit_params)
     min_t = 1
 else:
     fqi_obj = cPickle.load(open(dir_ + "/" + d + "_" + str(e) +  ".pkl", "rb"))
     fqi = fqi_obj["fqi"]
     min_t = fqi_obj["t"] + 1
 
+#------------------------------------------------------------------------------
+# FQI Iterations
+#------------------------------------------------------------------------------
+
+replay_experience = False
 for t in range(min_t, exp.config['rl_algorithm']['n_iterations']):
-    fqi.partial_fit(None, None, **fit_params)
+    
+    # Partial fit 
+    if replay_experience:
+        del fqi.sa
+        del fqi.r
+        del fqi._actions
+        fqi.partial_fit(sast[:], r[:], **fit_params)
+        replay_experience=False
+    else:
+        fqi.partial_fit(None, None, **fit_params)
+        
+    
     if "save_iteration"  in exp.config['experiment_setting']:
+        
+        
         if t % exp.config['experiment_setting']["save_iteration"] == 0:
             print("Start evaluation")
-            score, step, goal = exp.mdp.evaluate(fqi)
-            print("End evaluation")
-            directory =os.path.dirname(dir_+ "/" + "score_" + d + "_" + str(e) + "_" + str(t) + ".npy")
-            if not os.path.isdir(directory): os.makedirs(directory)
-            directory =os.path.dirname(dir_+ "/" + "step_" + d + "_" + str(e) + "_" + str(t) + ".npy")
-            if not os.path.isdir(directory): os.makedirs(directory)
-            directory =os.path.dirname(dir_+ "/" + "goal_" + d + "_" + str(e) + "_" + str(t) + ".npy")
-            if not os.path.isdir(directory): os.makedirs(directory)
-            np.save(dir_+ "/" + "score_" + d + "_" + str(e) + "_" + str(t), score)
-            np.save(dir_+ "/" + "step_" + d + "_" + str(e) + "_" + str(t), step)
-            np.save(dir_+ "/" + "goal_" + d + "_" + str(e) + "_" + str(t), goal)
+            
+            score, step, goal, sast_temp, r_temp = exp.mdp.evaluate(fqi)
+            
+            saveVariable(dir_, d, e, t, "score", score)
+            saveVariable(dir_, d, e, t, "step", step)
+            saveVariable(dir_, d, e, t, "goal", goal)
+            
+    #--------------------------------------------------------------------------
+    # SAVE FQI STATUS
+    #--------------------------------------------------------------------------
     if t % exp.config['experiment_setting']["save_fqi"] == 0:
         directory =os.path.dirname(dir_ + "/" + d + "_" + str(e) + ".pkl")
         if not os.path.isdir(directory): os.makedirs(directory)
         cPickle.dump({'fqi':fqi,'t':t},open(dir_ + "/" + d + "_" + str(e) + ".pkl", "wb"))
         
+    #--------------------------------------------------------------------------
+    # Experience Replay
+    #--------------------------------------------------------------------------
+        
+    if "experience_replay" in exp.config['experiment_setting']:
+        if t % exp.config['experiment_setting']["experience_replay"] == 0:
+            print ("init experience replay")
+            for _ in xrange(exp.config['experiment_setting']["n_replay"]):
+                
+                score, step, goal, sast_temp, r_temp = exp.mdp.evaluate(fqi)
+            
+                np.concatenate((sast, sast_temp),axis=0)
+                np.concatenate((r, r_temp),axis=0)
+                
+                indx = np.array(range(r.shape[0]))
+                np.random.shuffle(indx)
+                
+                sast = sast[indx,:]
+                r = r[indx]
+                
+                replay_experience = True
+            print ("end experience replay")
+            
+#------------------------------------------------------------------------------
+# Save at the end
+#------------------------------------------------------------------------------
+            
 print("Start evaluation")
-score, step, goal = exp.mdp.evaluate(fqi)
+score, step, goal, sast, r = exp.mdp.evaluate(fqi)
 print("End evaluation")
-dir_ =exp.config["experiment_setting"]["save_path"]
-if not os.path.isdir(dir_): os.makedirs(dir_)
-np.save(dir_+ "/" + "score_" + d + "_" + str(e) + "_last", score)
-np.save(dir_+ "/" + "step_" + d + "_" + str(e) + "_last", step)
-np.save(dir_+ "/" + "goal_" + d + "_" + str(e) + "_last", goal)
+
+saveVariable(dir_, d, e, "last_", "score", score)
+saveVariable(dir_, d, e, "last_", "step", step)
+saveVariable(dir_, d, e, "last_", "goal", goal)
