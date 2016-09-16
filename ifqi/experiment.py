@@ -10,6 +10,7 @@ from ifqi.envs.invertedPendulum import InvPendulum
 from ifqi.envs.acrobot import Acrobot
 from ifqi.envs.bicycle import Bicycle
 from ifqi.envs.swingPendulum import SwingPendulum
+from ifqi.envs.gymEnv import GymEnv
 
 
 class Experiment(object):
@@ -100,5 +101,7 @@ class Experiment(object):
             return Bicycle(navigate=True)
         elif self.config["mdp"]["mdp_name"] == "SwingPendulum":
             return SwingPendulum()
+        elif self.config["mdp"]["mdp_name"] == "CartPole":
+            return GymEnv("CartPole-v0")
         else:
             raise ValueError('Unknown mdp type.')
