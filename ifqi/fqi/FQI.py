@@ -1,17 +1,15 @@
 from __future__ import print_function
 import numpy as np
 from numpy.matlib import repmat
-import sys, os
 import sklearn.preprocessing as preprocessing
-
-sys.path.append(os.path.abspath('../'))
-
 from ifqi.preprocessors.features import selectFeatures
 
 """
 This class implements the function to run Fitted Q-Iteration algorithm.
 
 """
+
+
 class FQI:
     """
     Constructor.
@@ -26,8 +24,9 @@ class FQI:
         verbose (int): verbosity level
     
     """
+
     def __init__(self, estimator, state_dim, action_dim,
-                 discrete_actions=10,
+                 discrete_actions,
                  gamma=0.9, horizon=10,
                  scaled=False, features=None, verbose=0):
         self.estimator = estimator
@@ -38,7 +37,6 @@ class FQI:
         self.action_dim = action_dim
 
         self.verbose = verbose
-        self.discrete_actions = discrete_actions
         if isinstance(discrete_actions, np.ndarray):
             assert discrete_actions.shape[1] == action_dim
             assert discrete_actions.shape[0] > 1
@@ -46,8 +44,6 @@ class FQI:
         elif isinstance(discrete_actions, list):
             assert len(discrete_actions) > 1, 'Error: at least two actions are required'
             self._actions = np.array(discrete_actions, dtype='float32').reshape(-1, action_dim)
-        elif isinstance(discrete_actions, int):
-            assert discrete_actions > 1, 'Error: at least two actions are required'
         else:
             raise ValueError('Supported types for diacrete_actions are {np.darray, list, int}')
 
@@ -68,27 +64,6 @@ class FQI:
         """
         return X.reshape(-1, self.state_dim)
 
-    def _compute_actions(self, sast):
-        """
-        Return the action IDs according to the number of actions of the
-        problem.
-        Args:
-            sast (numpy.array): the dataset
-        
-        """        
-        action_pos = self.state_dim
-        nextstate_pos = self.state_dim + self.action_dim
-        # select unique actions
-        if isinstance(self.discrete_actions, int):
-            actions = sast[:, action_pos:nextstate_pos].reshape(-1, self.action_dim)
-            ubound = np.amax(actions, axis=0)
-            lbound = np.amin(actions, axis=0)
-            if self.action_dim == 1:
-                self._actions = np.linspace(lbound, ubound, self.discrete_actions).reshape(-1,1)
-            else:
-                print("not implemented in the general case (action_dim > 1")
-                exit(9)
-
     def _preprocess_data(self, sast=None, r=None):
         """
         Function to normalize data.
@@ -105,15 +80,15 @@ class FQI:
             nextstate_pos = self.state_dim + self.action_dim
             absorbing_pos = nextstate_pos + self.state_dim
 
-            sa = np.copy(sast[:, 0:nextstate_pos]).reshape(nSamples,-1)
-            snext = sast[:, nextstate_pos:absorbing_pos].reshape(nSamples,-1)
+            sa = np.copy(sast[:, 0:nextstate_pos]).reshape(nSamples, -1)
+            snext = sast[:, nextstate_pos:absorbing_pos].reshape(nSamples, -1)
             absorbing = sast[:, absorbing_pos]
 
             if self.scaled and self.iteration == 0:
                 # create scaler and fit it
                 self._sa_scaler = preprocessing.StandardScaler()
                 sa[:, :-1] = self._sa_scaler.fit_transform(sa[:, :-1])
-                
+
             if self.features is not None:
                 sa = self.features(sa)
 
@@ -121,7 +96,6 @@ class FQI:
             self.snext = snext
             self.absorbing = absorbing
             self.r = r
-
 
     def _partial_fit(self, sast=None, r=None, **kwargs):
         """
@@ -133,10 +107,6 @@ class FQI:
         Returns:
             the preprocessed input and output
         """
-        # compute the action list
-        if not hasattr(self, '_actions'):
-            self._compute_actions(sast)
-
         self._preprocess_data(sast, r)
 
         # check if the estimator change the structure at each iteration
@@ -147,20 +117,20 @@ class FQI:
         y = self.r
         if self.iteration == 0:
             if self.verbose > 0:
-                print('Iteration {}'.format(self.iteration+1))
-            
+                print('Iteration {}'.format(self.iteration + 1))
+
             self.estimator.fit(self.sa, y, **kwargs)
         else:
             maxq, maxa = self.maxQA(self.snext, self.absorbing)
             y = self.r + self.gamma * maxq
 
             if self.verbose > 0:
-                print('Iteration {}'.format(self.iteration+1))
+                print('Iteration {}'.format(self.iteration + 1))
 
             if adaptive:
                 # update estimator structure
                 self.estimator.adapt(iteration=self.iteration)
-            
+
             self.estimator.fit(self.sa, y, **kwargs)
 
         self.iteration += 1
@@ -182,8 +152,6 @@ class FQI:
 
         # reset iteration count
         self.reset()
-        # compute/recompute the action set
-        self._compute_actions(sast)
 
         # main loop
         self._partial_fit(sast, r)
@@ -216,10 +184,10 @@ class FQI:
             if self.scaled:
                 samples = np.concatenate((self._sa_scaler.transform(newstate),
                                           actions),
-                                          axis=1)
+                                         axis=1)
             else:
                 samples = np.concatenate((newstate, actions), axis=1)
-                
+
             if self.features is not None:
                 samples = self.features.testFeatures(samples)
 
@@ -237,8 +205,8 @@ class FQI:
         for idx in range(nbstates):
             rQ[idx] = Q[idx, amax[idx]]
             rA[idx] = self._actions[amax[idx]]
-        #sanity check
-        #assert(np.allclose(rQ, Q[np.arange(nbstates), amax]))
+        # sanity check
+        # assert(np.allclose(rQ, Q[np.arange(nbstates), amax]))
 
         return rQ, rA
 
@@ -272,7 +240,7 @@ class FQI:
             the argmax and the max Q value
             
         """
-        if not hasattr(self, '_actions'):
+        if self.iteration == 0:
             raise ValueError('The model must be trained before to be evaluated')
 
         maxQ, maxa = self.maxQA(states)
@@ -287,5 +255,4 @@ class FQI:
         self.sa = None
         self.snext = None
         self.absorbing = None
-
-
+        # TODO: reset estimator??
