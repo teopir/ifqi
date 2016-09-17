@@ -33,7 +33,7 @@ class Bicycle(Environment):
         self.n_states = 0
         self.n_actions = 9
         self.horizon = 1000
-        self.gamma =0.98
+        self.gamma = 0.98
         
         self._noise = kwargs.setdefault('noise', 0.04)
         self._random_start = kwargs.setdefault('random_start', False)
@@ -172,11 +172,11 @@ class Bicycle(Environment):
             else:
                 psi = numpy.sign(x_b - x_f)*(numpy.pi/2.) - numpy.arctan((y_f - y_b)/(x_b-x_f))
             
-        self.state = numpy.array([omega, omega_dot, omega_ddot, theta, theta_dot])
-        self.position = numpy.array([x_f, y_f, x_b, y_b, psi])
+        self._state = numpy.array([omega, omega_dot, omega_ddot, theta, theta_dot])
+        self._position = numpy.array([x_f, y_f, x_b, y_b, psi])
 
-        if numpy.abs(omega) > self.state_range[0,1]: # Bicycle fell over
-            self.abs = True
+        if numpy.abs(omega) > self._state_range[0,1]: # Bicycle fell over
+            self._absorbing = True
             return -1.0
         elif self._isAtGoal():
             self._absorbing = True
@@ -193,11 +193,11 @@ class Bicycle(Environment):
             ret =  0.1 * (self._angleWrapPi(goal_angle_old) - self._angleWrapPi(goal_angle))  
             return ret
     
-    def _unit_vector(self,vector):
+    def _unit_vector(self, vector):
         """ Returns the unit vector of the vector.  """
         return vector / numpy.linalg.norm(vector)
 
-    def _angle_between(self,v1, v2):
+    def _angle_between(self, v1, v2):
         """ Returns the angle in radians between vectors 'v1' and 'v2'::
     
                 >>> angle_between((1, 0, 0), (0, 1, 0))
@@ -207,21 +207,21 @@ class Bicycle(Environment):
                 >>> angle_between((1, 0, 0), (-1, 0, 0))
                 3.141592653589793
         """
-        v1_u = self.unit_vector(v1)
-        v2_u = self.unit_vector(v2)
+        v1_u = self._unit_vector(v1)
+        v2_u = self._unit_vector(v2)
         return numpy.arccos(numpy.clip(numpy.dot(v1_u, v2_u), -1.0, 1.0))
     
     def _isAtGoal(self):
         # Anywhere in the goal radius
-        if self.navigate:
-            return numpy.sqrt(max(0.,((self.position[:2] - self.goal_loc)**2).sum() - self.goal_rsqrd)) < 1.e-5
+        if self._navigate:
+            return numpy.sqrt(max(0.,((self._position[:2] - self._goal_loc)**2).sum() - self._goal_rsqrd)) < 1.e-5
         else:
             return False
 
     def _getState(self):
-        omega, omega_dot, omega_ddot, theta, theta_dot = tuple(self.state)
-        x_f, y_f, x_b, y_b, psi = tuple(self.position)
-        goal_angle = self.angle_between(self.goal_loc, numpy.array([x_f-x_b, y_f-y_b])) * numpy.pi / 180.
+        omega, omega_dot, omega_ddot, theta, theta_dot = tuple(self._state)
+        x_f, y_f, x_b, y_b, psi = tuple(self._position)
+        goal_angle = self._angle_between(self._goal_loc, numpy.array([x_f-x_b, y_f-y_b])) * numpy.pi / 180.
         """ modified to follow Ernst paper"""
         return [omega, omega_dot, theta, theta_dot, goal_angle]
         

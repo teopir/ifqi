@@ -31,7 +31,6 @@ class Environment(object):
     def evaluate(self, fqi, expReplay=False, render=False):
         """
         This function evaluates the regressor in the provided object parameter.
-        This way of evaluation is just one of many possible ones.
         Params:
             fqi (object): an object containing the trained regressor
             expReplay (bool): flag indicating whether to do experience replay
@@ -51,16 +50,11 @@ class Environment(object):
             expReplay (bool): flag indicating whether to do experience replay
             render (bool): flag indicating whether to render visualize behavior of the agent
         Returns:
-            - if using experience replay:
-                - J
-                - number of steps
-                - a flag indicating if the goal state has been reached
-                - augmented training set
-                - augmented target set
-            - if not using experience replay:
-                - J
-                - number of steps
-                - a flag indicating if the goal state has been reached
+            - J
+            - number of steps
+            - a flag indicating if the goal state has been reached
+            - augmented training set (if using experience replay)
+            - augmented target set (if using experience replay)
         
         """
         J = 0
@@ -131,7 +125,7 @@ class Environment(object):
         This function set the current state to the initial state
         and reset flags.
         Args:
-            initialState (np.array) the initial state
+            state (np.array): the initial state
             
         """
         pass

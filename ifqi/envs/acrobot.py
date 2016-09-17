@@ -40,7 +40,7 @@ class Acrobot(Environment):
                                  self._dTheta2], u)
         newState = odeint(self._dpds,
                           stateAction,
-                          [0, self.dt],
+                          [0, self._dt],
                           rtol=1e-5,
                           atol=1e-5,
                           mxstep=2000)
@@ -59,18 +59,18 @@ class Acrobot(Environment):
         self._theta1 = self._wrap2pi(self._theta1)
         self._theta2 = self._wrap2pi(self._theta2)
         if(d < 1):
-            self.absorbing = True
+            self._absorbing = True
             return self._theta1, self._theta2, self._dTheta1, self._dTheta2, 1 - d
         else:
             return self._theta1, self._theta2, self._dTheta1, self._dTheta2, 0
 
-    def _reset(self, theta1=-2, theta2=0., dTheta1=0., dTheta2=0.):
+    def _reset(self, state=[-2, 0., 0., 0.]):
         self._absorbing = False
         self._atGoal = False
-        self._theta1 = self._wrap2pi(theta1)
-        self._theta2 = self._wrap2pi(theta2)
-        self._dTheta1 = dTheta1
-        self._dTheta2 = dTheta2
+        self._theta1 = self._wrap2pi(state[0])
+        self._theta2 = self._wrap2pi(state[1])
+        self._dTheta1 = state[2]
+        self._dTheta2 = state[3]
 
     def _getState(self):
         return [self._theta1, self._theta2, self._dTheta1, self._dTheta2]
@@ -132,7 +132,7 @@ class Acrobot(Environment):
     
         counter = 0
         for theta1 in states:
-            self._reset(theta1, 0., 0., 0.)
+            self._reset([theta1, 0., 0., 0.])
             J = self._runEpisode(fqi, expReplay, render)[0]
         
             discRewards[counter] = J
