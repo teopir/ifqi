@@ -78,6 +78,18 @@ class CarOnHill(Environment):
         return (dp, ds, 0.)
         
     def evaluate(self, fqi, expReplay=False, render=False):
+        """
+        This function evaluates the regressor in the provided object parameter.
+        This way of evaluation is just one of many possible ones.
+        Params:
+            fqi (object): an object containing the trained regressor
+            expReplay (bool): flag indicating whether to do experience replay
+            render (bool): flag indicating whether to render visualize behavior of the agent
+        Returns:
+            a numpy array containing the average score obtained starting from
+            289 different states
+        
+        """
         discRewards = np.zeros((289))
     
         counter = 0

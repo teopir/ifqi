@@ -4,8 +4,8 @@ from gymEnv import GymEnv
 
 class CartPole(GymEnv):
     def __init__(self):
-        self._env = gym.make('CartPole-v0')
-        self._env.reset()
+        self.env = gym.make('CartPole-v0')
+        self.env.reset()
         self.state_dim = 4
         self.action_dim = 1        
         self.n_actions = 2  
@@ -18,12 +18,12 @@ class CartPole(GymEnv):
         self._nextState = [0., 0., 0., 0.]
         self._absorbing = False
         self._atGoal = False
-        self._env.reset()
+        self.env.reset()
 
     def _step(self, action, render=False):
         if render:
-            self._env.render()
-        nextState, reward, absorbing, info = self._env.step(action) 
+            self.env.render()
+        nextState, reward, absorbing, info = self.env.step(action)
         self._nextState = nextState
         self._absorbing = absorbing
 
@@ -37,11 +37,13 @@ class CartPole(GymEnv):
         This function evaluates the regressor in the provided object parameter.
         This way of evaluation is just one of many possible ones.
         Params:
-            fqi (object): an object containing the trained regressor.
+            fqi (object): an object containing the trained regressor
+            expReplay (bool): flag indicating whether to do experience replay
+            render (bool): flag indicating whether to render visualize behavior of the agent
         Returns:
+            a numpy array containing results of the episode
         
         """
         self._reset()
-        J, step, goal, sast, r = self._runEpisode(fqi, expReplay, render)
-               
-        return (J, step, goal, sast, r)
+
+        return self._runEpisode(fqi, expReplay, render)

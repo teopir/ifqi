@@ -44,7 +44,7 @@ class InvPendulum(Environment):
         self._theta = self._theta + self._dt * self._theta_dot
         
         if(np.abs(self._theta) > self._angleMax):
-            self.absorbing = True
+            self._absorbing = True
             return -1
         else:
             return 0
@@ -55,14 +55,16 @@ class InvPendulum(Environment):
         self._theta_dot = 0
         
     def _getState(self):
-        return [self.theta, self.theta_dot]
+        return [self._theta, self._theta_dot]
         
     def evaluate(self, fqi, expReplay=False, render=False):
         """
         This function evaluates the regressor in the provided object parameter.
         This way of evaluation is just one of many possible ones.
         Params:
-            fqi (object): an object containing the trained regressor.
+            fqi (object): an object containing the trained regressor
+            expReplay (bool): flag indicating whether to do experience replay
+            render (bool): flag indicating whether to render visualize behavior of the agent
         Returns:
             ...
         

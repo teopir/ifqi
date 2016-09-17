@@ -237,15 +237,15 @@ class Bicycle(Environment):
         This function evaluates the regressor in the provided object parameter.
         This way of evaluation is just one of many possible ones.
         Params:
-            fqi (object): an object containing the trained regressor.
+            fqi (object): an object containing the trained regressor
+            expReplay (bool): flag indicating whether to do experience replay
+            render (bool): flag indicating whether to render visualize behavior of the agent
         Returns:
             a numpy array containing the average score obtained starting from
             289 different states
         
         """
         self._reset()
-        J, step, goal = self._runEpisode(fqi, expReplay, render)
-               
-        #(J, step, goal)
-        return (J, step, goal)
+        
+        return self._runEpisode(fqi, expReplay, render)
         

@@ -100,25 +100,21 @@ class SwingPendulum(Environment):
         return np.cos(theta)
 
     def _getState(self):
-        return self.state
+        return self._state
         
     def evaluate(self, fqi, expReplay=False, render=False):
         """
         This function evaluates the regressor in the provided object parameter.
         This way of evaluation is just one of many possible ones.
         Params:
-            fqi (object): an object containing the trained regressor.
+            fqi (object): an object containing the trained regressor
+            expReplay (bool): flag indicating whether to do experience replay
+            render (bool): flag indicating whether to render visualize behavior of the agent
         Returns:
-            a numpy array containing the average score obtained starting from
-            289 different states
+            a numpy array containing the results of the episode
         
         """
         self._reset()
 
-        step, J, goal = self._runEpisode(fqi, expReplay, render)
-
-        print "step", step
-        print "J", J
-        #(J, step, goal)
-        return (J, step, goal)
+        return self._runEpisode(fqi, expReplay, render)
         
