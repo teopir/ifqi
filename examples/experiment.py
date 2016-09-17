@@ -73,7 +73,7 @@ if __name__ == '__main__':
             fqi = FQI(estimator=exp.model,
                       state_dim=state_dim,
                       action_dim=action_dim,
-                      discrete_actions=exp.mdp.n_actions,
+                      discrete_actions=range(exp.mdp.n_actions),
                       gamma=exp.config['rl_algorithm']['gamma'],
                       horizon=exp.config['rl_algorithm']['horizon'],
                       verbose=exp.config['rl_algorithm']['verbosity'],
@@ -84,6 +84,6 @@ if __name__ == '__main__':
             for t in range(1, exp.config['rl_algorithm']['n_iterations']):
                 fqi.partial_fit(None, None, **fit_params)
                 
-            score[e, d] = exp.mdp.evaluate(fqi)
+            score[e, d] = exp.mdp.evaluate(fqi)[0]
 
     np.save(exp.config['experiment_setting']['save_path'], score)

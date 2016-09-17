@@ -2,17 +2,15 @@ import numpy as np
 from numpy.random import uniform
 from scipy.integrate import odeint
 
-class Acrobot(object):
+from environment import Environment
+
+class Acrobot(Environment):
     """
     The Acrobot environment as presented in:
     "Tree-Based Batch Mode Reinforcement Learning, D. Ernst et. al."
     
     """
     def __init__(self):
-        """
-        Constructor.
-        
-        """
         # Properties
         self.state_dim = 4
         self.action_dim = 1        
@@ -20,33 +18,26 @@ class Acrobot(object):
         self.n_actions = 2     
         self.horizon = 100.
         # State
-        self.theta1 = uniform(-np.pi + 1, np.pi - 1)
-        self.theta2 = self.dTheta1 = self.dTheta2 = 0.
+        self._theta1 = uniform(-np.pi + 1, np.pi - 1)
+        self._theta2 = self._dTheta1 = self._dTheta2 = 0.
         # End episode
-        self.absorbing = False        
+        self._absorbing = False
+        self._atGoal = False        
         # Constants
-        self.g = 9.81
-        self.M1 = self.M2 = 1
-        self.L1 = self.L2 = 1
-        self.mu1 = self.mu2 = .01
+        self._g = 9.81
+        self._M1 = self._M2 = 1
+        self._L1 = self._L2 = 1
+        self._mu1 = self._mu2 = .01
         # Time_step
-        self.dt = .1        
+        self._dt = .1
         # Discount factor
         self.gamma = .95
     
-    def step(self, u):
-        """
-        This function performs the step function of the environment.
-        Args:
-            u (int): the id of the action to be performed.            
-        Returns:
-            
-            
-        """
-        stateAction = np.append([self.theta1,
-                                 self.theta2,
-                                 self.dTheta1,
-                                 self.dTheta2], u)
+    def _step(self, u, render=False):
+        stateAction = np.append([self._theta1,
+                                 self._theta2,
+                                 self._dTheta1,
+                                 self._dTheta2], u)
         newState = odeint(self._dpds,
                           stateAction,
                           [0, self.dt],
@@ -55,57 +46,34 @@ class Acrobot(object):
                           mxstep=2000)
         
         newState = newState[-1]
-        self.theta1 = newState[0]
-        self.theta2 = newState[1]
-        self.dTheta1 = newState[2]
-        self.dTheta2 = newState[3]
+        self._theta1 = newState[0]
+        self._theta2 = newState[1]
+        self._dTheta1 = newState[2]
+        self._dTheta2 = newState[3]
         
-        k = round((self.theta1 - np.pi) / (2 * np.pi));
-        x = np.array([self.theta1, self.theta2, self.dTheta1, self.dTheta2])
+        k = round((self._theta1 - np.pi) / (2 * np.pi));
+        x = np.array([self._theta1, self._theta2, self._dTheta1, self._dTheta2])
         o = np.array([2 * k * np.pi + np.pi, 0., 0., 0.])
         d = np.linalg.norm(x - o)
         
-        self.theta1 = self._wrap2pi(self.theta1)
-        self.theta2 = self._wrap2pi(self.theta2)
+        self._theta1 = self._wrap2pi(self._theta1)
+        self._theta2 = self._wrap2pi(self._theta2)
         if(d < 1):
             self.absorbing = True
-            return self.theta1, self.theta2, self.dTheta1, self.dTheta2, 1 - d
+            return self._theta1, self._theta2, self._dTheta1, self._dTheta2, 1 - d
         else:
-            return self.theta1, self.theta2, self.dTheta1, self.dTheta2, 0
+            return self._theta1, self._theta2, self._dTheta1, self._dTheta2, 0
 
-    def reset(self, theta1=-2, theta2=0., dTheta1=0., dTheta2=0.):
-        """
-        This function set the position and velocity of the acrobot to the
-        starting conditions provided.
-        Args:
-            theta1 (float),
-            theta2 (float),
-            dTheta1 (float),
-            dTheta2 (float)
+    def _reset(self, theta1=-2, theta2=0., dTheta1=0., dTheta2=0.):
+        self._absorbing = False
+        self._atGoal = False
+        self._theta1 = self._wrap2pi(theta1)
+        self._theta2 = self._wrap2pi(theta2)
+        self._dTheta1 = dTheta1
+        self._dTheta2 = dTheta2
 
-        """
-        self.absorbing = False
-        self.theta1 = self._wrap2pi(theta1)
-        self.theta2 = self._wrap2pi(theta2)
-        self.dTheta1 = dTheta1
-        self.dTheta2 = dTheta2
-
-    def getState(self):
-        """
-        Returns:
-            a tuple containing the state of the car represented by its position
-            and velocity.
-        
-        """
-        return [self.theta1, self.theta2, self.dTheta1, self.dTheta2]
-        
-    def isAbsorbing(self):
-        """
-        Returns:
-            True if the state is absorbing, False otherwise.
-        
-        """
-        return self.absorbing
+    def _getState(self):
+        return [self._theta1, self._theta2, self._dTheta1, self._dTheta2]
         
     def _dpds(self, stateAction, t):
         theta1 = stateAction[0]
@@ -114,28 +82,28 @@ class Acrobot(object):
         dTheta2 = stateAction[3]
         action = stateAction[-1]
 
-        d11 = self.M1 * self.L1 * self.L1 + self.M2 * (self.L1 * self.L1 +
-            self.L2 * self.L2 + 2 * self.L1 * self.L2 * np.cos(theta2))
-        d22 = self.M2 * self.L2 * self.L2
-        d12 = self.M2 * (self.L2 * self.L2 + self.L1 * self.L2 *
+        d11 = self._M1 * self._L1 * self._L1 + self._M2 * (self._L1 * self._L1 +
+            self._L2 * self._L2 + 2 * self._L1 * self._L2 * np.cos(theta2))
+        d22 = self._M2 * self._L2 * self._L2
+        d12 = self._M2 * (self._L2 * self._L2 + self._L1 * self._L2 *
             np.cos(theta2))
-        c1 = -self.M2 * self.L1 * self.L2 * dTheta2 * (2 * dTheta1 + dTheta2 *
+        c1 = -self._M2 * self._L1 * self._L2 * dTheta2 * (2 * dTheta1 + dTheta2 *
             np.sin(theta2))
-        c2 = self.M2 * self.L1 * self.L2 * dTheta1 * dTheta1 * np.sin(theta2)
-        phi1 = (self.M1 * self.L1 + self.M2 * self.L1) * self.g * \
-            np.sin(theta1) + self.M2 * self.L2 * self.g * \
+        c2 = self._M2 * self._L1 * self._L2 * dTheta1 * dTheta1 * np.sin(theta2)
+        phi1 = (self._M1 * self._L1 + self._M2 * self._L1) * self._g * \
+            np.sin(theta1) + self._M2 * self._L2 * self._g * \
             np.sin(theta1 + theta2)
-        phi2 = self.M2 * self.L2 * self.g * np.sin(theta1 + theta2)
+        phi2 = self._M2 * self._L2 * self._g * np.sin(theta1 + theta2)
 
         u = -5. if action == 0 else 5.
         
         diffTheta1 = dTheta1
         diffTheta2 = dTheta2
         d12d22 = d12 / d22
-        diffDiffTheta1 = (-self.mu1 * dTheta1 - d12d22 * u + d12d22 *
-                        self.mu2 * dTheta2 + d12d22 * c2 + d12d22 * phi2 -
+        diffDiffTheta1 = (-self._mu1 * dTheta1 - d12d22 * u + d12d22 *
+                        self._mu2 * dTheta2 + d12d22 * c2 + d12d22 * phi2 -
                         c1 - phi1) / (d11 - (d12d22 * d12))
-        diffDiffTheta2 = (u - self.mu2 * dTheta2 - d12 * diffDiffTheta1 -
+        diffDiffTheta2 = (u - self._mu2 * dTheta2 - d12 * diffDiffTheta1 -
                         c2 - phi2) / d22;
              
         return (diffTheta1, diffTheta2, diffDiffTheta1, diffDiffTheta2, 0.)
@@ -146,40 +114,8 @@ class Acrobot(object):
         tmp -= width * np.floor(tmp / width)
 
         return tmp + -np.pi
-        
-    def runEpisode(self, fqi):
-        """
-        This function runs an episode using the regressor in the provided
-        object parameter.
-        Params:
-            fqi (object): an object containing the trained regressor
-        Returns:
-            - a tuple containing:
-                - number of steps
-                - J
-                - a flag indicating if the goal state has been reached
-            - sum of collected reward
-        
-        """
-        J = 0
-        t = 0
-        test_succesful = 0
-        rh = []
-        while(t < self.horizon and not self.isAbsorbing()):
-            state = self.getState()
-            action, _ = fqi.predict(np.array(state))
-            _, _, _, _, r = self.step(action)
-            J += self.gamma ** t * r
-            t += 1
-            rh += [r]
-            
-            if r > 0.:
-                print('Goal reached')
-                test_succesful = 1
-    
-        return (t, J, test_succesful), rh
-        
-    def evaluate(self, fqi):
+
+    def evaluate(self, fqi, expReplay=False, render=False):
         """
         This function evaluates the regressor in the provided object parameter.
         This way of evaluation is just one of many possible ones.
@@ -196,10 +132,10 @@ class Acrobot(object):
     
         counter = 0
         for theta1 in states:
-            self.reset(theta1, 0., 0., 0.)
-            tupla, rhistory = self.runEpisode(fqi)
+            self._reset(theta1, 0., 0., 0.)
+            J = self._runEpisode(fqi, expReplay, render)[0]
         
-            discRewards[counter] = tupla[1]
+            discRewards[counter] = J
             counter += 1
                 
-        return np.mean(discRewards)
+        return [np.mean(discRewards)]

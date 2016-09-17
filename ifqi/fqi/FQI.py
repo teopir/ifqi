@@ -45,7 +45,7 @@ class FQI:
             assert len(discrete_actions) > 1, 'Error: at least two actions are required'
             self._actions = np.array(discrete_actions, dtype='float32').reshape(-1, action_dim)
         else:
-            raise ValueError('Supported types for diacrete_actions are {np.darray, list, int}')
+            raise ValueError('Supported types for discrete_actions are {np.darray, list, int}')
 
         self.__name__ = "FittedQIteration"
         self.iteration = 0

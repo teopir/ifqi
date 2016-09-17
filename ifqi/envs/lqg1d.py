@@ -4,6 +4,8 @@ from gym import spaces
 from gym.utils import seeding
 import numpy as np
 
+from environment import Environment
+
 """
 Linear quadratic gaussian regulator task
 
@@ -24,7 +26,7 @@ References
 #     timestep_limit=300,
 # )
 
-class LQG1DEnv(gym.Env):
+class LQG1DEnv(gym.Env, Environment):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 30
@@ -51,7 +53,7 @@ class LQG1DEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def _step(self, action):
+    def _step(self, action, render=False):
         u = np.clip(action, -self.max_action, self.max_action)
         noise = np.random.randn() * self.sigma_noise
         xn = np.dot(self.A, self.state) + np.dot(self.b, u) + noise
@@ -61,7 +63,7 @@ class LQG1DEnv(gym.Env):
         self.state = xn
         return xn, -cost, False, {}
 
-    def _reset(self):
+    def _reset(self, state=None):
         self.state = np.array([self.np_random.uniform(low=-10, high=-10)])
         return np.array(self.state)
 
