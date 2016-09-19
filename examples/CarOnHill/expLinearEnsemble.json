@@ -4,16 +4,16 @@
         "date": "..."
     },
     
-    "experiment_setting": {
-        "load_path": "coh/coh",
-        "save_path": "linearEnsemble",
-        "n_datasets": 4,
-        "n_experiments": 1,
-        "dataset_size_step": 100
+    "experimentSetting": {
+        "loadPath": "coh/coh.log",
+        "savePath": "linearEnsemble",
+        "nDatasets": 4,
+        "nExperiments": 1,
+        "datasetSizeStep": 100
     },
 
     "model": {
-        "model_name": "LinearEnsemble",
+        "modelName": "LinearEnsemble",
         "features": {
             "name": "poly",
             "degree": 7
@@ -21,11 +21,11 @@
     },
 
     "mdp": {
-        "mdp_name": "CarOnHill"
+        "mdpName": "CarOnHill"
     },
-    "rl_algorithm": {
+    "rlAlgorithm": {
         "algorithm": "FQI",
-        "n_iterations": 20,
+        "nIterations": 20,
         "gamma": 0.95,
         "verbosity": 1,
         "horizon": 100,

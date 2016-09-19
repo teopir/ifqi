@@ -1,22 +1,23 @@
 {
     "experiment": {
-        "name": "exp1",
+        "name": "exp4",
         "date": "..."
     },
     
     "experimentSetting": {
-        "loadPath": "acro/acro",
-        "savePath": "extraTreeEnsemble",
+        "loadPath": "acro/acroTrained",
+        "savePath": "MLPEnsembleTrained",
         "nDatasets": 10,
         "nExperiments": 10,
         "datasetSizeStep": 200
     },
 
     "model": {
-        "modelName": "ExtraTreeEnsemble",
-        "nEstimators": 50,
-        "minSamplesSplit": 5,
-        "minSamplesLeaf": 2
+        "modelName": "MLPEnsemble",
+        "nHiddenNeurons": 10,
+        "nLayers": 2,
+        "optimizer": "rmsprop",
+        "activation": "relu"
     },
 
     "mdp": {
@@ -24,7 +25,10 @@
     },
 
     "supervisedAlgorithm": {
-        "criterion": "mse"
+        "nEpochs": 20,
+        "batchSize": 100,
+        "validationSplit": 0.1,
+        "verbosity": 0
     },
 
     "rlAlgorithm": {

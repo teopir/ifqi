@@ -26,46 +26,49 @@ steps and so on.
 
 """
 if __name__ == '__main__':
-    config_file = sys.argv[1]
+    configFile = sys.argv[1]
 
-    exp = Experiment(config_file)
+    exp = Experiment(configFile)
 
-    if 'MLP' in exp.config['model']['model_name']:
-        fit_params = {'nb_epoch': exp.config['supervised_algorithm']
-                                            ['n_epochs'],
-                      'batch_size': exp.config['supervised_algorithm']
-                                              ['batch_size'],
-                      'validation_split': exp.config['supervised_algorithm']
-                                                    ['validation_split'],
-                      'verbose': exp.config['supervised_algorithm']
-                                           ['verbosity']
-                      }
+    if 'MLP' in exp.config['model']['modelName']:
+        fitParams = {'nb_epoch': exp.config['supervisedAlgorithm']
+                                           ['nEpochs'],
+                     'batch_size': exp.config['supervisedAlgorithm']
+                                             ['batchSize'],
+                     'validation_split': exp.config['supervisedAlgorithm']
+                                                   ['validationSplit'],
+                     'verbose': exp.config['supervisedAlgorithm']
+                                          ['verbosity']
+                     }
     else:
-        fit_params = dict()
+        fitParams = dict()
 
-    score = np.zeros((exp.config['experiment_setting']['n_experiments'],
-                      exp.config['experiment_setting']['n_datasets']))
+    score = np.zeros((exp.config['experimentSetting']['nExperiments'],
+                      exp.config['experimentSetting']['nDatasets']))
 
-    for d in range(exp.config['experiment_setting']['n_datasets']):
+    for d in range(exp.config['experimentSetting']['nDatasets']):
         print('Dataset: ' + str(d))
-        data, state_dim, action_dim, reward_dim = parser.parseReLeDataset(
-            path='../dataset/' + exp.config['experiment_setting']
-                                           ['load_path'] + '.log',
-            nEpisodes=(d + 1) * exp.config['experiment_setting']
-                                          ['dataset_size_step']
-            )
-        assert(state_dim == exp.mdp.state_dim)
-        assert(action_dim == exp.mdp.action_dim)
-        assert(reward_dim == 1)
+        loadPath = exp.config['experimentSetting']['loadPath']
+        if loadPath.endswith('npy'):
+            data = np.load('../dataset/' + loadPath)
+            stateDim, actionDim = exp.mdp.stateDim, exp.mdp.actionDim
+            rewardDim = 1
+        else:
+            data, stateDim, actionDim, rewardDim = parser.parseReLeDataset(
+                path='../dataset/' + loadPath,
+                nEpisodes=(d + 1) * exp.config['experimentSetting']
+                                              ['datasetSizeStep']
+                )
+            assert(stateDim == exp.mdp.stateDim)
+            assert(actionDim == exp.mdp.actionDim)
+            assert(rewardDim == 1)
 
-        rewardpos = state_dim + action_dim
+        rewardpos = stateDim + actionDim
         indicies = np.delete(np.arange(data.shape[1]), rewardpos)
-
         sast = data[:, indicies]
-
         r = data[:, rewardpos]
 
-        for e in range(exp.config['experiment_setting']['n_experiments']):
+        for e in range(exp.config['experimentSetting']['nExperiments']):
             print('Experiment: ' + str(e))
 
             exp.loadModel()
@@ -76,19 +79,19 @@ if __name__ == '__main__':
                 features = None
 
             fqi = FQI(estimator=exp.model,
-                      state_dim=state_dim,
-                      action_dim=action_dim,
-                      discrete_actions=range(exp.mdp.n_actions),
-                      gamma=exp.config['rl_algorithm']['gamma'],
-                      horizon=exp.config['rl_algorithm']['horizon'],
-                      verbose=exp.config['rl_algorithm']['verbosity'],
+                      stateDim=stateDim,
+                      actionDim=actionDim,
+                      discreteActions=range(exp.mdp.nActions),
+                      gamma=exp.config['rlAlgorithm']['gamma'],
+                      horizon=exp.config['rlAlgorithm']['horizon'],
+                      verbose=exp.config['rlAlgorithm']['verbosity'],
                       features=features,
-                      scaled=exp.config['rl_algorithm']['scaled'])
+                      scaled=exp.config['rlAlgorithm']['scaled'])
 
-            fqi.partial_fit(sast, r, **fit_params)
-            for t in range(1, exp.config['rl_algorithm']['n_iterations']):
-                fqi.partial_fit(None, None, **fit_params)
+            fqi.partialFit(sast, r, **fitParams)
+            for t in range(1, exp.config['rlAlgorithm']['nIterations']):
+                fqi.partialFit(None, None, **fitParams)
 
             score[e, d] = exp.mdp.evaluate(fqi)[0]
 
-    np.save(exp.config['experiment_setting']['save_path'], score)
+    np.save(exp.config['experimentSetting']['savePath'], score)

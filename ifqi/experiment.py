@@ -45,11 +45,11 @@ class Experiment(object):
         modelConfig = self.config['model']
         if modelConfig['modelName'] == 'ExtraTree':
             model = ExtraTreesRegressor
-            params = {'nEstimators': modelConfig['nEstimators'],
+            params = {'n_estimators': modelConfig['nEstimators'],
                       'criterion': self.config['supervisedAlgorithm']
                                               ['criterion'],
-                      'minSamplesSplit': modelConfig['minSamplesSplit'],
-                      'minSamplesLeaf': modelConfig['minSamplesLeaf']}
+                      'min_samples_split': modelConfig['minSamplesSplit'],
+                      'min_samples_leaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'ExtraTreeEnsemble':
             model = ExtraTreeEnsemble
             params = {'nEstimators': modelConfig['nEstimators'],

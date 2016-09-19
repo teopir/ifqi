@@ -57,10 +57,10 @@ class ExtraTreeEnsemble(Ensemble):
         super(ExtraTreeEnsemble, self).__init__()
 
     def generateModel(self, iteration):
-        model = ExtraTreesRegressor(nEstimators=self.nEstimators,
+        model = ExtraTreesRegressor(n_estimators=self.nEstimators,
                                     criterion=self.criterion,
-                                    minSamplesSplit=self.minSamplesSplit,
-                                    minSamplesLeaf=self.minSamplesLeaf)
+                                    min_samples_split=self.minSamplesSplit,
+                                    min_samples_leaf=self.minSamplesLeaf)
 
         return model
 
@@ -92,7 +92,7 @@ class MLPEnsemble(Ensemble):
                         activation=self.activation,
                         W_regularizer=self.regularizer,
                         b_regularizer=self.regularizer))
-        for i in range(1, self.n_layers):
+        for i in range(1, self.nLayers):
             model.add(Dense(self.hiddenNeurons,
                             activation=self.activation,
                             W_regularizer=self.regularizer,
