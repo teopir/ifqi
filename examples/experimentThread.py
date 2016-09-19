@@ -4,14 +4,14 @@ import sys
 import cPickle
 import numpy as np
 
+from context import *
+
 
 """
 
 Single thread of experimentThreadManager
 """
 
-
-sys.path.append(os.path.abspath('../'))
 
 from ifqi.experiment import Experiment
 from ifqi.fqi.FQI import FQI

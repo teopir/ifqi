@@ -1,10 +1,7 @@
 from __future__ import print_function
-import os
-import sys
+from context import *
 
 import numpy as np
-
-sys.path.append(os.path.abspath('../'))
 
 from ifqi.experiment import Experiment
 from ifqi.fqi.FQI import FQI
