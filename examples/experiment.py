@@ -88,9 +88,9 @@ if __name__ == '__main__':
                       features=features,
                       scaled=exp.config['rlAlgorithm']['scaled'])
 
-            fqi.partialFit(sast, r, **fitParams)
+            fqi.partial_fit(sast, r, **fitParams)
             for t in range(1, exp.config['rlAlgorithm']['nIterations']):
-                fqi.partialFit(None, None, **fitParams)
+                fqi.partial_fit(None, None, **fitParams)
 
             score[e, d] = exp.mdp.evaluate(fqi)[0]
 

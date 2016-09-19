@@ -38,6 +38,8 @@ class LQG1D(gym.Env, Environment):
     def __init__(self):
         self.stateDim = 1
         self.actionDim = 1
+        self.nStates = 0
+        self.horizon = 100
         self.max_pos = 100.0
         self.max_action = 50.0
         self.sigma_noise = 2.0

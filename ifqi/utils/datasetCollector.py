@@ -1,5 +1,10 @@
+import os
+import sys
 import numpy as np
-from ifqi.experiment.Experiment import getMDP
+
+sys.path.append(os.path.abspath('../'))
+
+from experiment import Experiment
 
 
 def collect(mdp):
@@ -8,13 +13,17 @@ def collect(mdp):
 
     sarst = np.concatenate((np.concatenate((sast[:, 0:mdp.state_dim], r.T),
                                            axis=1),
-                            sast[:, -1 - mdp.state_dim]
+                            sast[:, -1 - mdp.state_dim]))
+
+    return sarst
 
 if __name__ == '__main__':
-    mdpName = 'CarOnHill'
+    mdpName = 'LQG1D'
     nEpisodes = 100
 
-    mdp = getMDP(mdpName)
+    exp = Experiment()
+    exp.config['mdp']['mdpName'] = mdpName
+    mdp = exp.getMDP(mdpName)
     sarst = collect(mdp)
 
-    sarst.save('../dataset/' + mdpName)
+    sarst.save('../../dataset/' + mdpName)

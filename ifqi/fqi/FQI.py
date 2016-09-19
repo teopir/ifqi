@@ -102,7 +102,7 @@ class FQI:
             self.absorbing = absorbing
             self.r = r
 
-    def _partialFit(self, sast=None, r=None, **kwargs):
+    def _partial_fit(self, sast=None, r=None, **kwargs):
         """
         Perform a step of FQI.
         Args:
@@ -215,7 +215,7 @@ class FQI:
 
         return rQ, rA
 
-    def partialFit(self, X, y, **kwargs):
+    def partial_fit(self, X, y, **kwargs):
         """
         Perform a step of FQI.
         Args:
@@ -226,7 +226,7 @@ class FQI:
             the FQI object after one step
 
         """
-        self._partialFit(X, y, **kwargs)
+        self._partial_fit(X, y, **kwargs)
         return self
 
     """
