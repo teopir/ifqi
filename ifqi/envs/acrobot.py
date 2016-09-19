@@ -13,10 +13,10 @@ class Acrobot(Environment):
     """
     def __init__(self):
         # Properties
-        self.state_dim = 4
-        self.action_dim = 1
-        self.n_states = 0
-        self.n_actions = 2
+        self.stateDim = 4
+        self.actionDim = 1
+        self.nStates = 0
+        self.nActions = 2
         self.horizon = 100.
         # State
         self._theta1 = uniform(-np.pi + 1, np.pi - 1)
@@ -64,10 +64,9 @@ class Acrobot(Environment):
         self._theta2 = self._wrap2pi(self._theta2)
         if(d < 1):
             self._absorbing = True
-            return self._theta1, self._theta2, self._dTheta1, \
-                self._dTheta2, 1 - d
+            return 1 - d
         else:
-            return self._theta1, self._theta2, self._dTheta1, self._dTheta2, 0
+            return 0
 
     def _reset(self, state=[-2, 0., 0., 0.]):
         self._absorbing = False
@@ -143,7 +142,7 @@ class Acrobot(Environment):
         counter = 0
         for theta1 in states:
             self._reset([theta1, 0., 0., 0.])
-            J = self._runEpisode(fqi, expReplay, render)[0]
+            J = self.runEpisode(fqi, expReplay, render)[0]
 
             discRewards[counter] = J
             counter += 1

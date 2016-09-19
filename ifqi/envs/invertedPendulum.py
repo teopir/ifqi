@@ -2,16 +2,23 @@ import numpy as np
 
 from environment import Environment
 
+
 class InvPendulum(Environment):
     """
     The Inverted Pendulum environment.
-    
+
     """
     def __init__(self):
         """
         Constructor.
-        
+
         """
+        # Properties
+        self.stateDim = 2
+        self.actionDim = 1
+        self.nStates = 0
+        self.nActions = 3
+        # self.horizon = 100.
         # State
         self._theta = 0.
         self._theta_dot = 0.
@@ -29,20 +36,23 @@ class InvPendulum(Environment):
         # Time_step
         self._dt = 0.1
         # Discount factor
-        self.gamma=.95
-    
+        self.gamma = .95
+
     def _step(self, u, render=False):
         act = u * 50. - 50.
-        n_u = act  +  2 * self._noise * np.random.rand() - self._noise
-        
-        a = self._g * np.sin(self._theta) - self._alpha * self._m * self._l * self._theta_dot**2 * np.sin(2 * self._theta) / 2. - self._alpha * np.cos(self._theta) * n_u
-        b = 4. *self._l / 3. - self._alpha * self._m * self._l * (np.cos(self._theta)) ** 2
-        
+        n_u = act + 2 * self._noise * np.random.rand() - self._noise
+
+        a = self._g * np.sin(self._theta) - self._alpha * self._m * \
+            self._l * self._theta_dot**2 * np.sin(2 * self._theta) / 2. - \
+            self._alpha * np.cos(self._theta) * n_u
+        b = 4. * self._l / 3. - self._alpha * self._m * self._l * \
+            (np.cos(self._theta)) ** 2
+
         theta_ddot = a/b
-    
+
         self._theta_dot = self._theta_dot + self._dt * theta_ddot
         self._theta = self._theta + self._dt * self._theta_dot
-        
+
         if(np.abs(self._theta) > self._angleMax):
             self._absorbing = True
             return -1
@@ -50,13 +60,13 @@ class InvPendulum(Environment):
             return 0
 
     def _reset(self, state=None):
-        self._absorbing=False
+        self._absorbing = False
         self._theta = 0
         self._theta_dot = 0
-        
+
     def _getState(self):
         return [self._theta, self._theta_dot]
-        
+
     def evaluate(self, fqi, expReplay=False, render=False):
         """
         This function evaluates the regressor in the provided object parameter.
@@ -64,9 +74,10 @@ class InvPendulum(Environment):
         Params:
             fqi (object): an object containing the trained regressor
             expReplay (bool): flag indicating whether to do experience replay
-            render (bool): flag indicating whether to render visualize behavior of the agent
+            render (bool): flag indicating whether to render visualize behavior
+                           of the agent
         Returns:
             ...
-        
+
         """
         pass

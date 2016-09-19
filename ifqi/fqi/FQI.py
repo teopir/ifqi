@@ -22,37 +22,42 @@ class FQI:
         horizon (int): horizon
         scaled (bool): true if the input/output are normalized
         verbose (int): verbosity level
-    
+
     """
 
-    def __init__(self, estimator, state_dim, action_dim,
-                 discrete_actions,
+    def __init__(self, estimator, stateDim, actionDim,
+                 discreteActions,
                  gamma=0.9, horizon=10,
                  scaled=False, features=None, verbose=0):
         self.estimator = estimator
         self.gamma = gamma
         self.horizon = horizon
 
-        self.state_dim = state_dim
-        self.action_dim = action_dim
+        self.stateDim = stateDim
+        self.actionDim = actionDim
 
         self.verbose = verbose
-        if isinstance(discrete_actions, np.ndarray):
-            assert discrete_actions.shape[1] == action_dim
-            assert discrete_actions.shape[0] > 1
-            self._actions = discrete_actions
-        elif isinstance(discrete_actions, list):
-            assert len(discrete_actions) > 1, 'Error: at least two actions are required'
-            self._actions = np.array(discrete_actions, dtype='float32').reshape(-1, action_dim)
+        if isinstance(discreteActions, np.ndarray):
+            assert discreteActions.shape[1] == actionDim
+            assert discreteActions.shape[0] > 1
+            self._actions = discreteActions
+        elif isinstance(discreteActions, list):
+            assert len(discreteActions) > 1, \
+                'Error: at least two actions are required'
+            self._actions = np.array(
+                discreteActions, dtype='float32').reshape(-1, actionDim)
         else:
-            raise ValueError('Supported types for discrete_actions are {np.darray, list, int}')
+            raise ValueError(
+                'Supported types for discrete_actions are \
+                {np.darray, list, int}')
 
         self.__name__ = "FittedQIteration"
         self.iteration = 0
         self.scaled = scaled
-        self.features = selectFeatures(features) if features is not None else features
+        self.features = \
+            selectFeatures(features) if features is not None else features
 
-    def _check_states(self, X, copy=True):
+    def _checkStates(self, X, copy=True):
         """
         Check the correctness of the matrix containing the dataset.
         Args:
@@ -60,11 +65,11 @@ class FQI:
             copy (bool): ...
         Returns:
             The matrix containing the dataset reshaped in the proper way.
-        
-        """
-        return X.reshape(-1, self.state_dim)
 
-    def _preprocess_data(self, sast=None, r=None):
+        """
+        return X.reshape(-1, self.stateDim)
+
+    def _preprocessData(self, sast=None, r=None):
         """
         Function to normalize data.
         Args:
@@ -76,13 +81,13 @@ class FQI:
         if sast is not None and r is not None:
             # get number of samples
             nSamples = sast.shape[0]
-            action_pos = self.state_dim
-            nextstate_pos = self.state_dim + self.action_dim
-            absorbing_pos = nextstate_pos + self.state_dim
+            actionPos = self.stateDim
+            nextstatePos = self.stateDim + self.actionDim
+            absorbingPos = nextstatePos + self.stateDim
 
-            sa = np.copy(sast[:, 0:nextstate_pos]).reshape(nSamples, -1)
-            snext = sast[:, nextstate_pos:absorbing_pos].reshape(nSamples, -1)
-            absorbing = sast[:, absorbing_pos]
+            sa = np.copy(sast[:, 0:nextstatePos]).reshape(nSamples, -1)
+            snext = sast[:, nextstatePos:absorbingPos].reshape(nSamples, -1)
+            absorbing = sast[:, absorbingPos]
 
             if self.scaled and self.iteration == 0:
                 # create scaler and fit it
@@ -97,17 +102,17 @@ class FQI:
             self.absorbing = absorbing
             self.r = r
 
-    def _partial_fit(self, sast=None, r=None, **kwargs):
+    def _partialFit(self, sast=None, r=None, **kwargs):
         """
         Perform a step of FQI.
         Args:
             sast (numpy.array): the input in the dataset
             r (numpy.array): the output in the dataset
-            
+
         Returns:
             the preprocessed input and output
         """
-        self._preprocess_data(sast, r)
+        self._preprocessData(sast, r)
 
         # check if the estimator change the structure at each iteration
         adaptive = False
@@ -141,8 +146,8 @@ class FQI:
     def _fit(self, sast, r, **kwargs):
         '''
         :param sast: array-like, [nbsamples x nfeatures]
-         Note that it stores the state, action, nextstate and absorbing flag, this means that
-         nfeatures = state_dim*2 + action_dim + 1
+         Note that it stores the state, action, nextstate and absorbing flag,
+         this means that nfeatures = state_dim*2 + action_dim + 1
         :param r: array-like, [nbsamples x 1]
          Note it stores the reward function associated to the transition sas
         :return: None
@@ -169,7 +174,7 @@ class FQI:
         Returns:
             the highest Q-value and the associated action
         """
-        newstate = self._check_states(states, copy=True)
+        newstate = self._checkStates(states, copy=True)
         nbstates = newstate.shape[0]
 
         if absorbing is None:
@@ -177,7 +182,7 @@ class FQI:
 
         Q = np.zeros((nbstates, self._actions.shape[0]))
         for idx in range(self._actions.shape[0]):
-            a = self._actions[idx, :].reshape(1, self.action_dim)
+            a = self._actions[idx, :].reshape(1, self.actionDim)
             actions = np.matlib.repmat(a, nbstates, 1)
 
             # concatenate [newstate, action] and scalarize them
@@ -210,18 +215,18 @@ class FQI:
 
         return rQ, rA
 
-    def partial_fit(self, X, y, **kwargs):
+    def partialFit(self, X, y, **kwargs):
         """
         Perform a step of FQI.
         Args:
             X (numpy.array): the input in the dataset
             y (numpy.array): the output in the dataset
-            
+
         Returns:
             the FQI object after one step
-            
+
         """
-        self._partial_fit(X, y, **kwargs)
+        self._partialFit(X, y, **kwargs)
         return self
 
     """
@@ -238,10 +243,11 @@ class FQI:
             states (numpy.array): the current state
         Returns:
             the argmax and the max Q value
-            
+
         """
         if self.iteration == 0:
-            raise ValueError('The model must be trained before to be evaluated')
+            raise ValueError(
+                'The model must be trained before being evaluated')
 
         maxQ, maxa = self.maxQA(states)
         return maxa, maxQ
@@ -249,7 +255,7 @@ class FQI:
     def reset(self):
         """
         Reset FQI.
-        
+
         """
         self.iteration = 0
         self.sa = None

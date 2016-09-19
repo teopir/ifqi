@@ -16,10 +16,10 @@ class Environment(object):
 
         """
         # Properties
-        self.state_dim = None
-        self.action_dim = None
-        self.n_states = None
-        self.n_actions = None
+        self.stateDim = None
+        self.actionDim = None
+        self.nStates = None
+        self.nActions = None
         self.horizon = None
         # End episode
         self._atGoal = None
@@ -42,11 +42,11 @@ class Environment(object):
         """
         pass
 
-    def _runEpisode(self, fqi, expReplay=False, render=False):
+    def runEpisode(self, fqi, collect, render=False):
         """
         This function runs an episode using the regressor in the provided
         object parameter.
-        Params:
+        Args:
             fqi (object): an object containing the trained regressor
             expReplay (bool): flag indicating whether to do experience replay
             render (bool): flag indicating whether to render visualize behavior
@@ -61,40 +61,47 @@ class Environment(object):
         """
         J = 0
         t = 0
-        test_succesful = 0
+        testSuccessful = 0
 
-        if expReplay:
-            state_list = list()
-            action_list = list()
-            reward_list = list()
+        if collect:
+            stateList = list()
+            actionList = list()
+            rewardList = list()
             while(t < self.horizon and not self._isAbsorbing()):
                 state = self._getState()
-                state_list.append(state)
-                action, _ = fqi.predict(np.array(state))
-                action_list.append(action)
-                r = self._step(int(action[0]), render=render)
-                reward_list.append(r)
-                J += self.gamma ** t * r
-                t += 1
+                stateList.append(state)
+                if fqi is None:
+                    action = np.random.choice(fqi._actions)
+                    action_list.append(action)
+                    r = self._step(int(action[0]), render=render)
+                    rewardList.append(r)
+                    t += 1
+                else:
+                    action, _ = fqi.predict(np.array(state))
+                    action_list.append(action)
+                    r = self._step(int(action[0]), render=render)
+                    rewardList.append(r)
+                    J += self.gamma ** t * r
+                    t += 1
 
-            if self._isAtGoal():
-                test_succesful = 1
-                print("Goal reached")
-            else:
-                print("Failure")
+                    if self._isAtGoal():
+                        testSuccessful = 1
+                        print("Goal reached")
+                    else:
+                        print("Failure")
 
             state = self._getState()
-            state_list.append(state)
+            stateList.append(state)
 
-            s = np.array(state_list)
-            a = np.array(action_list)
+            s = np.array(stateList)
+            a = np.array(actionList)
             s1 = s[1:]
             s = s[:-1]
             t = np.array([[0] * (s.shape[0] - 1) + [1]]).T
-            r = np.array(reward_list)
+            r = np.array(rewardList)
             sast = np.concatenate((s, a, s1, t), axis=1)
 
-            return (J, t, test_succesful, sast, r)
+            return (J, t, testSuccessful, sast, r)
         else:
             while(t < self.horizon and not self._isAbsorbing()):
                 state = self._getState()
@@ -105,9 +112,9 @@ class Environment(object):
 
                 if self._isAtGoal():
                     print('Goal reached')
-                    test_succesful = 1
+                    testSuccessful = 1
 
-            return (J, t, test_succesful)
+            return (J, t, testSuccessful)
 
     @abstractmethod
     def _step(self, u, render=False):
