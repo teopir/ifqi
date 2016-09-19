@@ -11,6 +11,7 @@ from ifqi.envs.acrobot import Acrobot
 from ifqi.envs.bicycle import Bicycle
 from ifqi.envs.swingPendulum import SwingPendulum
 from ifqi.envs.cartPole import CartPole
+from ifqi.envs.lqg1d import LQG1D
 
 
 class Experiment(object):
@@ -25,52 +26,54 @@ class Experiment(object):
         Constructor.
         Args:
             config_file (str): the name of the configuration file.
-        
+
         """
         with open(config_file) as f:
             self.config = json.load(f)
-        
+
         self.mdp = self._getMDP()
-        
+
     def loadModel(self):
         self.model = self._getModel()
-    
+
     def _getModel(self):
         """
         This function loads the model required in the configuration file.
         Returns:
             the required model.
-        
+
         """
         model_config = self.config['model']
         if model_config['model_name'] == 'ExtraTree':
             model = ExtraTreesRegressor
-            params = {'n_estimators':model_config['n_estimators'],
-                                        'criterion':self.config['supervised_algorithm']['criterion'],
-                                        'min_samples_split':model_config['min_samples_split'],
-                                        'min_samples_leaf':model_config['min_samples_leaf']}
+            params = {'n_estimators': model_config['n_estimators'],
+                      'criterion': self.config['supervised_algorithm']
+                                              ['criterion'],
+                      'min_samples_split': model_config['min_samples_split'],
+                      'min_samples_leaf': model_config['min_samples_leaf']}
         elif model_config['model_name'] == 'ExtraTreeEnsemble':
             model = ExtraTreeEnsemble
-            params = {'n_estimators':model_config['n_estimators'],
-                                      'criterion':self.config['supervised_algorithm']['criterion'],
-                                      'min_samples_split':model_config['min_samples_split'],
-                                      'min_samples_leaf':model_config['min_samples_leaf']}
+            params = {'n_estimators': model_config['n_estimators'],
+                      'criterion': self.config['supervised_algorithm']
+                                              ['criterion'],
+                      'min_samples_split': model_config['min_samples_split'],
+                      'min_samples_leaf': model_config['min_samples_leaf']}
         elif model_config['model_name'] == 'MLP':
             model = MLP
-            params = {'n_input':self.mdp.state_dim,
-                        'n_output':1,
-                        'hidden_neurons':model_config['n_hidden_neurons'],
-                        'n_layers':model_config['n_layers'],
-                        'optimizer':model_config['optimizer'],
-                        'activation':model_config['activation']}
+            params = {'n_input': self.mdp.state_dim,
+                      'n_output': 1,
+                      'hidden_neurons': model_config['n_hidden_neurons'],
+                      'n_layers': model_config['n_layers'],
+                      'optimizer': model_config['optimizer'],
+                      'activation': model_config['activation']}
         elif model_config['model_name'] == 'MLPEnsemble':
             model = MLPEnsemble
-            params = {'n_input':self.mdp.state_dim,
-                                'n_output':1,
-                                'hidden_neurons':model_config['n_hidden_neurons'],
-                                'n_layers':model_config['n_layers'],
-                                'optimizer':model_config['optimizer'],
-                                'activation':model_config['activation']}
+            params = {'n_input': self.mdp.state_dim,
+                      'n_output': 1,
+                      'hidden_neurons': model_config['n_hidden_neurons'],
+                      'n_layers': model_config['n_layers'],
+                      'optimizer': model_config['optimizer'],
+                      'activation': model_config['activation']}
         elif model_config['model_name'] == 'Linear':
             model = LinearRegression
             params = {}
@@ -81,13 +84,13 @@ class Experiment(object):
             raise ValueError('Unknown estimator type.')
 
         return ActionRegressor(model, self.mdp.n_actions, **params)
-        
+
     def _getMDP(self):
         """
         This function loads the mdp required in the configuration file.
         Returns:
             the required mdp.
-        
+
         """
         if self.config['mdp']['mdp_name'] == 'CarOnHill':
             return CarOnHill()
@@ -103,5 +106,7 @@ class Experiment(object):
             return SwingPendulum()
         elif self.config["mdp"]["mdp_name"] == "CartPole":
             return CartPole()
+        elif self.config["mdp"]["mdp_name"] == "LQG1D":
+            return LQG1D()
         else:
             raise ValueError('Unknown mdp type.')

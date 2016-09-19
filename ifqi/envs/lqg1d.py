@@ -7,16 +7,18 @@ import numpy as np
 from environment import Environment
 
 """
-Linear quadratic gaussian regulator task
+Linear quadratic gaussian regulator task.
 
 References
 ----------
-  - Simone Parisi, Matteo Pirotta, Nicola Smacchia, Luca Bascetta, Marcello Restelli,
+  - Simone Parisi, Matteo Pirotta, Nicola Smacchia,
+    Luca Bascetta, Marcello Restelli,
     Policy gradient approaches for multi-objective sequential decision making
     2014 International Joint Conference on Neural Networks (IJCNN)
   - J.  Peters  and  S.  Schaal,
     Reinforcement  learning of motor  skills  with  policy  gradients,
-    Neural  Networks,vol. 21, no. 4, pp. 682–697, 2008.
+    Neural  Networks, vol. 21, no. 4, pp. 682-697, 2008.
+
 """
 
 # #classic_control
@@ -26,7 +28,8 @@ References
 #     timestep_limit=300,
 # )
 
-class LQG1DEnv(gym.Env, Environment):
+
+class LQG1D(gym.Env, Environment):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 30
@@ -43,7 +46,9 @@ class LQG1DEnv(gym.Env, Environment):
         self.viewer = None
 
         high = np.array([self.max_pos])
-        self.action_space = spaces.Box(low=-self.max_action, high=self.max_action, shape=(1,))
+        self.action_space = spaces.Box(low=-self.max_action,
+                                       high=self.max_action,
+                                       shape=(1,))
         self.observation_space = spaces.Box(low=-high, high=high)
 
         self._seed()
@@ -57,15 +62,21 @@ class LQG1DEnv(gym.Env, Environment):
         u = np.clip(action, -self.max_action, self.max_action)
         noise = np.random.randn() * self.sigma_noise
         xn = np.dot(self.A, self.state) + np.dot(self.b, u) + noise
-        cost = np.dot(self.state, np.dot(self.Q, self.state)) + np.dot(u, np.dot(self.R, u))
+        cost = np.dot(self.state,
+                      np.dot(self.Q, self.state)) + np.dot(u, np.dot(self.R,
+                                                                     u))
         # print(self.state, u, noise, xn, cost)
 
         self.state = xn
-        return xn, -cost, False, {}
+        # return xn, -cost, False, {}
+        return -cost
 
     def _reset(self, state=None):
         self.state = np.array([self.np_random.uniform(low=-10, high=-10)])
         return np.array(self.state)
+
+    def _getState(self):
+        return self.state
 
     def _render(self, mode='human', close=False):
         if close:
@@ -95,7 +106,8 @@ class LQG1DEnv(gym.Env, Environment):
             self.track = rendering.Line((0, bally), (screen_width, bally))
             self.track.set_color(0.5, 0.5, 0.5)
             self.viewer.add_geom(self.track)
-            zero_line = rendering.Line((screen_width / 2, 0), (screen_width / 2, screen_height))
+            zero_line = rendering.Line((screen_width / 2, 0),
+                                       (screen_width / 2, screen_height))
             zero_line.set_color(0.5, 0.5, 0.5)
             self.viewer.add_geom(zero_line)
 
@@ -104,3 +116,21 @@ class LQG1DEnv(gym.Env, Environment):
         self.masstrans.set_translation(ballx, bally)
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
+
+    def evaluate(self, fqi, expReplay=False, render=False):
+        """
+        This function evaluates the regressor in the provided object
+        parameter.
+        This way of evaluation is just one of many possible ones.
+        Params:
+            fqi (object): an object containing the trained regressor
+            expReplay (bool): flag indicating whether to do experience
+                              replay
+            render (bool): flag indicating whether to render visualize
+                           behavior of the agent
+        Returns:
+            a numpy array containing results of the episode
+
+        """
+        self._reset()
+        return self._runEpisode(fqi, expReplay, render)
