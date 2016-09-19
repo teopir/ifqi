@@ -112,6 +112,27 @@ retreiveParams()
 
 datasets = list(folder+str(num) for folder in dataset_folders for num in range(0,n_dataset))
 
+def camelize(dic, key=False):
+    if isinstance(dic,dict):
+        ret = {}
+        for key in dic:
+            ret[camelize(key, key=True)] = camelize(dic[key])
+        return ret
+    elif key:
+        ret = ""
+        cam = False
+        for letter in dic:
+            if letter=="_":
+                cam=True
+            elif cam:
+                ret+=letter.upper()
+                cam=False
+            else:
+                ret+=letter
+        return ret
+    else:
+        return dic
+        
 
 json_file = {
     "experiment": {
@@ -186,7 +207,7 @@ if model_name == "Linear" or model_name == "LinearEnsemble":
     }
     
 with open("results/" + save_path + ".json", 'w') as fp:
-    json.dump(json_file, fp)
+    json.dump(camelize(json_file), fp)
 
 cmd = "python experimentThreadManager.py " + save_path + ".json" + " " +  str(nThread) + " " + str(add_last)
 os.system(cmd)

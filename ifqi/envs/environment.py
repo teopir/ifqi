@@ -107,7 +107,7 @@ class Environment(object):
                 state = self._getState()
                 stateList.append(state)
                 action, _ = fqi.predict(np.array(state))
-                action_list.append(action)
+                actionList.append(action)
                 r = self._step(int(action[0]), render=render)
                 rewardList.append(r)
                 J += self.gamma ** t * r

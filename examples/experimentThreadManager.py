@@ -60,24 +60,13 @@ if __name__ == '__main__':
     exp = Experiment(config_file)
 
     if not add_last=='True':
-        name = raw_input("Please define the name of the new experiment")
-        description = raw_input("Please write a description of the experiment")
-        
-    if 'MLP' in exp.config['model']['model_name']:
-    
-        fit_params = {'nb_epoch': exp.config['supervised_algorithm']['n_epochs'],
-                      'batch_size': exp.config['supervised_algorithm']['batch_size'],
-                      'validation_split': exp.config['supervised_algorithm']['validation_split'],
-                      'verbose': exp.config['supervised_algorithm']['verbosity']
-                      }
-    else:
-        fit_params = dict()
+        name = raw_input("Please define the name of the new experiment: ")
+        description = raw_input("Please write a description of the experiment: ")
 
-    """score = np.zeros((exp.config['experiment_setting']['n_experiments'],
-                      exp.config['experiment_setting']['n_datasets']))"""
+
     commands = []
-    for d in exp.config['experiment_setting']['datasets']:
-        for e in range(exp.config['experiment_setting']['n_experiments']):
+    for d in exp.config['experimentSetting']['datasets']:
+        for e in range(exp.config['experimentSetting']['nExperiments']):
             commands.append(["python","experimentThread.py" , config_file , str(d) ,  str(e)])
     
     execute(commands,nThread,10.)

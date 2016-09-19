@@ -15,7 +15,8 @@ Single thread of experimentThreadManager
 
 from ifqi.experiment import Experiment
 from ifqi.fqi.FQI import FQI
-import ifqi.utils.parser as parser
+from ifqi.utils.parser import loadReLeDataset
+from ifqi.utils.datasetCollector import loadIfqiDataset
 
 """
 save the variable
@@ -42,19 +43,19 @@ e = int(sys.argv[3])
 
 exp = Experiment(config_file)
 
-if 'MLP' in exp.config['model']['model_name']:
-    fit_params = {'nb_epoch': exp.config['supervised_algorithm']['n_epochs'],
-                  'batch_size': exp.config['supervised_algorithm']['batch_size'],
-                  'validation_split': exp.config['supervised_algorithm']['validation_split'],
-                  'verbose': exp.config['supervised_algorithm']['verbosity']
+if 'MLP' in exp.config['model']['modelName']:
+    fit_params = {'nb_epoch': exp.config['supervisedAlgorithm']['nEpochs'],
+                  'batch_size': exp.config['supervisedAlgorithm']['batchSize'],
+                  'validation_split': exp.config['supervisedAlgorithm']['validationSplit'],
+                  'verbose': exp.config['supervisedAlgorithm']['verbosity']
                   }
 else:
     fit_params = dict()
     
-data, state_dim, action_dim, reward_dim = parser.parseReLeDataset(
-        '../dataset/' + exp.config['experiment_setting']['load_path'] + "/"+ d + '.txt')
-assert(state_dim == exp.mdp.state_dim)
-assert(action_dim == exp.mdp.action_dim)
+data, state_dim, action_dim, reward_dim = loadReLeDataset(
+        '../dataset/' + exp.config['experimentSetting']['loadPath'] + "/"+ d + '.txt')
+assert(state_dim == exp.mdp.stateDim)
+assert(action_dim == exp.mdp.actionDim)
 assert(reward_dim == 1)
 
 rewardpos = state_dim + action_dim
@@ -73,7 +74,7 @@ if 'features' in exp.config['model']:
 else:
     features = None
 
-dir_ = "results/" + exp.config["experiment_setting"]["save_path"]
+dir_ = "results/" + exp.config["experimentSetting"]["savePath"]
 
 #-----------------------------------------------------------------------------
 # FQI Loading
@@ -81,14 +82,14 @@ dir_ = "results/" + exp.config["experiment_setting"]["save_path"]
 
 if not os.path.isfile(dir_ + "/" +  d + "_" + str(e) + ".pkl"):    #if no fqi present in the directory
     fqi = FQI(estimator=exp.model,
-          state_dim=state_dim,
-          action_dim=action_dim,
-          discrete_actions=range(exp.mdp.n_actions),
-          gamma=exp.config['rl_algorithm']['gamma'],
-          horizon=exp.config['rl_algorithm']['horizon'],
-          verbose=exp.config['rl_algorithm']['verbosity'],
+          stateDim=state_dim,
+          actionDim=action_dim,
+          discreteActions=range(exp.mdp.nActions),
+          gamma=exp.config['rlAlgorithm']['gamma'],
+          horizon=exp.config['rlAlgorithm']['horizon'],
+          verbose=exp.config['rlAlgorithm']['verbosity'],
           features=features,
-          scaled=exp.config['rl_algorithm']['scaled'])
+          scaled=exp.config['rlAlgorithm']['scaled'])
     fqi.partial_fit(sast[:], r[:], **fit_params)
     min_t = 1
 else:
@@ -102,7 +103,7 @@ else:
 
 
 replay_experience = False
-for t in range(min_t, exp.config['rl_algorithm']['n_iterations']):
+for t in range(min_t, exp.config['rlAlgorithm']['nIterations']):
     
     # Partial fit 
     if replay_experience:
@@ -112,10 +113,10 @@ for t in range(min_t, exp.config['rl_algorithm']['n_iterations']):
         fqi.partial_fit(None, None, **fit_params)
         
     
-    if "save_iteration"  in exp.config['experiment_setting']:
+    if "saveIteration"  in exp.config['experimentSetting']:
         
         
-        if t % exp.config['experiment_setting']["save_iteration"] == 0:
+        if t % exp.config['experimentSetting']["saveIteration"] == 0:
             print("Start evaluation")
             
             score, step, goal = exp.mdp.evaluate(fqi, expReplay=False)
@@ -129,7 +130,7 @@ for t in range(min_t, exp.config['rl_algorithm']['n_iterations']):
     #--------------------------------------------------------------------------
     # SAVE FQI STATUS
     #--------------------------------------------------------------------------
-    if t % exp.config['experiment_setting']["save_fqi"] == 0:
+    if t % exp.config['experimentSetting']["saveFqi"] == 0:
         directory =os.path.dirname(dir_ + "/" + d + "_" + str(e) + ".pkl")
         if not os.path.isdir(directory): os.makedirs(directory)
         cPickle.dump({'fqi':fqi,'t':t},open(dir_ + "/" + d + "_" + str(e) + ".pkl", "wb"))
@@ -138,10 +139,10 @@ for t in range(min_t, exp.config['rl_algorithm']['n_iterations']):
     # Experience Replay
     #--------------------------------------------------------------------------
         
-    if "experience_replay" in exp.config['experiment_setting']:
-        if t % exp.config['experiment_setting']["experience_replay"] == 0:
+    if "experienceReplay" in exp.config['experimentSetting']:
+        if t % exp.config['experimentSetting']["experienceReplay"] == 0:
             print ("init experience replay")
-            for _ in xrange(exp.config['experiment_setting']["n_replay"]):
+            for _ in xrange(exp.config['experimentSetting']["nReplay"]):
                 
                 score, step, goal, sast_temp, r_temp = exp.mdp.evaluate(fqi, expReplay=True)
             
