@@ -5,7 +5,7 @@ from gymEnv import GymEnv
 
 
 class CartPole(GymEnv):
-    def __init__(self):
+    def __init__(self, discreteRew=False):
         self.env = gym.make('CartPole-v0')
         self.env.reset()
         self.stateDim = 4
@@ -17,6 +17,7 @@ class CartPole(GymEnv):
         self._absorbing = False
         self._atGoal = False
         self._nextState = [0., 0., 0., 0.]
+        self._discreteRew=discreteRew
 
     def _reset(self):
         self._nextState = [0., 0., 0., 0.]
@@ -27,17 +28,22 @@ class CartPole(GymEnv):
     def _step(self, action, render=False):
         if render:
             self.env.render()
-        nextState, _, absorbing, info = self.env.step(int(action[0]))
+            
+        if isinstance(action, int):
+            nextState, reward, absorbing, info = self.env.step(action)
+        else:
+            nextState, reward, absorbing, info = self.env.step(int(action[0]))
 
         x = nextState[0]
         theta = nextState[2]
-
-        theta_rew = (math.cos(theta) -
-                     math.cos(self.env.theta_threshold_radians)) / (
-                     1. - math.cos(self.env.theta_threshold_radians))
-        x_rew = - abs(x / (self.env.x_threshold))
-        reward = theta_rew + x_rew
-
+        
+        if not self._discreteRew:
+            theta_rew = (math.cos(theta) -
+                         math.cos(self.env.theta_threshold_radians)) / (
+                         1. - math.cos(self.env.theta_threshold_radians))
+            x_rew = - abs(x / (self.env.x_threshold))
+            reward = theta_rew + x_rew
+        
         self._nextState = nextState
         self._absorbing = absorbing
 

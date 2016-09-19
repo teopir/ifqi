@@ -59,6 +59,8 @@ class Experiment(object):
             return SwingPendulum()
         elif self.config["mdp"]["mdpName"] == "CartPole":
             return CartPole()
+        elif self.config["mdp"]["mdpName"] == "CartPoleDisc":
+            return CartPole(discreteRew=True)
         elif self.config["mdp"]["mdpName"] == "LQG1D":
             return LQG1D()
         else:

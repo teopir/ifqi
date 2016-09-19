@@ -59,6 +59,10 @@ if __name__ == '__main__':
     add_last = sys.argv[3]
     exp = Experiment(config_file)
 
+    if not add_last=='True':
+        name = raw_input("Please define the name of the new experiment")
+        description = raw_input("Please write a description of the experiment")
+        
     if 'MLP' in exp.config['model']['model_name']:
     
         fit_params = {'nb_epoch': exp.config['supervised_algorithm']['n_epochs'],
@@ -96,9 +100,9 @@ if __name__ == '__main__':
         diary[-1] = last_exp
     else:
         diaryExperiment = {
-        "name":"",
+        "name":name,
         "date":strftime("%d-%m-%Y %H:%M:%S", gmtime()),
-        "description":"",
+        "description":description,
         "jsonFile":[config_file],
         "images":[],
         "postComment":"",
