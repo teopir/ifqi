@@ -1,4 +1,5 @@
 import gym
+import math
 
 from gymEnv import GymEnv
 
@@ -9,6 +10,7 @@ class CartPole(GymEnv):
         self.state_dim = 4
         self.action_dim = 1        
         self.n_actions = 2  
+        self.horizon = 400
         self.gamma = 0.99
         self._absorbing = False
         self._atGoal = False
@@ -23,7 +25,15 @@ class CartPole(GymEnv):
     def _step(self, action, render=False):
         if render:
             self.env.render()
-        nextState, reward, absorbing, info = self.env.step(action)
+        nextState, _, absorbing, info = self.env.step(int(action[0]))
+        
+        x = nextState[0]
+        theta = nextState[2]
+        
+        theta_rew = (math.cos(theta) - math.cos(self.env.theta_threshold_radians)) / (1. - math.cos(self.env.theta_threshold_radians))
+        x_rew = - abs(x / (self.env.x_threshold))
+        reward = theta_rew + x_rew
+        
         self._nextState = nextState
         self._absorbing = absorbing
 

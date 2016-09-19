@@ -2,6 +2,8 @@ from __future__ import print_function
 import os
 import sys
 import time
+import json
+from time import gmtime, strftime
 
 
 sys.path.append(os.path.abspath('../'))
@@ -15,7 +17,6 @@ from random import shuffle
 
 
 """
-This script can be used to launch experiments using settings
 provided in a json configuration file.
 The script computes and save the performance of the algorithm
 and model in the selected environment averaging on different
@@ -54,11 +55,13 @@ def execute(commands, nThread, refresh_time=10.,shuffled=False):
         print("All sample executed")
 
 if __name__ == '__main__':
-    config_file = sys.argv[1]
+    config_file = "results/" + sys.argv[1]
     nThread = int(sys.argv[2])
+    add_last = sys.argv[3]
     exp = Experiment(config_file)
 
     if 'MLP' in exp.config['model']['model_name']:
+    
         fit_params = {'nb_epoch': exp.config['supervised_algorithm']['n_epochs'],
                       'batch_size': exp.config['supervised_algorithm']['batch_size'],
                       'validation_split': exp.config['supervised_algorithm']['validation_split'],
@@ -75,3 +78,37 @@ if __name__ == '__main__':
             commands.append(["python","experimentThread.py" , config_file , str(d) ,  str(e)])
     
     execute(commands,nThread,10.)
+    
+    #--------------------------------------------------------------------------
+    # DiaryExperiment
+    #--------------------------------------------------------------------------
+    
+    
+    
+    try:
+        with open("results/diary.json", 'r') as fp:
+            diary = json.load(fp)
+    except:
+        diary = []
+    
+    if add_last=='True':
+        last_exp = diary[-1]
+        last_exp["jsonFile"].append(config_file)
+        diary[-1] = last_exp
+    else:
+        diaryExperiment = {
+        "name":"",
+        "date":strftime("%d-%m-%Y %H:%M:%S", gmtime()),
+        "description":"",
+        "jsonFile":[config_file],
+        "images":[],
+        "postComment":"",
+        "importance":""
+        }
+        diary.append(diaryExperiment)
+    
+    with open("results/diary.json", 'w') as fp:
+        json.dump(diary,fp)
+    
+    
+    

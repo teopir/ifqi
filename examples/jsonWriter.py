@@ -104,6 +104,9 @@ min_samples_leaf=8
 criterion="mse"
 save_iteration=1000
 nThread = 4
+experience_replay=10
+n_replay=100
+add_last=False
 
 retreiveParams()
 
@@ -121,7 +124,9 @@ json_file = {
         "datasets":datasets,
         "n_experiments":n_experiments,
         "save_iteration":save_iteration,
-        "save_fqi":save_fqi
+        "save_fqi":save_fqi,
+        "experience_replay":experience_replay,
+        "n_replay":n_replay
     },
     "model":{
         "model_name":model_name,
@@ -180,8 +185,8 @@ if model_name == "Linear" or model_name == "LinearEnsemble":
         "criterion":criterion    
     }
     
-with open(json_path, 'w') as fp:
+with open("results/" + save_path + ".json", 'w') as fp:
     json.dump(json_file, fp)
 
-cmd = "python experimentThreadManager.py " + json_path + " " +  str(nThread)
+cmd = "python experimentThreadManager.py " + save_path + ".json" + " " +  str(nThread) + " " + str(add_last)
 os.system(cmd)

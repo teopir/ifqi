@@ -97,7 +97,7 @@ class Environment(object):
             while(t < self.horizon and not self._isAbsorbing()):
                 state = self._getState()
                 action, _ = fqi.predict(np.array(state))
-                position, velocity, r = self._step(action, render=render)
+                r = self._step(action, render=render)
                 J += self.gamma ** t * r
                 t += 1
                 

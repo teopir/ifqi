@@ -27,7 +27,7 @@ var_anme: name of the variable to save
 var: content of the variable
 """
 def saveVariable(dir_,d,e,t,var_name,var):
-    directory =os.path.dirname(dir_+ "/" + "goal_" + d + "_" + str(e) + "_" + str(t) + ".npy")
+    directory =os.path.dirname(dir_+ "/" + var_name + "_" +  d + "_" + str(e) + "_" + str(t) + ".npy")
     if not os.path.isdir(directory): os.makedirs(directory)
     np.save(dir_+ "/" + var_name +"_"+  d + "_" + str(e) + "_" + str(t), var)
     
@@ -73,7 +73,7 @@ if 'features' in exp.config['model']:
 else:
     features = None
 
-dir_ =exp.config["experiment_setting"]["save_path"]
+dir_ = "results/" + exp.config["experiment_setting"]["save_path"]
 
 #-----------------------------------------------------------------------------
 # FQI Loading
@@ -83,7 +83,7 @@ if not os.path.isfile(dir_ + "/" +  d + "_" + str(e) + ".pkl"):    #if no fqi pr
     fqi = FQI(estimator=exp.model,
           state_dim=state_dim,
           action_dim=action_dim,
-          discrete_actions=exp.mdp.n_actions,
+          discrete_actions=range(exp.mdp.n_actions),
           gamma=exp.config['rl_algorithm']['gamma'],
           horizon=exp.config['rl_algorithm']['horizon'],
           verbose=exp.config['rl_algorithm']['verbosity'],
@@ -100,14 +100,12 @@ else:
 # FQI Iterations
 #------------------------------------------------------------------------------
 
+
 replay_experience = False
 for t in range(min_t, exp.config['rl_algorithm']['n_iterations']):
     
     # Partial fit 
     if replay_experience:
-        del fqi.sa
-        del fqi.r
-        del fqi._actions
         fqi.partial_fit(sast[:], r[:], **fit_params)
         replay_experience=False
     else:
@@ -120,11 +118,13 @@ for t in range(min_t, exp.config['rl_algorithm']['n_iterations']):
         if t % exp.config['experiment_setting']["save_iteration"] == 0:
             print("Start evaluation")
             
-            score, step, goal, sast_temp, r_temp = exp.mdp.evaluate(fqi)
+            score, step, goal = exp.mdp.evaluate(fqi, expReplay=False)
             
             saveVariable(dir_, d, e, t, "score", score)
             saveVariable(dir_, d, e, t, "step", step)
             saveVariable(dir_, d, e, t, "goal", goal)
+            
+            print("End evaluation")
             
     #--------------------------------------------------------------------------
     # SAVE FQI STATUS
@@ -143,7 +143,7 @@ for t in range(min_t, exp.config['rl_algorithm']['n_iterations']):
             print ("init experience replay")
             for _ in xrange(exp.config['experiment_setting']["n_replay"]):
                 
-                score, step, goal, sast_temp, r_temp = exp.mdp.evaluate(fqi)
+                score, step, goal, sast_temp, r_temp = exp.mdp.evaluate(fqi, expReplay=True)
             
                 np.concatenate((sast, sast_temp),axis=0)
                 np.concatenate((r, r_temp),axis=0)
@@ -162,7 +162,7 @@ for t in range(min_t, exp.config['rl_algorithm']['n_iterations']):
 #------------------------------------------------------------------------------
             
 print("Start evaluation")
-score, step, goal, sast, r = exp.mdp.evaluate(fqi)
+score, step, goal = exp.mdp.evaluate(fqi,expReplay=False)
 print("End evaluation")
 
 saveVariable(dir_, d, e, "last_", "score", score)
