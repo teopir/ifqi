@@ -5,7 +5,8 @@ import numpy as np
 
 from ifqi.experiment import Experiment
 from ifqi.fqi.FQI import FQI
-from ifqi.utils import parser
+from ifqi.utils.parser import loadReLeDataset
+from ifqi.utils.datasetCollector import loadIfqiDataset
 
 # Python 2 and 3: forward-compatible
 # from builtins import range
@@ -46,12 +47,15 @@ if __name__ == '__main__':
     for d in range(exp.config['experimentSetting']['nDatasets']):
         print('Dataset: ' + str(d))
         loadPath = exp.config['experimentSetting']['loadPath']
-        if loadPath.endswith('npy'):
-            data = np.load('../dataset/' + loadPath)
+        if loadPath.endswith('.npy'):
+            data = loadIfqiDataset(
+                path='../dataset/' + loadPath,
+                nEpisodes=(d + 1) * exp.config['experimentSetting']
+                                              ['datasetSizeStep'])
             stateDim, actionDim = exp.mdp.stateDim, exp.mdp.actionDim
             rewardDim = 1
         else:
-            data, stateDim, actionDim, rewardDim = parser.parseReLeDataset(
+            data, stateDim, actionDim, rewardDim = loadReLeDataset(
                 path='../dataset/' + loadPath,
                 nEpisodes=(d + 1) * exp.config['experimentSetting']
                                               ['datasetSizeStep']

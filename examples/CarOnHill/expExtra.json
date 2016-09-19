@@ -5,7 +5,7 @@
     },
     
     "experimentSetting": {
-        "loadPath": "coh/coh.log",
+        "loadPath": "CarOnHill/coh.npy",
         "savePath": "extraTree",
         "nDatasets": 10,
         "nExperiments": 10,

@@ -20,17 +20,20 @@ class Experiment(object):
     and mdp.
 
     """
-    def __init__(self, config_file):
+    def __init__(self, configFile=None):
         """
         Constructor.
         Args:
             config_file (str): the name of the configuration file.
 
         """
-        with open(config_file) as f:
-            self.config = json.load(f)
+        if configFile is not None:
+            with open(configFile) as f:
+                self.config = json.load(f)
 
-        self.mdp = self.getMDP()
+            self.mdp = self.getMDP()
+        else:
+            self.config = dict()
 
     def loadModel(self):
         self.model = self._getModel()

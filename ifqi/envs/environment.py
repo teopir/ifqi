@@ -42,7 +42,43 @@ class Environment(object):
         """
         pass
 
-    def runEpisode(self, fqi, collect, render=False):
+    def collect(self):
+        """
+        This function can be used to collect a dataset from the environment
+        using a random policy.
+
+        Returns:
+            - a dataset composed of:
+                - a flag indicating the beginning of an episode
+                - state
+                - action
+                - reward
+                - next state
+                - a flag indicating wheter the reached state is absorbing
+        """
+        self._reset()
+        t = 0
+        data = list()
+        while(t < self.horizon and not self._isAbsorbing()):
+            state = self._getState()
+            action = np.random.choice(np.arange(self.nActions))
+            reward = self._step(action)
+            nextState = self._getState()
+            t += 1
+
+            if not self._isAbsorbing():
+                if t < self.horizon:
+                    newEl = [0] + state + [action, reward] + nextState + [0]
+                else:
+                    newEl = [1] + state + [action, reward] + nextState + [0]
+            else:
+                newEl = [1] + state + [action, reward] + nextState + [1]
+
+            data.append(newEl)
+
+        return np.array(data)
+
+    def runEpisode(self, fqi, expReplay, render=False):
         """
         This function runs an episode using the regressor in the provided
         object parameter.
@@ -63,32 +99,25 @@ class Environment(object):
         t = 0
         testSuccessful = 0
 
-        if collect:
+        if expReplay:
             stateList = list()
             actionList = list()
             rewardList = list()
             while(t < self.horizon and not self._isAbsorbing()):
                 state = self._getState()
                 stateList.append(state)
-                if fqi is None:
-                    action = np.random.choice(fqi._actions)
-                    action_list.append(action)
-                    r = self._step(int(action[0]), render=render)
-                    rewardList.append(r)
-                    t += 1
-                else:
-                    action, _ = fqi.predict(np.array(state))
-                    action_list.append(action)
-                    r = self._step(int(action[0]), render=render)
-                    rewardList.append(r)
-                    J += self.gamma ** t * r
-                    t += 1
+                action, _ = fqi.predict(np.array(state))
+                action_list.append(action)
+                r = self._step(int(action[0]), render=render)
+                rewardList.append(r)
+                J += self.gamma ** t * r
+                t += 1
 
-                    if self._isAtGoal():
-                        testSuccessful = 1
-                        print("Goal reached")
-                    else:
-                        print("Failure")
+            if self._isAtGoal():
+                testSuccessful = 1
+                print("Goal reached")
+            else:
+                print("Failure")
 
             state = self._getState()
             stateList.append(state)
@@ -110,9 +139,11 @@ class Environment(object):
                 J += self.gamma ** t * r
                 t += 1
 
-                if self._isAtGoal():
-                    print('Goal reached')
-                    testSuccessful = 1
+            if self._isAtGoal():
+                testSuccessful = 1
+                print("Goal reached")
+            else:
+                print("Failure")
 
             return (J, t, testSuccessful)
 

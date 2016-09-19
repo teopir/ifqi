@@ -64,6 +64,7 @@ class Acrobot(Environment):
         self._theta2 = self._wrap2pi(self._theta2)
         if(d < 1):
             self._absorbing = True
+            self._atGoal = True
             return 1 - d
         else:
             return 0

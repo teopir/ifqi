@@ -4,7 +4,7 @@ import csv
 import numpy as np
 
 
-def parseReLeDataset(path, nEpisodes=None):
+def loadReLeDataset(path, nEpisodes=None):
     """
     Function to parse rele dataset and create
     a sars matrix with tuples with:

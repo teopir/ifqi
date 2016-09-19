@@ -49,7 +49,7 @@ class CarOnHill(Environment):
         else:
             return 0
 
-    def _reset(self, state=[0.5, 0]):
+    def _reset(self, state=[-0.5, 0]):
         self._absorbing = False
         self._atGoal = False
         self._position = state[0]
