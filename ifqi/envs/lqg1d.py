@@ -15,7 +15,7 @@ References
     Luca Bascetta, Marcello Restelli,
     Policy gradient approaches for multi-objective sequential decision making
     2014 International Joint Conference on Neural Networks (IJCNN)
-  - J.  Peters  and  S.  Schaal,
+  - Jan  Peters  and  Stefan  Schaal,
     Reinforcement  learning of motor  skills  with  policy  gradients,
     Neural  Networks, vol. 21, no. 4, pp. 682-697, 2008.
 

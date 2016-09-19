@@ -17,11 +17,11 @@ class FQI:
         estimator (object): the model to be trained
         state_dim (int): state dimensionality
         action_dim (int): action dimensionality
-        discrete_actions (int): number of actions
-        gamma (float): discount factor
-        horizon (int): horizon
-        scaled (bool): true if the input/output are normalized
-        verbose (int): verbosity level
+        discrete_actions (list, array): list of discrete actions
+        gamma (float): discount factor, default=0.9
+        horizon (int): horizon, default=10
+        scaled (bool): true if the input/output are normalized, default=None
+        verbose (int): verbosity level, default=0
 
     """
 
@@ -39,7 +39,8 @@ class FQI:
         self.verbose = verbose
         if isinstance(discreteActions, np.ndarray):
             assert discreteActions.shape[1] == actionDim
-            assert discreteActions.shape[0] > 1
+            assert discreteActions.shape[0] > 1, \
+                'Error: at least two actions are required'
             self._actions = discreteActions
         elif isinstance(discreteActions, list):
             assert len(discreteActions) > 1, \
@@ -71,10 +72,14 @@ class FQI:
 
     def _preprocessData(self, sast=None, r=None):
         """
-        Function to normalize data.
+        Preprocessing of the dataset. Data are normalized and features are computed.
+        If inputs are None, no operation is performed and the status of the elements associated to
+        the dataset are not altered. This means that the instances of ``sast`` and ``r`` stored in the internal
+        state of the class are preserved.
         Args:
-            sast (numpy.array): the input in the dataset
-            r (numpy.array): the output in the dataset
+            sast (numpy.array, None): the input in the dataset (state, action, next_state, terminal_flag).
+            Dimensions are (nsamples x nfeatures)
+            r (numpy.array, None): the output in the dataset. Dimensions are (nsamplex x 1)
 
         """
 
@@ -96,6 +101,7 @@ class FQI:
 
             if self.features is not None:
                 sa = self.features(sa)
+            # todo: non serve creare le features anche per lo stato prossimo?
 
             self.sa = sa
             self.snext = snext
@@ -104,14 +110,28 @@ class FQI:
 
     def _partial_fit(self, sast=None, r=None, **kwargs):
         """
-        Perform a step of FQI.
+        Perform a step of FQI using input data sast and r.
+        Note that if the dataset does not change between iterations, you can
+        provide None inputs after the first iteration. This speed up the computation
+        because no normalization and preprocessing is performed and the initial data
+        are used. However, if you want to change the dataset (e.g., for experience
+        replay) you just need to provide a different dataset (sast, r) in input
+        and everything works. The iteration exploits the current state of the estimator
+        but the new dataset (after preprocessing).
+
         Args:
-            sast (numpy.array): the input in the dataset
-            r (numpy.array): the output in the dataset
+            sast (numpy.array, None): the input in the dataset
+            r (numpy.array, None): the output in the dataset
+            **kwargs: additional parameters to be provided to the fit function
+            of the estimator
 
         Returns:
-            the preprocessed input and output
+            sa, y: the preprocessed input and output
         """
+        if self.iteration == 0 and (sast is None or r is None):
+            raise ValueError('In the first iteration sast and r must be provided.')
+
+        # normalize and store current data
         self._preprocessData(sast, r)
 
         # check if the estimator change the structure at each iteration
@@ -169,10 +189,11 @@ class FQI:
         Computes the maximum Q-function and the associated action
         in the provided states.
         Args:
-            states (numpy.array): the current state
-            absorbing (bool): true if the current state is absorbing
+            states (numpy.array): states to be evaluated. Dimenions: (nsamples x state_dim)
+            absorbing (bool): true if the current state is absorbing. Dimensions: (nsamples x 1)
         Returns:
-            the highest Q-value and the associated action
+            Q: the maximum Q-value in each state
+            A: the action associated to the max Q-value in each state
         """
         newstate = self._checkStates(states, copy=True)
         nbstates = newstate.shape[0]
@@ -236,11 +257,12 @@ class FQI:
         return self
     """
 
-    def predict(self, states):
+    def predict(self, states, absorbing=None):
         """
         Compute the action with the highest Q value.
         Args:
-            states (numpy.array): the current state
+            states (numpy.array): the states to be evaluated. Dimensions: (nsamples x state_dim)
+            absorbing (bool,None): true if the current state is absorbing. Dimensions: (nsamples x 1)
         Returns:
             the argmax and the max Q value
 
@@ -249,7 +271,7 @@ class FQI:
             raise ValueError(
                 'The model must be trained before being evaluated')
 
-        maxQ, maxa = self.maxQA(states)
+        maxQ, maxa = self.maxQA(states, absorbing)
         return maxa, maxQ
 
     def reset(self):

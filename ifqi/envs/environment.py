@@ -59,7 +59,7 @@ class Environment(object):
         self._reset()
         t = 0
         data = list()
-        while(t < self.horizon and not self._isAbsorbing()):
+        while (t < self.horizon) and (not self._isAbsorbing()):
             state = self._getState()
             action = np.random.choice(np.arange(self.nActions))
             reward = self._step(action)
@@ -103,15 +103,17 @@ class Environment(object):
             stateList = list()
             actionList = list()
             rewardList = list()
-            while(t < self.horizon and not self._isAbsorbing()):
+            df = 1.0
+            while (t < self.horizon) and (not self._isAbsorbing()):
                 state = self._getState()
                 stateList.append(state)
                 action, _ = fqi.predict(np.array(state))
                 actionList.append(action)
                 r = self._step(int(action[0]), render=render)
                 rewardList.append(r)
-                J += self.gamma ** t * r
+                J += df * r
                 t += 1
+                df *= self.gamma
 
             if self._isAtGoal():
                 testSuccessful = 1
@@ -130,14 +132,16 @@ class Environment(object):
             r = np.array(rewardList)
             sast = np.concatenate((s, a, s1, t), axis=1)
 
-            return (J, t, testSuccessful, sast, r)
+            return J, t, testSuccessful, sast, r
         else:
-            while(t < self.horizon and not self._isAbsorbing()):
+            df = 1.0
+            while (t < self.horizon) and (not self._isAbsorbing()):
                 state = self._getState()
                 action, _ = fqi.predict(np.array(state))
                 r = self._step(action, render=render)
-                J += self.gamma ** t * r
+                J += df * r
                 t += 1
+                df *= self.gamma
 
             if self._isAtGoal():
                 testSuccessful = 1
