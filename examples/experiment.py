@@ -5,8 +5,7 @@ import numpy as np
 
 from ifqi.experiment import Experiment
 from ifqi.fqi.FQI import FQI
-from ifqi.utils.parser import loadReLeDataset
-from ifqi.utils.datasetCollector import loadIfqiDataset
+from ifqi.utils.datasetLoader import loadReLeDataset, loadIfqiDataset
 
 # Python 2 and 3: forward-compatible
 # from builtins import range
