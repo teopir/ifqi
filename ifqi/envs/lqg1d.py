@@ -41,9 +41,9 @@ class LQG1D(gym.Env, Environment):
         self.actionDim = 1
         self.nStates = 0
         self.horizon = 100
-        self.max_pos = 100.0
-        self.max_action = 50.0
-        self.sigma_noise = 1.0
+        self.max_pos = 10.0
+        self.max_action = 8.0
+        self.sigma_noise = 0.5
         self.A = np.array([1]).reshape((1, 1))
         self.B = np.array([1]).reshape((1, 1))
         self.Q = np.array([0.9]).reshape((1, 1))
@@ -94,7 +94,7 @@ class LQG1D(gym.Env, Environment):
         screen_width = 600
         screen_height = 400
 
-        world_width = self.max_pos * 2
+        world_width = (self.max_pos * 2) * 2
         scale = screen_width / world_width
         bally = 100
         ballradius = 3
@@ -185,7 +185,7 @@ class LQG1D(gym.Env, Environment):
                                  np.dot(self.B.T, np.dot(P, self.A)))
         return K
 
-    def computeQFunction(self, x, u, K, Sigma, n_random_xn=1000):
+    def computeQFunction(self, x, u, K, Sigma, n_random_xn=100):
         """
         This function computes the Q-value of a pair (x,u) given the linear
         controller Kx + epsilon where epsilon \sim N(0, Sigma).
@@ -204,6 +204,8 @@ class LQG1D(gym.Env, Environment):
             x = np.array([x])
         if isinstance(u, (int, long, float, complex)):
             u = np.array([u])
+        if isinstance(Sigma, (int, long, float, complex)):
+            Sigma = np.array([Sigma]).reshape(1,1)
 
         P = self._computeP2(K)
         Qfun = 0
@@ -240,7 +242,7 @@ class LQG1D(gym.Env, Environment):
         #     M = v.reshape(n_dim, n_dim)
         #     return M
         #
-        # def computeJ(self, k, Sigma, n_random_x0=1000):
+        # def computeJ(self, k, Sigma, n_random_x0=100):
         #     J = 0
         #     K = k
         #     if len(k.shape) == 1:
