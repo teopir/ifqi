@@ -113,8 +113,8 @@ def collect(mdp, nEpisodes):
     return data
 
 if __name__ == '__main__':
-    mdpName = 'CarOnHill'
-    fileName = 'coh'
+    mdpName = 'LQG1D'
+    fileName = 'lqg'
     nEpisodes = 1000
 
     exp = Experiment()

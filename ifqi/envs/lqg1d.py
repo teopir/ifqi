@@ -162,16 +162,16 @@ class LQG1D(gym.Env, Environment):
             converged = False
             P = np.eye(self.Q.shape[0], self.Q.shape[1])
             while not converged:
-                Pnew = self.Q + self.gamma * np.dot(self.A.T, np.dot(P,
-                                                                     self.A)) +
+                Pnew = self.Q + self.gamma * np.dot(self.A.T,
+                                                    np.dot(P, self.A)) + \
                        self.gamma * np.dot(K.T, np.dot(self.B.T,
-                                                       np.dot(P, self.A)))
+                                                       np.dot(P, self.A))) + \
                        self.gamma * np.dot(self.A.T,
-                                           np.dot(P, np.dot(self.B, K)))
+                                           np.dot(P, np.dot(self.B, K))) + \
                        self.gamma * np.dot(K.T,
                                            np.dot(self.B.T,
                                                   np.dot(P, np.dot(self.B,
-                                                                   K)))) +
+                                                                   K)))) + \
                        np.dot(K.T, np.dot(self.R, K))
                 converged = np.max(np.abs(P - Pnew)) < tolerance
                 P = Pnew
