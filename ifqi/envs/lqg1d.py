@@ -73,8 +73,8 @@ class LQG1D(gym.Env, Environment):
         noise = np.random.randn() * self.sigma_noise
         xn = np.dot(self.A, self.state) + np.dot(self.B, u) + noise
         cost = np.dot(self.state,
-                      np.dot(self.Q, self.state)) \
-               + np.dot(u, np.dot(self.R, u))
+                      np.dot(self.Q, self.state)) + \
+               np.dot(u, np.dot(self.R, u))
         # print(self.state, u, noise, xn, cost)
 
         self.state = xn
@@ -147,9 +147,10 @@ class LQG1D(gym.Env, Environment):
 
     def _computeP2(self, K):
         """
-        This function computes the Riccati equation associated to the LQG problem
+        This function computes the Riccati equation associated to the LQG
+        problem.
         Args:
-            K (matrix): the matrix associated to the linear controller K*x
+            K (matrix): the matrix associated to the linear controller K * x
 
         Returns:
             P (matrix): the Riccati Matrix
@@ -157,24 +158,33 @@ class LQG1D(gym.Env, Environment):
         """
         I = np.eye(self.Q.shape[0], self.Q.shape[1])
         if np.array_equal(self.A, I) and np.array_equal(self.B, I):
-            P = (self.Q + np.dot(K.T, np.dot(self.R, K))) / (I - self.gamma * (I + 2 * K + K ** 2))
+            P = (self.Q + np.dot(K.T, np.dot(self.R, K))) / (I - self.gamma *
+                                                             (I + 2 * K + K **
+                                                              2))
         else:
             tolerance = 0.0001
             converged = False
             P = np.eye(self.Q.shape[0], self.Q.shape[1])
             while not converged:
-                Pnew = self.Q + self.gamma * np.dot(self.A.T, np.dot(P, self.A)) \
-                       + self.gamma * np.dot(K.T, np.dot(self.B.T, np.dot(P, self.A))) \
-                       + self.gamma * np.dot(self.A.T, np.dot(P, np.dot(self.B, K))) \
-                       + self.gamma * np.dot(K.T, np.dot(self.B.T, np.dot(P, np.dot(self.B, K)))) \
-                       + np.dot(K.T, np.dot(self.R, K))
+                Pnew = self.Q + self.gamma * np.dot(self.A.T,
+                                                    np.dot(P, self.A)) + \
+                       self.gamma * np.dot(K.T, np.dot(self.B.T,
+                                                       np.dot(P, self.A))) + \
+                       self.gamma * np.dot(self.A.T,
+                                           np.dot(P, np.dot(self.B, K))) + \
+                       self.gamma * np.dot(K.T,
+                                           np.dot(self.B.T,
+                                                  np.dot(P, np.dot(self.B,
+                                                                   K)))) + \
+                       np.dot(K.T, np.dot(self.R, K))
                 converged = np.max(np.abs(P - Pnew)) < tolerance
                 P = Pnew
         return P
 
     def computeOptimalK(self):
         """
-        This function computes the optimal linear controller associated to the LQG problem (u = K*x)
+        This function computes the optimal linear controller associated to the
+        LQG problem (u = K * x).
 
         Returns:
             K (matrix): the optimal controller
@@ -182,10 +192,12 @@ class LQG1D(gym.Env, Environment):
         """
         P = np.eye(self.Q.shape[0], self.Q.shape[1])
         for i in range(100):
-            K = -self.gamma * np.dot(np.linalg.inv(self.R + self.gamma * (np.dot(self.B.T, np.dot(P, self.B)))),
+            K = -self.gamma * np.dot(np.linalg.inv(self.R + self.gamma *
+                                     (np.dot(self.B.T, np.dot(P, self.B)))),
                                      np.dot(self.B.T, np.dot(P, self.A)))
             P = self._computeP2(K)
-        K = -self.gamma * np.dot(np.linalg.inv(self.R + self.gamma * (np.dot(self.B.T, np.dot(P, self.B)))),
+        K = -self.gamma * np.dot(np.linalg.inv(self.R + self.gamma *
+                                 (np.dot(self.B.T, np.dot(P, self.B)))),
                                  np.dot(self.B.T, np.dot(P, self.A)))
         return K
 
@@ -226,11 +238,14 @@ class LQG1D(gym.Env, Environment):
             x (int, array): the state
             u (int, array): the action
             K (matrix): the controller matrix
-            Sigma (matrix): covariance matrix of the zero-mean noise added to the controller action
-            n_random_xn: the number of samples to draw in order to average over the next state
+            Sigma (matrix): covariance matrix of the zero-mean noise added to
+            the controller action
+            n_random_xn: the number of samples to draw in order to average over
+            the next state
 
         Returns:
-            Qfun (float): The Q-value in the given pair (x,u) under the given controller
+            Qfun (float): The Q-value in the given pair (x,u) under the given
+            controller
 
         """
         if isinstance(x, (int, long, float, complex)):
@@ -246,13 +261,17 @@ class LQG1D(gym.Env, Environment):
         Qfun = 0
         for i in range(n_random_xn):
             noise = np.random.randn() * self.sigma_noise
-            action_noise = np.random.multivariate_normal(np.zeros(Sigma.shape[0]), Sigma, 1)
-            nextstate = np.dot(self.A, x) + np.dot(self.B, u + action_noise) + noise
-            Qfun -= np.dot(x.T, np.dot(self.Q, x)) \
-                    + np.dot(u.T, np.dot(self.R, u)) \
-                    + self.gamma * np.dot(nextstate.T, np.dot(P, nextstate)) \
-                    + (self.gamma / (1 - self.gamma)) \
-                      * np.trace(np.dot(Sigma, self.R + self.gamma * np.dot(self.B.T, np.dot(P, self.B))))
+            action_noise = np.random.multivariate_normal(
+                np.zeros(Sigma.shape[0]), Sigma, 1)
+            nextstate = np.dot(self.A, x) + np.dot(self.B,
+                                                   u + action_noise) + noise
+            Qfun -= np.dot(x.T, np.dot(self.Q, x)) + \
+                np.dot(u.T, np.dot(self.R, u)) + \
+                self.gamma * np.dot(nextstate.T, np.dot(P, nextstate)) + \
+                (self.gamma / (1 - self.gamma)) *\
+                np.trace(np.dot(Sigma,
+                                self.R + self.gamma *
+                                np.dot(self.B.T, np.dot(P, self.B))))
         Qfun = np.asscalar(Qfun) / n_random_xn
         return Qfun
 
