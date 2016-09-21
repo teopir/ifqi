@@ -42,10 +42,14 @@ class Environment(object):
         """
         pass
 
-    def collect(self):
+    def collect(self, policy=None):
         """
         This function can be used to collect a dataset from the environment
         using a random policy.
+
+        Params:
+            policy (object): an object that can be evaluated in order to get
+                             an action
 
         Returns:
             - a dataset composed of:
@@ -59,9 +63,15 @@ class Environment(object):
         self._reset()
         t = 0
         data = list()
+        action = None
         while (t < self.horizon) and (not self._isAbsorbing()):
             state = self._getState()
-            action = np.random.choice(np.arange(self.nActions))
+            if policy:
+                action = policy.predict(state)
+                if isinstance(action, tuple):
+                    action = action[0]
+            else:
+                action = np.random.choice(np.arange(self.nActions))
             reward = self._step(action)
             nextState = self._getState()
             t += 1
@@ -99,6 +109,8 @@ class Environment(object):
         t = 0
         testSuccessful = 0
 
+        # reset the environment (draw a random initial state)
+        self._reset()
         if expReplay:
             stateList = list()
             actionList = list()
@@ -149,7 +161,7 @@ class Environment(object):
             else:
                 print("Failure")
 
-            return (J, t, testSuccessful)
+            return J, t, testSuccessful
 
     @abstractmethod
     def _step(self, u, render=False):
