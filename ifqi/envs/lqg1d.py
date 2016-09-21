@@ -50,6 +50,10 @@ class LQG1D(gym.Env, Environment):
         self.R = np.array([0.9]).reshape((1, 1))
         self.viewer = None
 
+        # End episode
+        self._absorbing = False
+        self._atGoal = False
+
         high = np.array([self.max_pos])
         self.action_space = spaces.Box(low=-self.max_action,
                                        high=self.max_action,
@@ -78,7 +82,7 @@ class LQG1D(gym.Env, Environment):
         return -cost
 
     def _reset(self, state=None):
-        self.state = np.array([self.np_random.uniform(low=-10, high=-10)])
+        self.state = np.array([self.np_random.uniform(low=-self.max_pos, high=self.max_pos)])
         return np.array(self.state)
 
     def _getState(self):
@@ -185,6 +189,35 @@ class LQG1D(gym.Env, Environment):
                                  np.dot(self.B.T, np.dot(P, self.A)))
         return K
 
+    def computeJ(self, K, Sigma, n_random_x0=100):
+        """
+        This function computes the discounted reward associated to the provided
+        linear controller (u = Kx + \epsilon, \epsilon \sim N(0,\Sigma)).
+        Args:
+            K (matrix): the controller matrix
+            Sigma (matrix): covariance matrix of the zero-mean noise added to the controller action
+            n_random_x0: the number of samples to draw in order to average over the initial state
+
+        Returns:
+            J (float): The discounted reward
+
+        """
+        if isinstance(K, (int, long, float, complex)):
+            K = np.array([K]).reshape(1, 1)
+        if isinstance(Sigma, (int, long, float, complex)):
+            Sigma = np.array([Sigma]).reshape(1, 1)
+
+        P = self._computeP2(K)
+        J = 0.0
+        for i in range(n_random_x0):
+            self._reset()
+            x0 = self._getState()
+            J -= np.dot(x0.T, np.dot(P, x0)) \
+                 + (1 / (1 - self.gamma)) * \
+                   np.trace(np.dot(Sigma, (self.R + self.gamma * np.dot(self.B.T, np.dot(P, self.B)))))
+        J /= n_random_x0
+        return J
+
     def computeQFunction(self, x, u, K, Sigma, n_random_xn=100):
         """
         This function computes the Q-value of a pair (x,u) given the linear
@@ -204,8 +237,10 @@ class LQG1D(gym.Env, Environment):
             x = np.array([x])
         if isinstance(u, (int, long, float, complex)):
             u = np.array([u])
+        if isinstance(K, (int, long, float, complex)):
+            K = np.array([K]).reshape(1, 1)
         if isinstance(Sigma, (int, long, float, complex)):
-            Sigma = np.array([Sigma]).reshape(1,1)
+            Sigma = np.array([Sigma]).reshape(1, 1)
 
         P = self._computeP2(K)
         Qfun = 0
@@ -282,4 +317,3 @@ class LQG1D(gym.Env, Environment):
         #
         #     P = self.to_mat(vecP)
         #     return P
-

@@ -11,6 +11,27 @@ from ifqi.envs.lqg1d import LQG1D
 mdp = LQG1D()
 K = mdp.computeOptimalK()
 print('Optimal K: {}'.format(K))
+
+
+class tmp_policy():
+    def __init__(self, M):
+        self.K = M
+
+    def predict(self, state):
+        return np.dot(self.K, state), 0
+
+
+##############################################################
+# Compute the discounted reward
+n_rep = 1000
+J = mdp.computeJ(K, 1e-10, n_random_x0=n_rep)
+pol = tmp_policy(K)
+Jsample = 0
+for i in range(n_rep):
+    Jsample += mdp.runEpisode(pol, False, True)[0]
+Jsample /= n_rep
+print(J, Jsample)
+
 xs = np.linspace(-mdp.max_pos, mdp.max_pos, 60)
 us = np.linspace(-mdp.max_action, mdp.max_action, 50)
 
@@ -27,7 +48,5 @@ print('printed Q-table')
 # print(tabular_Q)
 fig = plt.figure()
 ax = fig.gca(projection='3d')
-ax.scatter(tabular_Q[:,0], tabular_Q[:,1], tabular_Q[:,2])
+ax.scatter(tabular_Q[:, 0], tabular_Q[:, 1], tabular_Q[:, 2])
 plt.show()
-
-
