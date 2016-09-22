@@ -9,7 +9,7 @@
         "savePath": "extraTree",
         "nDatasets": 10,
         "nExperiments": 10,
-        "datasetSizeStep": 200
+        "datasetSizeStep": 100
     },
 
     "model": {
