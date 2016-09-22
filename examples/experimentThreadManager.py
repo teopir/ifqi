@@ -95,7 +95,7 @@ if __name__ == '__main__':
         "jsonFile":[config_file],
         "images":[],
         "postComment":"",
-        "importance":""
+        "importance":"1"
         }
         diary.append(diaryExperiment)
     

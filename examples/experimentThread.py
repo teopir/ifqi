@@ -119,7 +119,7 @@ for t in range(min_t, exp.config['rlAlgorithm']['nIterations']):
         if t % exp.config['experimentSetting']["saveIteration"] == 0:
             print("Start evaluation")
             
-            score, step, goal = exp.mdp.evaluate(fqi, expReplay=False)
+            score, step, goal = exp.mdp.evaluate(fqi, expReplay=False, n_episodes=exp.config['experimentSetting']['nRepeatEpisodes'])
             
             saveVariable(dir_, d, e, t, "score", score)
             saveVariable(dir_, d, e, t, "step", step)
@@ -144,6 +144,7 @@ for t in range(min_t, exp.config['rlAlgorithm']['nIterations']):
             print ("init experience replay")
             for _ in xrange(exp.config['experimentSetting']["nReplay"]):
                 
+                
                 score, step, goal, sast_temp, r_temp = exp.mdp.evaluate(fqi, expReplay=True)
             
                 np.concatenate((sast, sast_temp),axis=0)
@@ -155,7 +156,9 @@ for t in range(min_t, exp.config['rlAlgorithm']['nIterations']):
                 sast = sast[indx,:]
                 r = r[indx]
                 
-                replay_experience = True
+            replay_experience = True
+            if exp.config["rlAlgorithm"]["resetFQI"]:
+                fqi.iteration=0
             print ("end experience replay")
             
 #------------------------------------------------------------------------------

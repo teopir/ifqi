@@ -107,7 +107,8 @@ nThread = 4
 experience_replay=10
 n_replay=100
 add_last=False
-
+n_repeat_episodes=1
+reset_fqi=True
 retreiveParams()
 
 datasets = list(folder+str(num) for folder in dataset_folders for num in range(0,n_dataset))
@@ -146,6 +147,7 @@ json_file = {
         "n_experiments":n_experiments,
         "save_iteration":save_iteration,
         "save_fqi":save_fqi,
+        "n_repeat_episodes":n_repeat_episodes,
         "experience_replay":experience_replay,
         "n_replay":n_replay
     },
@@ -171,7 +173,8 @@ json_file = {
         "gamma":gamma,      
         "verbosity":unsupervised_verbosity,
         "horizon":horizon,
-        "scaled":scaled
+        "scaled":scaled,
+        "resetFQI":reset_fqi
     }
 }
 if model_name == "ExtraTree" or model_name == "ExtraTreeEnsemble":
