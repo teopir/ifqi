@@ -77,9 +77,9 @@ class LQG1D(gym.Env, Environment):
                np.dot(u, np.dot(self.R, u))
         # print(self.state, u, noise, xn, cost)
 
-        self.state = xn
+        self.state = np.squeeze(xn)
         # return xn, -cost, False, {}
-        return -cost
+        return -np.asscalar(cost)
 
     def _reset(self, state=None):
         self.state = np.array([self.np_random.uniform(low=-self.max_pos, high=self.max_pos)])
