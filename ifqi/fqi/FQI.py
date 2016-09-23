@@ -70,6 +70,18 @@ class FQI:
         """
         return X.reshape(-1, self.stateDim)
 
+    def _checkActions(self, X, copy=True):
+        """
+        Check the correctness of the matrix containing the dataset.
+        Args:
+            X (numpy.array): the dataset
+            copy (bool): ...
+        Returns:
+            The matrix containing the dataset reshaped in the proper way.
+
+        """
+        return X.reshape(-1, self.actionDim)
+
     def _preprocessData(self, sast=None, r=None):
         """
         Preprocessing of the dataset. Data are normalized and features are computed.
@@ -136,15 +148,15 @@ class FQI:
 
         # check if the estimator change the structure at each iteration
         adaptive = False
-        
-        #TODO: didn't understand what is models
+
+        # TODO: didn't understand what is models
         if hasattr(self.estimator, "models"):
             if hasattr(self.estimator.models[0], 'adapt'):
                 adaptive = True
         else:
             if hasattr(self.estimator, 'adapt'):
                 adaptive = True
-                
+
         y = self.r
         if self.iteration == 0:
             if self.verbose > 0:
@@ -229,6 +241,12 @@ class FQI:
             Q[:, idx] = predictions.ravel()
             Q[:, idx] = Q[:, idx] * (1 - absorbing)
 
+            assert np.allclose(Q[:, idx],
+                               self._evaluate_Q(newstate, actions, absorbing).reshape(-1,1)),\
+                'error in the function _evaluate_Q' # TODO check that it is correct
+            #if it is correct the lines above can be replaced with
+            # Q[:, idx] = self._evaluate_Q(newstate, actions, absorbing)
+
         # compute the maximal action
         amax = np.argmax(Q, axis=1)
 
@@ -279,6 +297,58 @@ class FQI:
 
         maxQ, maxa = self.maxQA(states, absorbing)
         return maxa, maxQ
+
+    def drawAction(self, states, absorbing=None):
+        """
+        Compute the action with the highest Q value.
+        Args:
+            states (numpy.array): the states to be evaluated. Dimensions: (nsamples x state_dim)
+            absorbing (bool,None): true if the current state is absorbing. Dimensions: (nsamples x 1)
+        Returns:
+            the argmax and the max Q value
+
+        """
+        if self.iteration == 0:
+            raise ValueError(
+                'The model must be trained before being evaluated')
+
+        maxQ, maxa = self.maxQA(states, absorbing)
+        return maxa
+
+    def _evaluate_Q(self, states, actions, absorbing=None):
+        """
+        Evaluate the Q-function approximation in the given (state, action)-pair
+        Args:
+            states (numpy.array): the states to be evaluated. Dimensions: (nsamples x state_dim)
+            actions (numpy.array): the actions to be evaluated. Dimensions: (nsamples x action_dim)
+            absorbing (bool,None): true if the current state is absorbing. Dimensions: (nsamples x 1)
+        Returns:
+            the predicted Q-values
+        """
+        if self.iteration == 0:
+            raise ValueError(
+                'The model must be trained before being evaluated')
+
+        newstate = self._checkStates(states, copy=True)
+        newactions = self._checkActions(actions, copy=True)
+
+        if absorbing is None:
+            absorbing = np.zeros((newstate.shape[0],))
+
+        # concatenate [newstate, action] and scalarize them
+        if self.scaled:
+            samples = np.concatenate((self._sa_scaler.transform(newstate),
+                                      newactions), axis=1)
+        else:
+            samples = np.concatenate((newstate, newactions), axis=1)
+
+        if self.features is not None:
+            samples = self.features.testFeatures(samples)
+
+        # predict Q-function
+        predictions = self.estimator.predict(samples).ravel() * (1 - absorbing)
+
+        return predictions
 
     def reset(self):
         """
