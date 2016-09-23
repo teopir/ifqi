@@ -110,6 +110,7 @@ add_last=False
 n_repeat_episodes=1
 reset_fqi=True
 retreiveParams()
+action_regressor = True
 
 datasets = list(folder+str(num) for folder in dataset_folders for num in range(0,n_dataset))
 
@@ -208,6 +209,8 @@ if model_name == "Linear" or model_name == "LinearEnsemble":
     json_file["supervised_algorithm"] ={
         "criterion":criterion    
     }
+
+json_file["model"]["actionRegressorWrap"] = action_regressor
     
 with open("results/" + save_path + ".json", 'w') as fp:
     json.dump(camelize(json_file), fp)

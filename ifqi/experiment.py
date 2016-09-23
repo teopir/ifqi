@@ -11,7 +11,10 @@ from envs.bicycle import Bicycle
 from envs.swingPendulum import SwingPendulum
 from envs.cartPole import CartPole
 from envs.lqg1d import LQG1D
+from envs.lqg1dDiscrete import LQG1DDiscrete
+import warnings
 
+import numpy as np
 
 class Experiment(object):
     """
@@ -63,6 +66,12 @@ class Experiment(object):
             return CartPole(discreteRew=True)
         elif self.config["mdp"]["mdpName"] == "LQG1D":
             return LQG1D()
+        elif self.config["mdp"]["mdpName"] == "LQG1DDisc":
+            downerAct = np.linspace(-10,-3,8)
+            upperAct = np.linspace(3,10,8)
+            middle = np.linspace(-2,2,13)
+            actions = downerAct.tolist() + middle.tolist() + upperAct.tolist()        
+            return LQG1DDiscrete(actions)
         else:
             raise ValueError('Unknown mdp type.')
 
@@ -112,5 +121,16 @@ class Experiment(object):
             params = {}
         else:
             raise ValueError('Unknown estimator type.')
+        
+        actionRegressorWrap = True
+        if "actionRegressorWrap" in modelConfig:
+            actionRegressorWrap = modelConfig["actionRegressorWrap"]
+        
+        if actionRegressorWrap:
+            if self.mdp.nActions < 1:
+                warnings.warn("Action Regressor shouldn't be used for continuos action environment")
+            return ActionRegressor(model, self.mdp.nActions, **params)
+        else:
+            return model(**params)
 
-        return ActionRegressor(model, self.mdp.nActions, **params)
+            
