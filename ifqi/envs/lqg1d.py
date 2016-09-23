@@ -44,6 +44,7 @@ class LQG1D(gym.Env, Environment):
         self.max_pos = 10.0
         self.max_action = 8.0
         self.sigma_noise = 0.1
+        self.nActions = 0
         self.A = np.array([1]).reshape((1, 1))
         self.B = np.array([1]).reshape((1, 1))
         self.Q = np.array([0.9]).reshape((1, 1))
@@ -88,6 +89,13 @@ class LQG1D(gym.Env, Environment):
     def _getState(self):
         return self.state
 
+    def getDiscreteActions(self):
+        downerAct = np.linspace(-10,-3,8)
+        upperAct = np.linspace(3,10,8)
+        middleAct = np.linspace(-2,2,13)
+        actions = downerAct.tolist() + middleAct.tolist() + upperAct.tolist()   
+        return actions
+        
     def _render(self, mode='human', close=False):
         if close:
             if self.viewer is not None:

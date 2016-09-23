@@ -5,7 +5,7 @@ import time
 import json
 from time import gmtime, strftime
 
-from context import *
+sys.path.insert(0, os.path.abspath('../'))
 
 from ifqi.experiment import Experiment
 import subprocess

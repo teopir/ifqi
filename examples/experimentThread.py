@@ -4,7 +4,7 @@ import sys
 import cPickle
 import numpy as np
 
-from context import *
+sys.path.insert(0, os.path.abspath('../'))
 
 
 """
@@ -84,7 +84,7 @@ if not os.path.isfile(dir_ + "/" +  d + "_" + str(e) + ".pkl"):    #if no fqi pr
     fqi = FQI(estimator=exp.model,
           stateDim=state_dim,
           actionDim=action_dim,
-          discreteActions=range(exp.mdp.nActions),
+          discreteActions=exp.mdp.getDiscreteActions(),
           gamma=exp.config['rlAlgorithm']['gamma'],
           horizon=exp.config['rlAlgorithm']['horizon'],
           verbose=exp.config['rlAlgorithm']['verbosity'],

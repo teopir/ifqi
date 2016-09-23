@@ -210,3 +210,7 @@ class Environment(object):
 
         """
         return self._atGoal
+    
+    def getDiscreteActions(self):
+        return range(self.nActions)
+        
