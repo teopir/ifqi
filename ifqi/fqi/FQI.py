@@ -136,9 +136,15 @@ class FQI:
 
         # check if the estimator change the structure at each iteration
         adaptive = False
-        if hasattr(self.estimator.models[0], 'adapt'):
-            adaptive = True
-
+        
+        #TODO: didn't understand what is models
+        if hasattr(self.estimator, "models"):
+            if hasattr(self.estimator.models[0], 'adapt'):
+                adaptive = True
+        else:
+            if hasattr(self.estimator, 'adapt'):
+                adaptive = True
+                
         y = self.r
         if self.iteration == 0:
             if self.verbose > 0:

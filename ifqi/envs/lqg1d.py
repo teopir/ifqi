@@ -79,6 +79,9 @@ class LQG1D(gym.Env, Environment):
         # print(self.state, u, noise, xn, cost)
 
         self.state = np.squeeze(xn)
+        #TODO: let's fix here this code:
+        #I inserted it just to can run the code
+        self.state = np.array([self.state])
         # return xn, -cost, False, {}
         return -np.asscalar(cost)
 
@@ -135,23 +138,33 @@ class LQG1D(gym.Env, Environment):
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
-    def evaluate(self, fqi, expReplay=False, render=False):
+    def evaluate(self, fqi, expReplay=False, render=False, n_episodes=1):
         """
-        This function evaluates the regressor in the provided object
-        parameter.
+        This function evaluates the regressor in the provided object parameter.
         This way of evaluation is just one of many possible ones.
         Params:
             fqi (object): an object containing the trained regressor
-            expReplay (bool): flag indicating whether to do experience
-                              replay
-            render (bool): flag indicating whether to render visualize
-                           behavior of the agent
+            expReplay (bool): flag indicating whether to do experience replay
+            render (bool): flag indicating whether to render visualize behavior
+                           of the agent
         Returns:
             a numpy array containing results of the episode
 
         """
         self._reset()
-        return self._runEpisode(fqi, expReplay, render)
+        if not expReplay:
+            J=0.
+            step=0
+            nGoal=0
+            for i in range(n_episodes):
+                self._reset()
+                j, s, t = self.runEpisode(fqi, expReplay=expReplay, render=render)
+                J+=j
+                step+=s
+                nGoal+=t
+            return J/(n_episodes +0.),step/(n_episodes +0.),nGoal/(n_episodes +0.)
+        else:
+            return self.runEpisode(fqi, expReplay, render)
 
     def _computeP2(self, K):
         """
