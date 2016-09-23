@@ -78,11 +78,8 @@ class LQG1D(gym.Env, Environment):
                np.dot(u, np.dot(self.R, u))
         # print(self.state, u, noise, xn, cost)
 
-        self.state = np.squeeze(xn)
-        #TODO: let's fix here this code:
-        #I inserted it just to can run the code
-        self.state = np.array([self.state])
-        # return xn, -cost, False, {}
+        self.state = np.array(xn)
+        # return xn, -np.asscalar(cost), False, {}
         return -np.asscalar(cost)
 
     def _reset(self, state=None):
@@ -90,7 +87,7 @@ class LQG1D(gym.Env, Environment):
         return np.array(self.state)
 
     def _getState(self):
-        return self.state
+        return np.array(self.state)
 
     def getDiscreteActions(self):
         downerAct = np.linspace(-10,-3,8)
