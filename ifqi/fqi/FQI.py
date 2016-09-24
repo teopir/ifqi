@@ -280,7 +280,7 @@ class FQI:
         self._fit(X, y, **kwargs)
         return self
     """
-    
+
     # def predict(self, states, absorbing=None):
     #     """
     #     Compute the action with the highest Q value.

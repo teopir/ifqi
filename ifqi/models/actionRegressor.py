@@ -4,6 +4,19 @@ from copy import deepcopy
 
 class ActionRegressor(object):
     def __init__(self, model, discreteActions, **params):
+        """
+        Initialization of the class.
+        
+        Parameters:
+            model (object): an estimator
+            discreteActions (int, list): when an integer is given it
+                represents the number of discrete actions to be used
+                [0, 1, 2, discreteActions-1]. Otherwise the values
+                contained in the list are used.
+            **params: additional parameters that are used to init the model
+        """
+        if isinstance(discreteActions, ('int', 'float')):
+            discreteActions = np.arange(int(discreteActions))
         self.actions = np.unique(discreteActions)
         self.models = self.initModel(model, **params)
 
