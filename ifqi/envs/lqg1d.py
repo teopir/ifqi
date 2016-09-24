@@ -1,5 +1,5 @@
 """classic Linear Quadratic Gaussian Regulator task"""
-import gym
+# import gym
 from gym import spaces
 from gym.utils import seeding
 import numpy as np
@@ -30,40 +30,37 @@ References
 # )
 
 
-class LQG1D(gym.Env, Environment):
+class LQG1D(Environment):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 30
     }
 
     def __init__(self):
-        self.stateDim = 1
-        self.actionDim = 1
-        self.nStates = 0
-        self.horizon = 100
+        # model parameters
         self.max_pos = 10.0
         self.max_action = 8.0
         self.sigma_noise = 0.1
-        self.nActions = 0
         self.A = np.array([1]).reshape((1, 1))
         self.B = np.array([1]).reshape((1, 1))
         self.Q = np.array([0.9]).reshape((1, 1))
         self.R = np.array([0.9]).reshape((1, 1))
+
+        # env attributes
+        self.horizon = 100
+        self.gamma = 0.99
+
+        # gym attributes
         self.viewer = None
-
-        # End episode
-        self._absorbing = False
-        self._atGoal = False
-
         high = np.array([self.max_pos])
         self.action_space = spaces.Box(low=-self.max_action,
                                        high=self.max_action,
                                        shape=(1,))
         self.observation_space = spaces.Box(low=-high, high=high)
 
+        # initialize state
         self._seed()
         self._reset()
-        self.gamma = 0.99
 
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -79,8 +76,8 @@ class LQG1D(gym.Env, Environment):
         # print(self.state, u, noise, xn, cost)
 
         self.state = np.array(xn)
-        # return xn, -np.asscalar(cost), False, {}
-        return -np.asscalar(cost)
+        return xn, -np.asscalar(cost), False, {}
+        # return -np.asscalar(cost)
 
     def _reset(self, state=None):
         self.state = np.array([self.np_random.uniform(low=-self.max_pos, high=self.max_pos)])
@@ -89,13 +86,6 @@ class LQG1D(gym.Env, Environment):
     def _getState(self):
         return np.array(self.state)
 
-    def getDiscreteActions(self):
-        downerAct = np.linspace(-10,-3,8)
-        upperAct = np.linspace(3,10,8)
-        middleAct = np.linspace(-2,2,13)
-        actions = downerAct.tolist() + middleAct.tolist() + upperAct.tolist()   
-        return actions
-        
     def _render(self, mode='human', close=False):
         if close:
             if self.viewer is not None:
@@ -135,33 +125,33 @@ class LQG1D(gym.Env, Environment):
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
-    def evaluate(self, fqi, expReplay=False, render=False, n_episodes=1):
-        """
-        This function evaluates the regressor in the provided object parameter.
-        This way of evaluation is just one of many possible ones.
-        Params:
-            fqi (object): an object containing the trained regressor
-            expReplay (bool): flag indicating whether to do experience replay
-            render (bool): flag indicating whether to render visualize behavior
-                           of the agent
-        Returns:
-            a numpy array containing results of the episode
-
-        """
-        self._reset()
-        if not expReplay:
-            J=0.
-            step=0
-            nGoal=0
-            for i in range(n_episodes):
-                self._reset()
-                j, s, t = self.runEpisode(fqi, expReplay=expReplay, render=render)
-                J+=j
-                step+=s
-                nGoal+=t
-            return J/(n_episodes +0.),step/(n_episodes +0.),nGoal/(n_episodes +0.)
-        else:
-            return self.runEpisode(fqi, expReplay, render)
+    # def evaluate(self, fqi, expReplay=False, render=False, n_episodes=1):
+    #     """
+    #     This function evaluates the regressor in the provided object parameter.
+    #     This way of evaluation is just one of many possible ones.
+    #     Params:
+    #         fqi (object): an object containing the trained regressor
+    #         expReplay (bool): flag indicating whether to do experience replay
+    #         render (bool): flag indicating whether to render visualize behavior
+    #                        of the agent
+    #     Returns:
+    #         a numpy array containing results of the episode
+    #
+    #     """
+    #     self._reset()
+    #     if not expReplay:
+    #         J=0.
+    #         step=0
+    #         nGoal=0
+    #         for i in range(n_episodes):
+    #             self._reset()
+    #             j, s, t = self.runEpisode(fqi, expReplay=expReplay, render=render)
+    #             J+=j
+    #             step+=s
+    #             nGoal+=t
+    #         return J/(n_episodes +0.),step/(n_episodes +0.),nGoal/(n_episodes +0.)
+    #     else:
+    #         return self.runEpisode(fqi, expReplay, render)
 
     def _computeP2(self, K):
         """
@@ -211,11 +201,11 @@ class LQG1D(gym.Env, Environment):
         P = np.eye(self.Q.shape[0], self.Q.shape[1])
         for i in range(100):
             K = -self.gamma * np.dot(np.linalg.inv(self.R + self.gamma *
-                                     (np.dot(self.B.T, np.dot(P, self.B)))),
+                                                   (np.dot(self.B.T, np.dot(P, self.B)))),
                                      np.dot(self.B.T, np.dot(P, self.A)))
             P = self._computeP2(K)
         K = -self.gamma * np.dot(np.linalg.inv(self.R + self.gamma *
-                                 (np.dot(self.B.T, np.dot(P, self.B)))),
+                                               (np.dot(self.B.T, np.dot(P, self.B)))),
                                  np.dot(self.B.T, np.dot(P, self.A)))
         return K
 
@@ -284,12 +274,12 @@ class LQG1D(gym.Env, Environment):
             nextstate = np.dot(self.A, x) + np.dot(self.B,
                                                    u + action_noise) + noise
             Qfun -= np.dot(x.T, np.dot(self.Q, x)) + \
-                np.dot(u.T, np.dot(self.R, u)) + \
-                self.gamma * np.dot(nextstate.T, np.dot(P, nextstate)) + \
-                (self.gamma / (1 - self.gamma)) *\
-                np.trace(np.dot(Sigma,
-                                self.R + self.gamma *
-                                np.dot(self.B.T, np.dot(P, self.B))))
+                    np.dot(u.T, np.dot(self.R, u)) + \
+                    self.gamma * np.dot(nextstate.T, np.dot(P, nextstate)) + \
+                    (self.gamma / (1 - self.gamma)) * \
+                    np.trace(np.dot(Sigma,
+                                    self.R + self.gamma *
+                                    np.dot(self.B.T, np.dot(P, self.B))))
         Qfun = np.asscalar(Qfun) / n_random_xn
         return Qfun
 

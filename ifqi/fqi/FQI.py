@@ -280,23 +280,23 @@ class FQI:
         self._fit(X, y, **kwargs)
         return self
     """
-
-    def predict(self, states, absorbing=None):
-        """
-        Compute the action with the highest Q value.
-        Args:
-            states (numpy.array): the states to be evaluated. Dimensions: (nsamples x state_dim)
-            absorbing (bool,None): true if the current state is absorbing. Dimensions: (nsamples x 1)
-        Returns:
-            the argmax and the max Q value
-
-        """
-        if self.iteration == 0:
-            raise ValueError(
-                'The model must be trained before being evaluated')
-
-        maxQ, maxa = self.maxQA(states, absorbing)
-        return maxa, maxQ
+    
+    # def predict(self, states, absorbing=None):
+    #     """
+    #     Compute the action with the highest Q value.
+    #     Args:
+    #         states (numpy.array): the states to be evaluated. Dimensions: (nsamples x state_dim)
+    #         absorbing (bool,None): true if the current state is absorbing. Dimensions: (nsamples x 1)
+    #     Returns:
+    #         the argmax and the max Q value
+    #
+    #     """
+    #     if self.iteration == 0:
+    #         raise ValueError(
+    #             'The model must be trained before being evaluated')
+    #
+    #     maxQ, maxa = self.maxQA(states, absorbing)
+    #     return maxa, maxQ
 
     def drawAction(self, states, absorbing=None):
         """
