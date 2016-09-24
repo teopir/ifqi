@@ -3,18 +3,20 @@ from copy import deepcopy
 
 
 class ActionRegressor(object):
-    def __init__(self, model, nActions, **params):
-        self.nActions = nActions
+    def __init__(self, model, discreteActions, **params):
+        self.actions = np.unique(discreteActions)
         self.models = self.initModel(model, **params)
 
     def fit(self, X, y, **kwargs):
         for i in range(len(self.models)):
-            idxs = np.argwhere(X[:, -1] == i).ravel()
+            action = self.actions[i]
+            idxs = np.argwhere(X[:, -1] == action).ravel()
             self.models[i].fit(X[idxs, :-1], y[idxs], **kwargs)
 
     def predict(self, x, **kwargs):
-        i = x[0, -1].astype('int')
-        output = self.models[i].predict(x[:, :-1], **kwargs)
+        action = x[0, -1]
+        idxs = np.asscalar(np.argwhere(self.actions == action))
+        output = self.models[idxs].predict(x[:, :-1], **kwargs)
 
         return output
 
@@ -24,6 +26,6 @@ class ActionRegressor(object):
 
     def initModel(self, model, **params):
         models = list()
-        for i in range(self.nActions):
+        for i in range(len(self.actions)):
             models.append(model(**params))
         return models
