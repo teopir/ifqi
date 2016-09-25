@@ -32,7 +32,7 @@ class CartPole(Environment):
         # self._absorbing = False
         self._atGoal = False
         self._count = 0
-        return self.env.reset(state)
+        return self.env.reset()
 
     def _seed(self, seed=None):
         return self.env._seed(seed)

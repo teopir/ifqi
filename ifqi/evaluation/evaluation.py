@@ -1,5 +1,7 @@
 from __future__ import print_function
-from builtins import range
+import sys
+if sys.version_info[0]==3:
+    from builtins import range
 import time
 import numpy as np
 

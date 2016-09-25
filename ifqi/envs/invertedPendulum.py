@@ -48,7 +48,8 @@ class InvPendulum(Environment):
         self._dt = 0.1
         # Discount factor
         self.gamma = .95
-
+        #TODO: check horizon of InvertedPendulum
+        self.horizon = 400
         # gym attributes
         self.viewer = None
         high = np.array([self._angleMax, self.max_velocity])

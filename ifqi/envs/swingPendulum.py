@@ -23,7 +23,8 @@ class SwingPendulum(Environment):
     }
 
     def __init__(self, **kwargs):
-        # self.horizon = 100
+        #TODO: check actual horizon
+        self.horizon = 100
         self.gamma = 0.9
 
         self._m = 1.
