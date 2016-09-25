@@ -80,7 +80,7 @@ class Environment(gym.Env):
             return self._parallel_eval(policy, nbEpisodes, metric,
                                        initialState)
 
-    def collectSamples(self, policy=None):
+    def collectEpisode(self, policy=None):
         """
         This function can be used to collect a dataset running an episode
         from the environment using a given policy.
@@ -98,24 +98,19 @@ class Environment(gym.Env):
                 - next state
                 - a flag indicating whether the reached state is absorbing
         """
-        self._reset()
+        done = False
         t = 0
         data = list()
         action = None
-        while (t < self.horizon) and (not self._isAbsorbing()):
-            state = self._getState()
+        state = self.reset()
+        while (t < self.horizon) and (not done):
             if policy:
                 action = policy.drawAction(state)
-                if isinstance(action, tuple):
-                    action = action[0]
             else:
                 action = self.action_space.sample()
+            nextState, reward, done, _ = self.step(action)
 
-            reward = self._step(action)
-            nextState = self._getState()
-            t += 1
-
-            if not self._isAbsorbing():
+            if not done:
                 if t < self.horizon:
                     newEl = [0] + state + [action, reward] + nextState + [0]
                 else:
@@ -124,5 +119,7 @@ class Environment(gym.Env):
                 newEl = [1] + state + [action, reward] + nextState + [1]
 
             data.append(newEl)
+            state = nextState
+            t += 1
 
         return np.array(data)
