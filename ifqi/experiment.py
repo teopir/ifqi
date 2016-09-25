@@ -16,6 +16,7 @@ import warnings
 
 import numpy as np
 
+
 class Experiment(object):
     """
     This class has the purpose to load the configuration
@@ -67,10 +68,10 @@ class Experiment(object):
         elif self.config["mdp"]["mdpName"] == "LQG1D":
             return LQG1D()
         elif self.config["mdp"]["mdpName"] == "LQG1DDisc":
-            downerAct = np.linspace(-10,-3,8)
-            upperAct = np.linspace(3,10,8)
-            middle = np.linspace(-2,2,13)
-            actions = downerAct.tolist() + middle.tolist() + upperAct.tolist()        
+            downerAct = np.linspace(-10, -3, 8)
+            upperAct = np.linspace(3, 10, 8)
+            middle = np.linspace(-2, 2, 13)
+            actions = downerAct.tolist() + middle.tolist() + upperAct.tolist()
             return LQG1DDiscrete(actions)
         else:
             raise ValueError('Unknown mdp type.')
@@ -121,16 +122,19 @@ class Experiment(object):
             params = {}
         else:
             raise ValueError('Unknown estimator type.')
-        
-        actionRegressorWrap = True
-        if "actionRegressorWrap" in modelConfig:
-            actionRegressorWrap = modelConfig["actionRegressorWrap"]
-        
-        if actionRegressorWrap:
-            if self.mdp.nActions < 1:
-                warnings.warn("Action Regressor shouldn't be used for continuos action environment")
-            return ActionRegressor(model, self.mdp.nActions, **params)
-        else:
-            return model(**params)
 
-            
+        fitActions = False
+        if 'fitActions' in modelConfig:
+            fitActions = modelConfig['fitActions']
+
+        if fitActions:
+            return model(**params)
+        else:
+            if isinstance(self.action_space, spaces.Box):
+                warnings.warn("Action Regressor cannot be used for continuous "
+                              "action environment. Single regressor will be "
+                              "used.")
+                return model(**params)
+            return ActionRegressor(model,
+                                   self.mdp.action_space.values,
+                                   **params)
