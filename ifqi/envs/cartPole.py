@@ -8,6 +8,10 @@ class CartPole(Environment):
     """
     TODO COSA FA
     """
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+        'video.frames_per_second': 15
+    }
 
     def __init__(self, discreteRew=False):
         self.env = gym.make('CartPole-v0')

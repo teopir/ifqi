@@ -14,6 +14,10 @@ class CarOnHill(Environment):
     "Tree-Based Batch Mode Reinforcement Learning, D. Ernst et. al."
 
     """
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+        'video.frames_per_second': 15
+    }
 
     def __init__(self):
         # Properties

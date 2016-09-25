@@ -28,6 +28,10 @@ class DiscreteValued(gym.Space):
         if idx >= 0 and idx < d:
             return self.values[idx]
 
+    @property
+    def shape(self):
+        return tuple(len(self.values), )
+
     def __repr__(self):
         return "DiscreteValued({})".format(self.values.tolist)
 

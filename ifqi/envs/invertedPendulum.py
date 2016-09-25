@@ -11,6 +11,10 @@ class InvPendulum(Environment):
     The Inverted Pendulum environment.
 
     """
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+        'video.frames_per_second': 15
+    }
 
     # TODO dove e' stato preso???
 
