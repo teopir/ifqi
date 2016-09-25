@@ -105,10 +105,10 @@ def collect(mdp, nEpisodes):
         - the dataset
 
     """
-    data = mdp.collect()
+    data = mdp.collectSamples()
 
     for i in xrange(nEpisodes - 1):
-        data = np.append(data, mdp.collect(), axis=0)
+        data = np.append(data, mdp.collectSamples(), axis=0)
 
     return data
 
