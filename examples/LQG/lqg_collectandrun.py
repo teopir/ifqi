@@ -27,9 +27,13 @@ class tmp_policy():
 
 ##############################################################
 # Compute the discounted reward
-n_rep = 1000
-J = env.computeJ(K, S, n_random_x0=n_rep)
+# n_rep = 1000
+# J = env.computeJ(K, S, n_random_x0=n_rep)
 pol = tmp_policy(K, S)
-Jsample = env.evaluate(pol, nbEpisodes=n_rep, metric='discounted', render=False)
-print(J, Jsample)
+# Jsample = env.evaluate(pol, nbEpisodes=n_rep, metric='discounted', render=False)
+# print(J, Jsample)
 
+##############################################################
+# Collect samples
+A = env.collectEpisode(None)
+print(A.shape)

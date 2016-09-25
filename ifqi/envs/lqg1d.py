@@ -75,8 +75,8 @@ class LQG1D(Environment):
                np.dot(u, np.dot(self.R, u))
         # print(self.state, u, noise, xn, cost)
 
-        self.state = np.array(xn)
-        return xn, -np.asscalar(cost), False, {}
+        self.state = np.array(xn.ravel())
+        return self._getState(), -np.asscalar(cost), False, {}
         # return -np.asscalar(cost)
 
     def _reset(self, state=None):

@@ -21,3 +21,7 @@ pol = tmp_policy()
 Jsample = env.evaluate(pol, nbEpisodes=n_rep, metric='discounted', render=True)
 print(Jsample)
 
+##############################################################
+# Collect samples
+A = env.collectEpisode(None)
+print(A.shape)

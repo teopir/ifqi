@@ -32,7 +32,8 @@ def _eval_and_render(mdp, policy, nbEpisodes=1, metric='discounted',
             mdp.render(mode='human')
         if hasattr(mdp, 'horizon'):
             H = mdp.horizon
-        state = mdp.reset(initialState)
+        mdp.reset()
+        state = mdp._reset(initialState)
         while (t < H) and (not done):
             action = policy.drawAction(state)
             state, r, done, _ = mdp.step(action)
@@ -104,6 +105,7 @@ def collectEpisode(mdp, policy=None):
     if hasattr(mdp, 'horizon'):
         H = mdp.horizon
     state = mdp.reset()
+    assert len(state.shape) == 1
     while (t < H) and (not done):
         if policy:
             action = policy.drawAction(state)
@@ -113,15 +115,18 @@ def collectEpisode(mdp, policy=None):
 
         if not done:
             if t < mdp.horizon:
-                newEl = [0] + state + [action, reward] + nextState + [0]
+                newEl = np.column_stack((0, state, action, reward, nextState, 0)).ravel()
+                #newEl = [0] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [0]
             else:
-                newEl = [1] + state + [action, reward] + nextState + [0]
+                newEl = np.column_stack((1, state, action, reward, nextState, 0)).ravel()
+                # newEl = [1] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [0]
         else:
-            newEl = [1] + state + [action, reward] + nextState + [1]
+            newEl = np.column_stack((1, state, action, reward, nextState, 1)).ravel()
+            #newEl = [1] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [1]
 
-        data.append(newEl)
+        assert len(newEl.shape) == 1
+        data.append(newEl.tolist())
         state = nextState
         t += 1
 
     return np.array(data)
-
