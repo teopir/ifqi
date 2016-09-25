@@ -5,6 +5,7 @@ from gym.spaces import prng
 
 
 class DiscreteValued(gym.Space):
+    
     def __init__(self, values, decimals=6):
         assert len(values) > 0, 'list cannot be empty'
         self.decimals = decimals
@@ -30,6 +31,9 @@ class DiscreteValued(gym.Space):
 
     @property
     def shape(self):
+        #TODO: fix len when self.values is nparray
+        if type(self.values)==np.ndarray:
+            return tuple(self.values.shape,)
         return tuple(len(self.values), )
 
     def __repr__(self):

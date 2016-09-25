@@ -99,9 +99,8 @@ class TestEnvironment(unittest.TestCase):
             data = evaluate.collectEpisode(env)
             
             stateDim = env.observation_space.shape[0]
-            actionDim = env.action_space.shape[0]
             
-            self.assertTrue(data.shape[1] == 3 + stateDim*2 + actionDim, "Dataset shape is not consistent with the environment description" )
+            self.assertTrue(data.shape[1] == 3 + stateDim*2 + 1, "Dataset shape is not consistent with the environment description" )
             endEpisode = data[:,0]
             state = data[:,1:1+stateDim]
             action = data[:,stateDim]
@@ -110,6 +109,7 @@ class TestEnvironment(unittest.TestCase):
             absorbing = data[:,-1]
         
         checkCollect(Acrobot())
+        print "CarOnHill"
         #checkStep(Bicycle())
         checkCollect(CarOnHill())
         checkCollect(CartPole())

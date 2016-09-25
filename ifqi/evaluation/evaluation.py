@@ -114,20 +114,24 @@ def collectEpisode(mdp, policy=None):
         else:
             action = mdp.action_space.sample()
         nextState, reward, done, _ = mdp.step(action)
-
+        
+        #TODO: should look the dimension of the action
+        action = np.reshape(action,(1))
+        
         if not done:
             if t < mdp.horizon:
-                newEl = np.column_stack((0, state, action, reward, nextState, 0)).ravel()
-                #newEl = [0] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [0]
+                #newEl = np.column_stack((0, state, action, reward, nextState, 0)).ravel()
+                newEl = [0] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [0]
             else:
-                newEl = np.column_stack((1, state, action, reward, nextState, 0)).ravel()
-                # newEl = [1] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [0]
+                #newEl = np.column_stack((1, state, action, reward, nextState, 0)).ravel()
+                newEl = [1] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [0]
         else:
-            newEl = np.column_stack((1, state, action, reward, nextState, 1)).ravel()
-            #newEl = [1] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [1]
+            #newEl = np.column_stack((1, state, action, reward, nextState, 1)).ravel()
+            newEl = [1] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [1]
 
-        assert len(newEl.shape) == 1
-        data.append(newEl.tolist())
+        #assert len(newEl.shape) == 1
+        #data.append(newEl.tolist())
+        data.append(newEl)
         state = nextState
         t += 1
 

@@ -66,6 +66,7 @@ class InvPendulum(Environment):
 
     def _step(self, u, render=False):
         # u = np.clip(u, -self.max_action, self.max_action)
+        u = np.reshape(u,())
         n_u = u + 2 * self._noise * np.random.rand() - self._noise
 
         a = self._g * np.sin(self._theta)\

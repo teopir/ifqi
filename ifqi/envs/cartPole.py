@@ -39,6 +39,8 @@ class CartPole(Environment):
 
     def _step(self, action):
         self._count += 1
+        
+        action = np.reshape(action,())
 
         nextState, reward, absorbing, info = self.env.step(action)
         # if isinstance(action, int):

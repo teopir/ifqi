@@ -85,7 +85,8 @@ class SwingPendulum(Environment):
     def _step(self, action, render=False):
 
         # u = action[0] / 11. * 10. - 5.
-        u = action
+        
+        u = np.reshape(action,())
 
         theta, theta_dot = tuple(self.state)
 
