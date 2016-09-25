@@ -179,7 +179,8 @@ class Acrobot(Environment):
 
         return tmp + -np.pi
 
-    def evaluate(self, policy, nbEpisodes=1, metric='discounted', render=False):
+    def evaluate(self, policy, nbEpisodes=1, metric='discounted',
+                 initialState=None, render=False):
         """
         This function evaluates the regressor in the provided object parameter.
         This way of evaluation is just one of many possible ones.
@@ -187,6 +188,7 @@ class Acrobot(Environment):
             policy (object): a policy object (method drawAction is expected)
             nbEpisodes (int): the number of episodes to execute
             metric (string): the evaluation metric ['discounted', 'average']
+            initialState: NOT used
             render (bool): flag indicating whether to visualize the behavior of
                             the policy
         Returns:
@@ -200,8 +202,7 @@ class Acrobot(Environment):
         values = np.zeros(nstates)
         counter = 0
         for theta1 in states:
-            self._reset([theta1, 0., 0., 0.])
-            values[counter] = super(Acrobot, self).evaluate(policy, nbEpisodes, metric, render)[0]
+            values[counter] = super(Acrobot, self).evaluate(policy, nbEpisodes, metric, [theta1, 0., 0., 0.], render)[0]
             counter += 1
 
         return values.mean(), 2 * values.std() / np.sqrt(nstates)

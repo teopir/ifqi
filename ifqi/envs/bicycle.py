@@ -15,7 +15,11 @@
 #
 
 import numpy
+from gym import spaces
+from gym.utils import seeding
 from environment import Environment
+
+from builtins import range
 
 
 class Bicycle(Environment):
@@ -24,15 +28,19 @@ class Bicycle(Environment):
     Learning to Drive a Bicycle using Reinforcement Learning and Shaping.
     Jette Randlov and Preben Alstrom. 1998.
     """
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+        'video.frames_per_second': 15
+    }
 
     name = "Bicycle"
 
     def __init__(self, **kwargs):
 
-        self.stateDim = 5
-        self.actionDim = 1
-        self.nStates = 0
-        self.nActions = 9
+        # self.stateDim = 5
+        # self.actionDim = 1
+        # self.nStates = 0
+        # self.nActions = 9
         self.horizon = 1000
         self.gamma = 0.98
 
@@ -51,15 +59,15 @@ class Bicycle(Environment):
         self._state = numpy.zeros((5,))
         # x_f, y_f, x_b, y_b, psi
         self._position = numpy.zeros((5,))
-        self._state_range = numpy.array([[-numpy.pi * 12./180.,
-                                          numpy.pi * 12./180.],
-                                        [-numpy.pi * 2./180.,
-                                        numpy.pi * 2./180.],
-                                        [-numpy.pi, numpy.pi],
-                                        [-numpy.pi * 80./180.,
-                                        numpy.pi * 80./180.],
-                                        [-numpy.pi * 2./180.,
-                                        numpy.pi * 2./180.]])
+        self._state_range = numpy.array([[-numpy.pi * 12. / 180.,
+                                          numpy.pi * 12. / 180.],
+                                         [-numpy.pi * 2. / 180.,
+                                          numpy.pi * 2. / 180.],
+                                         [-numpy.pi, numpy.pi],
+                                         [-numpy.pi * 80. / 180.,
+                                          numpy.pi * 80. / 180.],
+                                         [-numpy.pi * 2. / 180.,
+                                          numpy.pi * 2. / 180.]])
         self._psi_range = numpy.array([-numpy.pi, numpy.pi])
 
         self._reward_fall = -1.0
@@ -98,10 +106,10 @@ class Bicycle(Environment):
 
         # Useful precomputations
         self._M = self._M_p + self._M_c
-        self._Inertia_bc = (13./3.) * self._M_c * self._h**2 + self._M_p * \
-                           (self._h + self._d_cm)**2
-        self._Inertia_dv = self._M_d * self._r**2
-        self._Inertia_dl = .5 * self._M_d * self._r**2
+        self._Inertia_bc = (13. / 3.) * self._M_c * self._h ** 2 + self._M_p * \
+                                                                   (self._h + self._d_cm) ** 2
+        self._Inertia_dv = self._M_d * self._r ** 2
+        self._Inertia_dl = .5 * self._M_d * self._r ** 2
         self._sigma_dot = self._v / self._r
 
         # Simulation Constants
@@ -111,6 +119,23 @@ class Bicycle(Environment):
 
         self._absorbing = False
         self._theta = 0.
+
+        # gym attributes
+        self.viewer = None
+        high = numpy.array([numpy.inf, numpy.inf, numpy.inf, numpy.inf, numpy.inf]) # todo fix
+        low = -high
+        self.observation_space = spaces.Box(low=low, high=high)
+
+        nactions = 9
+        self.action_space = spaces.Discrete(nactions)
+
+        # initialize state
+        self._seed()
+        self._reset()
+
+    def _seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def _reset(self, state=None):
         self._absorbing = False
@@ -127,10 +152,13 @@ class Bicycle(Environment):
         self._position.fill(0.0)
         self._position[2] = self._l * numpy.cos(psi)
         self._position[3] = self._l * numpy.sin(psi)
-        self._position[4] = psi  # numpy.arctan((self.position[1]-self.position[0])/(self.position[2] - self.position[3]))
+        self._position[
+            4] = psi  # numpy.arctan((self.position[1]-self.position[0])/(self.position[2] - self.position[3]))
+        return self._getState()
 
-    def _step(self, intAction, render=False):
-        T = 2. * ((int(intAction)/3) - 1)  # Torque on handle bars
+    def _step(self, action, render=False):
+        intAction = int(action)
+        T = 2. * ((intAction / 3) - 1)  # Torque on handle bars
         d = 0.02 * ((intAction % 3) - 1)  # Displacement of center of mass (in meters)
         # if self.noise > 0:
         #    d += (numpy.random.random()-0.5)*self.noise # Noise between [-0.02, 0.02] meters
@@ -139,13 +167,13 @@ class Bicycle(Environment):
         x_f, y_f, x_b, y_b, psi = tuple(self._position)
 
         goal_angle_old = self._angle_between(
-            self._goal_loc, numpy.array([x_f-x_b, y_f-y_b])) * numpy.pi / 180.
-        if x_f == x_b and y_f-y_b < 0:
+            self._goal_loc, numpy.array([x_f - x_b, y_f - y_b])) * numpy.pi / 180.
+        if x_f == x_b and (y_f - y_b) < 0:
             old_psi = numpy.pi
-        elif y_f - y_b > 0:
-            old_psi = numpy.arctan((x_b - x_f)/(y_f - y_b))
+        elif (y_f - y_b) > 0:
+            old_psi = numpy.arctan((x_b - x_f) / (y_f - y_b))
         else:
-            old_psi = numpy.sign(x_b - x_f)*(numpy.pi / 2.) - \
+            old_psi = numpy.sign(x_b - x_f) * (numpy.pi / 2.) - \
                       numpy.arctan((y_f - y_b) / (x_b - x_f))
 
         for step in range(self._sim_steps):
@@ -153,19 +181,20 @@ class Bicycle(Environment):
                 r_f = r_b = r_CM = 1.e8
             else:
                 r_f = self._l / numpy.abs(numpy.sin(theta))
-                r_b = self._l / numpy.abs(numpy.tan(theta))  # self.l / numpy.abs(numpy.tan(from pyrl.misc import matrixtheta))
-                r_CM = numpy.sqrt((self._l - self._c)**2 +
-                                  (self._l**2 / numpy.tan(theta)**2))
+                r_b = self._l / numpy.abs(
+                    numpy.tan(theta))  # self.l / numpy.abs(numpy.tan(from pyrl.misc import matrixtheta))
+                r_CM = numpy.sqrt((self._l - self._c) ** 2 +
+                                  (self._l ** 2 / numpy.tan(theta) ** 2))
 
             varphi = omega + numpy.arctan(d / self._h)
 
             omega_ddot = self._h * self._M * self._gravity * numpy.sin(varphi)
             omega_ddot -= numpy.cos(varphi) * \
-                (self._Inertia_dv * self._sigma_dot * theta_dot +
-                 numpy.sign(theta) * self._v**2 *
-                 (self._M_d * self._r * (1. / r_f + 1. / r_b) +
-                  self._M * self._h/r_CM)
-                 )
+                          (self._Inertia_dv * self._sigma_dot * theta_dot +
+                           numpy.sign(theta) * self._v ** 2 *
+                           (self._M_d * self._r * (1. / r_f + 1. / r_b) +
+                            self._M * self._h / r_CM)
+                           )
             omega_ddot /= self._Inertia_bc
 
             theta_ddot = (T - self._Inertia_dv * self._sigma_dot *
@@ -184,9 +213,9 @@ class Bicycle(Environment):
 
             # Update position (x,y) of tires
             front_term = psi + theta + numpy.sign(psi + theta) * \
-                numpy.arcsin(self._v * df / (2. * r_f))
+                                       numpy.arcsin(self._v * df / (2. * r_f))
             back_term = psi + numpy.sign(psi) * \
-                numpy.arcsin(self._v * df / (2. * r_b))
+                              numpy.arcsin(self._v * df / (2. * r_b))
             x_f += -numpy.sin(front_term)
             y_f += numpy.cos(front_term)
             x_b += -numpy.sin(back_term)
@@ -194,7 +223,7 @@ class Bicycle(Environment):
 
             # Handle Roundoff errors, to keep the length of the bicycle
             # constant
-            dist = numpy.sqrt((x_f-x_b)**2 + (y_f - y_b)**2)
+            dist = numpy.sqrt((x_f - x_b) ** 2 + (y_f - y_b) ** 2)
             if numpy.abs(dist - self._l) > 0.01:
                 x_b += (x_b - x_f) * (self._l - dist) / dist
                 y_b += (y_b - y_f) * (self._l - dist) / dist
@@ -215,26 +244,28 @@ class Bicycle(Environment):
                                    theta_dot])
         self._position = numpy.array([x_f, y_f, x_b, y_b, psi])
 
+        reward = 0
         if numpy.abs(omega) > self._state_range[0, 1]:  # Bicycle fell over
             self._absorbing = True
-            return -1.0
+            reward = -1.0
         elif self._isAtGoal():
             self._absorbing = True
-            return self._reward_goal
+            reward = self._reward_goal
         elif not self._navigate:
             self._absorbing = False
-            return self._reward_shaping
+            reward = self._reward_shaping
         else:
             goal_angle = self._angle_between(
-                self._goal_loc, numpy.array([x_f-x_b, y_f-y_b])) * \
-                numpy.pi / 180.
+                self._goal_loc, numpy.array([x_f - x_b, y_f - y_b])) * \
+                         numpy.pi / 180.
 
             self._absorbing = False
             # return (4. - goal_angle**2) * self.reward_shaping
             # ret =  0.1 * (self.angleWrapPi(old_psi) - self.angleWrapPi(psi))
             ret = 0.1 * (self._angleWrapPi(goal_angle_old) -
                          self._angleWrapPi(goal_angle))
-            return ret
+            reward = ret
+        return self._getState(), reward, self._absorbing, {}
 
     def _unit_vector(self, vector):
         """ Returns the unit vector of the vector.  """
@@ -258,7 +289,7 @@ class Bicycle(Environment):
         # Anywhere in the goal radius
         if self._navigate:
             return numpy.sqrt(
-                max(0., ((self._position[:2] - self._goal_loc)**2).sum() -
+                max(0., ((self._position[:2] - self._goal_loc) ** 2).sum() -
                     self._goal_rsqrd)) < 1.e-5
         else:
             return False
@@ -270,7 +301,7 @@ class Bicycle(Environment):
             self._goal_loc,
             numpy.array([x_f - x_b, y_f - y_b])) * numpy.pi / 180.
         """ modified to follow Ernst paper"""
-        return [omega, omega_dot, theta, theta_dot, goal_angle]
+        return numpy.array([omega, omega_dot, theta, theta_dot, goal_angle])
 
     def _angleWrapPi(self, x):
         while (x < -numpy.pi):
@@ -278,21 +309,3 @@ class Bicycle(Environment):
         while (x > numpy.pi):
             x -= 2.0 * numpy.pi
         return x
-
-    def evaluate(self, fqi, expReplay=False, render=False):
-        """
-        This function evaluates the regressor in the provided object parameter.
-        This way of evaluation is just one of many possible ones.
-        Params:
-            fqi (object): an object containing the trained regressor
-            expReplay (bool): flag indicating whether to do experience replay
-            render (bool): flag indicating whether to render visualize behavior
-                           of the agent
-        Returns:
-            a numpy array containing the average score obtained starting from
-            289 different states
-
-        """
-        self._reset()
-
-        return self.runEpisode(fqi, expReplay, render)

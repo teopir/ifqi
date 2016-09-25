@@ -11,7 +11,7 @@ class ActionRegressor(object):
     spatial correlation along action space.
     """
 
-    def __init__(self, model, discreteActions, **params):
+    def __init__(self, model, discreteActions, decimals=6, **params):
         """
         Initialization of the class.
         
@@ -25,7 +25,14 @@ class ActionRegressor(object):
         """
         if isinstance(discreteActions, ('int', 'float')):
             discreteActions = np.arange(int(discreteActions))
+            self.decimals = 0
+        else:
+            # fix number of decimals (i.e., precision)
+            discreteActions = np.around(discreteActions, decimals=decimals)
+            self.decimals = decimals
         self.actions = np.unique(discreteActions)
+        if self.decimals == 0:
+            self.actions = self.actions.astype('int')
         self.models = self.initModel(model, **params)
 
     def fit(self, X, y, **kwargs):
@@ -40,6 +47,7 @@ class ActionRegressor(object):
         Returns:
             None
         """
+        # todo arange on X[:, -1]
         for i in range(len(self.models)):
             action = self.actions[i]
             idxs = np.argwhere(X[:, -1] == action).ravel()
