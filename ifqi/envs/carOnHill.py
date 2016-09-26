@@ -1,7 +1,5 @@
 import numpy as np
-import sys
-if sys.version_info[0]==3:
-    from builtins import range
+from builtins import range
 from gym import spaces
 from gym.utils import seeding
 from scipy.integrate import odeint
