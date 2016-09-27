@@ -1,4 +1,5 @@
 import unittest
+
 from ifqi.envs.acrobot import Acrobot
 from ifqi.envs.carOnHill import CarOnHill
 from ifqi.envs.cartPole import CartPole
@@ -14,6 +15,7 @@ Here we test all the environments
 
 
 class TestEnvironment(unittest.TestCase):
+    
     def test_step(self):
 
         def checkStep(env):
@@ -61,7 +63,7 @@ class TestEnvironment(unittest.TestCase):
 
     def test_evaluation(self):
         return
-
+        
         # TODO: fix this
         def checkEvaluation(env):
             """
@@ -112,13 +114,14 @@ class TestEnvironment(unittest.TestCase):
                             "Dataset shape is not consistent with the environment description")
             endEpisode = data[:, 0]
             state = data[:, 1:1 + stateDim]
-            action = data[:, stateDim]
-            reward = data[:, stateDim + 1]
-            nextState = data[:, stateDim + 2: 2 * stateDim + 2]
+            action = data[:, 1+stateDim]
+            reward = data[:, stateDim + 2]
+            nextState = data[:, stateDim + 3: 2 * stateDim + 3]
             absorbing = data[:, -1]
+            
+            self.assertTrue(np.array_equal(state[1:],nextState[:-1]))
 
         checkCollect(Acrobot())
-        print "CarOnHill"
         # checkStep(Bicycle())
         checkCollect(CarOnHill())
         checkCollect(CartPole())
