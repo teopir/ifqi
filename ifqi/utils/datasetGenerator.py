@@ -25,10 +25,17 @@ class DatasetGenerator:
         tempData = np.load(fileName)
         self.data = np.concatenate((self.data, tempData))
         
-    def generateAppend(self, policy, n_episodes):
+    def generateAppend(self, policy=None, n_episodes=100):
         for _ in xrange(n_episodes):
             tempData = evaluate.collectEpisode(self.environment, policy)
             self.data = np.concatenate((self.data,tempData), axis=0)
+            
+    def generate(self, policy=None, n_episodes=100):
+        self.reset()
+        for _ in xrange(n_episodes):
+            tempData = evaluate.collectEpisode(self.environment, policy)
+            self.data = np.concatenate((self.data,tempData), axis=0)
+        
             
     def reset(self):
         self.data = np.zeros((0,))
