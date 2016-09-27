@@ -7,12 +7,15 @@ from gym.spaces import prng
 class DiscreteValued(gym.Space):
     
     def __init__(self, values, decimals=6):
+        """
+        Each row represents an action
+        """
         assert len(values) > 0, 'list cannot be empty'
         self.decimals = decimals
         self.values = np.around(values, decimals=decimals)
 
     def sample(self):
-        idx = prng.np_random.randint(len(self.values))
+        idx = prng.np_random.randint(self.values.shape[0])
         return self.values[idx]
 
     def contains(self, x):
@@ -25,16 +28,27 @@ class DiscreteValued(gym.Space):
     def get(self, idx=None):
         if idx:
             return self.values
-        d = len(self.values)
+        d = self.values.shape[0]
         if idx >= 0 and idx < d:
             return self.values[idx]
 
     @property
-    def shape(self):
-        #TODO: fix len when self.values is nparray
-        if type(self.values)==np.ndarray:
-            return tuple(self.values.shape,)
-        return tuple(len(self.values), )
+    def value_dim(self):
+        """
+        Return the dimension of the values
+        """
+        if len(self.values.shape) == 1:
+            return 1
+        else:
+            return self.values.shape[1]
+
+    @property
+    def values_count(self):
+        """
+        Return the number of discrete values
+        """
+        return self.values.shape[0]
+
 
     def __repr__(self):
         return "DiscreteValued({})".format(self.values.tolist)
