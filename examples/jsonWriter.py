@@ -72,7 +72,12 @@ def retreiveParams():
                 else:
                     globals()[name] = int(value)
             except:
-                globals()[name] = str(value)
+                if str(value)=="True":
+                    globals()[name] = True
+                elif str(value)=="False":
+                    globals()[name] = False
+                else:
+                    globals()[name] = str(value)
             
 json_path="experiment.json"
 name="exp1"
@@ -109,8 +114,8 @@ n_replay=100
 add_last=False
 n_repeat_episodes=1
 reset_fqi=True
-retreiveParams()
 action_regressor = True
+retreiveParams()
 
 datasets = list(folder+str(num) for folder in dataset_folders for num in range(0,n_dataset))
 
@@ -209,6 +214,7 @@ if model_name == "Linear" or model_name == "LinearEnsemble":
     json_file["supervised_algorithm"] ={
         "criterion":criterion    
     }
+
 
 json_file["model"]["actionRegressorWrap"] = action_regressor
     
