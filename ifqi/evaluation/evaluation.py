@@ -54,7 +54,8 @@ def _eval_and_render(mdp, policy, nbEpisodes=1, metric='discounted',
 
 def _parallel_eval(mdp, policy, nbEpisodes, metric, initialState):
     # TODO using joblib
-    return _eval_and_render(mdp, policy, nbEpisodes, metric, initialState, False)
+    return _eval_and_render(mdp, policy, nbEpisodes, metric,
+                            initialState, False)
 
 
 def evaluate_policy(mdp, policy, nbEpisodes=1,
@@ -114,20 +115,23 @@ def collectEpisode(mdp, policy=None):
         else:
             action = mdp.action_space.sample()
         nextState, reward, done, _ = mdp.step(action)
-        
-        #TODO: should look the dimension of the action
-        action = np.reshape(action,(1))
-        
+
+        # TODO: should look the dimension of the action
+        action = np.reshape(action, (1))
+
         if not done:
             if t < mdp.horizon:
                 #newEl = np.column_stack((0, state, action, reward, nextState, 0)).ravel()
-                newEl = [0] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [0]
+                newEl = [0] + state.tolist() + action.tolist() + [reward] + \
+                        nextState.tolist() + [0]
             else:
                 #newEl = np.column_stack((1, state, action, reward, nextState, 0)).ravel()
-                newEl = [1] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [0]
+                newEl = [1] + state.tolist() + action.tolist() + [reward] + \
+                        nextState.tolist() + [0]
         else:
             #newEl = np.column_stack((1, state, action, reward, nextState, 1)).ravel()
-            newEl = [1] + state.tolist() + action.tolist() + [reward] + nextState.tolist() + [1]
+            newEl = [1] + state.tolist() + action.tolist() + \
+                    [reward] + nextState.tolist() + [1]
 
         #assert len(newEl.shape) == 1
         #data.append(newEl.tolist())
