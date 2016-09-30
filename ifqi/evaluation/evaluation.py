@@ -21,6 +21,7 @@ def _eval_and_render(mdp, policy, nbEpisodes=1, metric='discounted',
     """
     fps = mdp.metadata.get('video.frames_per_second') or 100
     values = np.zeros(nbEpisodes)
+    steps = np.zeros(nbEpisodes)
     gamma = mdp.gamma
     if metric == 'average':
         gamma = 1
@@ -49,7 +50,9 @@ def _eval_and_render(mdp, policy, nbEpisodes=1, metric='discounted',
         if gamma == 1:
             epPerformance /= t
         values[e] = epPerformance
-    return values.mean(), 2 * values.std() / np.sqrt(nbEpisodes)
+        steps[e] = t
+        
+    return values.mean(), 2 * values.std() / np.sqrt(nbEpisodes),  steps, 2 * steps.std() / np.sqrt(nbEpisodes)
 
 
 def _parallel_eval(mdp, policy, nbEpisodes, metric, initialState):

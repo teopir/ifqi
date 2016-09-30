@@ -39,8 +39,6 @@ class Experiment(object):
         else:
             self.config = dict()
 
-    def loadModel(self):
-        self.model = self._getModel()
 
     def getMDP(self):
         """
@@ -76,14 +74,14 @@ class Experiment(object):
         else:
             raise ValueError('Unknown mdp type.')
 
-    def _getModel(self):
+    def _getModel(self, index):
         """
         This function loads the model required in the configuration file.
         Returns:
             the required model.
 
         """
-        modelConfig = self.config['model']
+        modelConfig = self.config['regressor'][index]
         if modelConfig['modelName'] == 'ExtraTree':
             model = ExtraTreesRegressor
             params = {'n_estimators': modelConfig['nEstimators'],
@@ -138,3 +136,30 @@ class Experiment(object):
             return ActionRegressor(model,
                                    self.mdp.action_space.values,
                                    **params)
+
+    def getFQI(self, regressorIndex):
+        regressor = self._getModel(regressorIndex)
+        gamma = self.config['rlAlgorithm']['gamma']
+        horizon = self.config['rlAlgorithm']['horizon']
+        verbose = self.config['rlAlgorithm']['verbosity']
+        scaled = self.config['rlAlgorithm']['scaled']
+        #TODO: fix
+        if 'features' in self.config['model']:
+            features = self.config['model']['features']
+        else:
+            features = None
+            
+        state_dim = environment.observation_space.shape[0]
+        
+        fqi = FQI(estimator=regressor,
+          stateDim=state_dim,
+          #TODO: Fix action dimension
+          actionDim=1,
+          discreteActions=exp.mdp.getDiscreteActions(),
+          gamma=gamma,
+          horizon=horizon,
+          verbose=verbose,
+          features=features,
+          scaled=scaled)
+          
+        return fqi 
