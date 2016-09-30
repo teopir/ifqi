@@ -21,6 +21,7 @@ class ActionRegressor(object):
                 represents the number of discrete actions to be used
                 [0, 1, 2, discreteActions-1]. Otherwise the values
                 contained in the list are used.
+            decimals (int): precision for float actions
             **params: additional parameters that are used to init the model
         """
         if isinstance(discreteActions, ('int', 'float')):
@@ -30,7 +31,9 @@ class ActionRegressor(object):
             # fix number of decimals (i.e., precision)
             discreteActions = np.around(discreteActions, decimals=decimals)
             self.decimals = decimals
-        self.actions = np.unique(discreteActions)
+        new_array = [tuple(row) for row in discreteActions]
+        self.actions = np.unique(new_array)
+        # actions is a #action x #variables. Ie each row is an action
         if self.decimals == 0:
             self.actions = self.actions.astype('int')
         self.models = self.initModel(model, **params)
@@ -50,7 +53,7 @@ class ActionRegressor(object):
         # todo arange on X[:, -1]
         for i in range(len(self.models)):
             action = self.actions[i]
-            idxs = np.argwhere(X[:, -1] == action).ravel()
+            idxs = np.all(X[:, -1] == action, axis=1)
             self.models[i].fit(X[idxs, :-1], y[idxs], **kwargs)
 
     def predict(self, x, **kwargs):
@@ -69,7 +72,7 @@ class ActionRegressor(object):
         """
         assert x.shape[0] == 1
         action = x[0, -1]
-        idxs = np.asscalar(np.argwhere(self.actions == action))
+        idxs = np.asscalar(np.where(np.all(self.actions.T == action, axis=0)))
         output = self.models[idxs].predict(x[:, :-1], **kwargs)
         return output
 
@@ -90,6 +93,6 @@ class ActionRegressor(object):
             models (list): list of initialized estimators
         """
         models = list()
-        for i in range(len(self.actions)):
+        for i in range(self.actions.shape[0]):
             models.append(model(**params))
         return models
