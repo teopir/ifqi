@@ -9,14 +9,11 @@ import ifqi.evaluation.evaluation as evaluate
 
 class DatasetGenerator:
 
-    def __init__(self, environment, policy, n_episodes):
+    def __init__(self, environment):
         self.environment = environment
         self._stateDim = self.environment.observation_space.shape[0]
         self.data = np.zeros((0, 3 + self._stateDim * 2 + 1))
 
-        for _ in xrange(n_episodes):
-            tempData = evaluate.collectEpisode(environment, policy)
-            self.data = np.concatenate((self.data, tempData), axis=0)
 
     def save(self, fileName):
         np.save(fileName, self.data)
@@ -71,6 +68,8 @@ class DatasetGenerator:
                                                                       rewardDim)
         nextStates = data[idxs + 1, statepos:actionpos].reshape(-1, stateDim)
         absorbingStates = data[idxs + 1, 1].reshape(-1, 1)
+        #TODO:
+        self.data = None #np.concatenate()
 
     def load(self, fileName):
         self.data = np.load(fileName)
@@ -91,7 +90,7 @@ class DatasetGenerator:
             self.data = np.concatenate((self.data, tempData), axis=0)
 
     def reset(self):
-        self.data = np.zeros((0,))
+        self.data = np.zeros((0, 3 + self._stateDim * 2 + 1))
 
     @property
     def action(self):
@@ -118,5 +117,5 @@ class DatasetGenerator:
         return self.data[:, self._stateDim + 2]
 
     @property
-    def sar(self):
-        return (np.concatenate((self.state, self.action), axis=1), self.reward)
+    def sastr(self):
+        return (np.concatenate((self.state, np.matrix(self.action).T, self.nextState, np.matrix(self.absorbing).T), axis=1), self.reward)

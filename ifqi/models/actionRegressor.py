@@ -24,7 +24,7 @@ class ActionRegressor(object):
             decimals (int): precision for float actions
             **params: additional parameters that are used to init the model
         """
-        if isinstance(discreteActions, ('int', 'float')):
+        if isinstance(discreteActions, (int, float)):
             discreteActions = np.arange(int(discreteActions))
             self.decimals = 0
         else:

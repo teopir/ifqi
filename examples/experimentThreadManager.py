@@ -5,8 +5,6 @@ import time
 import json
 from time import gmtime, strftime
 
-sys.path.insert(0, os.path.abspath('../'))
-
 from ifqi.experiment import Experiment
 import subprocess
 from random import shuffle
@@ -54,27 +52,29 @@ def execute(commands, nThread, refresh_time=10.,shuffled=False):
         print("All sample executed")
 
 if __name__ == '__main__':
-    config_file = "results/" + sys.argv[1]
+    config_file = sys.argv[1]
     nThread = int(sys.argv[2])
-    add_last = sys.argv[3]
+    #add_last = sys.argv[3]
     exp = Experiment(config_file)
 
-    if not add_last=='True':
+    """if not add_last=='True':
         name = raw_input("Please define the name of the new experiment: ")
-        description = raw_input("Please write a description of the experiment: ")
+        description = raw_input("Please write a description of the experiment: ")"""
 
 
     commands = []
-    for d in exp.config['experimentSetting']['datasets']:
-        for e in range(exp.config['experimentSetting']['nExperiments']):
-            commands.append(["python","experimentThread.py" , config_file , str(d) ,  str(e)])
+    for regressor in range(len(exp.config["regressors"])):
+        for size in range(len(exp.config["experimentSetting"]["sizes"])):
+            for dataset in range(exp.config['experimentSetting']['datasets']):
+                    commands.append(["python", "-m", "examples.experimentThread", config_file , str(regressor) ,  str(size), str(dataset)])
     
     execute(commands,nThread,10.)
     
     #--------------------------------------------------------------------------
     # DiaryExperiment
     #--------------------------------------------------------------------------
-    
+
+    exit()
     
     
     try:

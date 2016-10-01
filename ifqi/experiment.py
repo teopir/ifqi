@@ -1,4 +1,6 @@
 import json
+
+from gym import spaces
 from sklearn.ensemble import ExtraTreesRegressor
 from models.mlp import MLP
 from sklearn.linear_model import LinearRegression
@@ -39,6 +41,12 @@ class Experiment(object):
         else:
             self.config = dict()
 
+    def getModelName(self, nRegressor):
+        modelConfig = self.config['regressors'][nRegressor]
+        return modelConfig['modelName']
+
+    def getFitParams(self):
+        return self.config["supervisedAlgorithm"]
 
     def getMDP(self):
         """
@@ -81,7 +89,7 @@ class Experiment(object):
             the required model.
 
         """
-        modelConfig = self.config['regressor'][index]
+        modelConfig = self.config['regressors'][index]
         if modelConfig['modelName'] == 'ExtraTree':
             model = ExtraTreesRegressor
             params = {'n_estimators': modelConfig['nEstimators'],
@@ -128,7 +136,7 @@ class Experiment(object):
         if fitActions:
             return model(**params)
         else:
-            if isinstance(self.action_space, spaces.Box):
+            if isinstance(self.mdp.action_space, spaces.Box):
                 warnings.warn("Action Regressor cannot be used for continuous "
                               "action environment. Single regressor will be "
                               "used.")

@@ -54,11 +54,11 @@ exp = Experiment(config_file)
 # ------------------------------------------------------------------------------
 
 dir_ = mainFolder + exp.config["experimentSetting"]["savePath"]
-iterations = exp.config['rlAlgorithm']['nIteration']
-repetitions = exp.config['experimentSetting']["nRepetition"]
+iterations = exp.config['rlAlgorithm']['nIterations']
+repetitions = exp.config['experimentSetting']["nRepetitions"]
 
-nEvaluation = exp.config['experimentSetting']["evaluation"]['nEvaluation']
-evaluationEveryNIteration = exp.config['experimentSetting']["evaluation"]['everyNIteration']
+nEvaluation = exp.config['experimentSetting']["evaluations"]['nEvaluations']
+evaluationEveryNIteration = exp.config['experimentSetting']["evaluations"]['everyNIterations']
 
 saveFQI = False
 if "saveEveryNIteration" in exp.config['experimentSetting']:
@@ -68,15 +68,15 @@ if "saveEveryNIteration" in exp.config['experimentSetting']:
 experienceReplay = False
 if "experienceReplay" in exp.config['experimentSetting']:
     experienceReplay = True
-    nExperience = exp.config['experimentSetting']["evaluation"]['nExperience']
-    experienceEveryNIteration = exp.config['experimentSetting']["evaluation"]['everyNIteration']
+    nExperience = exp.config['rlAlgorithm']["experienceReplay"]['nExperience']
+    experienceEveryNIteration = exp.config['rlAlgorithm']["experienceReplay"]['everyNIterations']
 
 # Here I take the right size
-size = exp.config['experimentSetting']['datasetSize'][sizeN]
+size = exp.config['experimentSetting']['sizes'][sizeN]
 
 environment = exp.getMDP()
 regressorName = exp.getModelName(regressorN)
-fit_params = exp.getFitParams(regressorN)
+fit_params = exp.getFitParams()#regressorN)
 
 ds_filename = mainFolder + ".regressor_" + str(regressorName) + "size_" + str(size) + "dataset_" + str(
     datasetN) + ".npy"
@@ -90,9 +90,10 @@ action_dim = 1
 # ------------------------------------------------------------------------------
 
 dataset = DatasetGenerator(environment)
-if not os.path.isfile(ds_filename):
+if os.path.isfile(ds_filename):
     dataset.load(ds_filename)
-dataset.generate(n_episodes=nEvaluation)
+else:
+    dataset.generate(n_episodes=nEvaluation)
 
 sast, r = dataset.sastr
 
