@@ -13,7 +13,6 @@ from envs.bicycle import Bicycle
 from envs.swingPendulum import SwingPendulum
 from envs.cartPole import CartPole
 from envs.lqg1d import LQG1D
-from envs.lqg1dDiscrete import LQG1DDiscrete
 import warnings
 
 import numpy as np

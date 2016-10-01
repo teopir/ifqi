@@ -11,7 +11,7 @@ class ActionRegressor(object):
     spatial correlation along action space.
     """
 
-    def __init__(self, model, discreteActions, decimals=6, **params):
+    def __init__(self, model, discreteActions, decimals, **params):
         """
         Initialization of the class.
         
@@ -31,8 +31,20 @@ class ActionRegressor(object):
             # fix number of decimals (i.e., precision)
             discreteActions = np.around(discreteActions, decimals=decimals)
             self.decimals = decimals
-        new_array = [tuple(row) for row in discreteActions]
-        self.actions = np.unique(new_array)
+
+        # transform discrete actions into a matrix
+        dim = len(discreteActions.shape)
+        if dim == 1:
+            discreteActions = discreteActions.reshape(-1, 1)
+        elif dim > 2:
+            raise ValueError('Such dimensionality cannot be handled')
+
+        # remove duplicated actions
+        b = np.ascontiguousarray(discreteActions).view(np.dtype(
+            (np.void, discreteActions.dtype.itemsize * discreteActions.shape[1])))
+        self.actions = np.unique(b).view(discreteActions.dtype).reshape(-1, discreteActions.shape[1])
+
+        print(self.actions)
         # actions is a #action x #variables. Ie each row is an action
         if self.decimals == 0:
             self.actions = self.actions.astype('int')
