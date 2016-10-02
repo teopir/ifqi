@@ -11,7 +11,7 @@ Installation
 
 You can perform a minimal install of ``ifqi`` with:
 
-..code:: shell
+.. code:: shell
 
 	git clone https://github.com/teopir/ifqi.git
 	cd ifqi
