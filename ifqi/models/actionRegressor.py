@@ -65,6 +65,8 @@ class ActionRegressor(object):
         # todo arange on X[:, -1]
         for i in range(len(self.models)):
             action = self.actions[i]
+            print("action=", action)
+            print("x=", X[:10,-1])
             idxs = np.all(X[:, -1] == action, axis=1)
             self.models[i].fit(X[idxs, :-1], y[idxs], **kwargs)
 

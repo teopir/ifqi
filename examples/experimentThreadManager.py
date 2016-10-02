@@ -27,29 +27,29 @@ This version allow multithreading
 """
 def execute(commands, nThread, refresh_time=10.,shuffled=False):
 
-        if(shuffled):
-            shuffle(commands)
-            
-        processes = set()
-        #command should be a list
-        try:
-            for command in commands:
-                print ("New Thread Executed")
-                processes.add(subprocess.Popen(command))
-                while len(processes) >= nThread:
-                    time.sleep(refresh_time)
-                    processes.difference_update([p for p in processes if p.poll() is not None])
-        
-            for p in processes:
-                if p.poll() is None:
-                    p.wait()
-        except KeyboardInterrupt:
-            print("Keyboard interrupt catch")
-            for p in processes:
-                p.kill()
-                exit()
-        
-        print("All sample executed")
+    if(shuffled):
+        shuffle(commands)
+
+    processes = set()
+    #command should be a list
+    try:
+        for command in commands:
+            print ("New Thread Executed")
+            processes.add(subprocess.Popen(command))
+            while len(processes) >= nThread:
+                time.sleep(refresh_time)
+                processes.difference_update([p for p in processes if p.poll() is not None])
+
+        for p in processes:
+            if p.poll() is None:
+                p.wait()
+    except KeyboardInterrupt:
+        print("Keyboard interrupt catch")
+        for p in processes:
+            p.kill()
+            exit()
+
+    print("All sample executed")
 
 if __name__ == '__main__':
     config_file = sys.argv[1]

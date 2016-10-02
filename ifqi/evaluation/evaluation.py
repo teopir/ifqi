@@ -18,6 +18,8 @@ def _eval_and_render(mdp, policy, nbEpisodes=1, metric='discounted',
     Return:
         metric (float): the selected evaluation metric
         confidence (float): 95% confidence level for the provided metric
+        step (float): average number of step before finish
+        stepConfidence (float):  95% confidence level for step average
     """
     fps = mdp.metadata.get('video.frames_per_second') or 100
     values = np.zeros(nbEpisodes)

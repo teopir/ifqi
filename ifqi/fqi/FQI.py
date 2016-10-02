@@ -38,10 +38,15 @@ class FQI:
 
         self.verbose = verbose
         if isinstance(discreteActions, np.ndarray):
-            assert discreteActions.shape[1] == actionDim
-            assert discreteActions.shape[0] > 1, \
-                'Error: at least two actions are required'
-            self._actions = discreteActions
+            #TODO:
+            if len(discreteActions.shape) > 1:
+                assert discreteActions.shape[1] == actionDim
+                assert discreteActions.shape[0] > 1, \
+                    'Error: at least two actions are required'
+                self._actions = discreteActions
+            else:
+                assert actionDim==1
+                self._actions = np.matrix(discreteActions).T
         elif isinstance(discreteActions, list):
             assert len(discreteActions) > 1, \
                 'Error: at least two actions are required'

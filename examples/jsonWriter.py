@@ -21,7 +21,8 @@ def ask(message, err_message, function):
         except:
             print(err_message)
     return ret
-    
+
+
 def positiveNumber(x):
 
     x = int(x)
@@ -72,6 +73,14 @@ print("Welcome in JsonWriter 1.0")
 mdpName = askList("Insert the name of the environemnt ", ["CarOnHill","SwingUpPendulum",
 "Acrobot", "BicycleBalancing", "BicycleNavigate", "SwingPendulum",
 "CartPole", "CartPoleDisc", "LQG1D"])
+
+isList = False
+discreteActions = None
+message = "Insert a list of actions (sorrunded with square brackets, separated with commas): "
+while not isinstance(discreteActions, list) or len(discreteActions) < 2:
+    discreteActions = print(message)
+    message = "Please, insert a list of action of kind: [a1, a2, .. ] where a1, a2 are floats and with len>=2: "
+print("OK!")
 
 print("-"*nLine + "\nExperimentSetting\n" + "-"*nLine)
 
@@ -171,7 +180,8 @@ jsonFile["supervisedAlgorithm"] = {
     }
 
 jsonFile["mdp"] = {
-        "mdpName":mdpName
+        "mdpName":mdpName,
+        "discreteActions":discreteActions
     }
 
 fileName =  ask("What is the name of your new json?" , "Just type a string", str)
