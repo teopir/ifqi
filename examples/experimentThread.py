@@ -76,7 +76,13 @@ size = exp.config['experimentSetting']['sizes'][sizeN]
 
 environment = exp.getMDP()
 regressorName = exp.getModelName(regressorN)
-fit_params = exp.getFitParams()#regressorN)
+
+#TODO:clearly not a good solution
+if(regressorName=="MDP" or regressorName=="MDPEnsemble"):
+    fit_params = exp.getFitParams()#regressorN)
+else:
+    fit_params = {}
+
 
 ds_filename = mainFolder + ".regressor_" + str(regressorName) + "size_" + str(size) + "dataset_" + str(
     datasetN) + ".npy"

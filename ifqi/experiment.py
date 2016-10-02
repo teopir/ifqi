@@ -13,6 +13,7 @@ from envs.bicycle import Bicycle
 from envs.swingPendulum import SwingPendulum
 from envs.cartPole import CartPole
 from envs.lqg1d import LQG1D
+from ifqi.fqi.FQI import FQI
 import warnings
 
 import numpy as np
@@ -47,6 +48,9 @@ class Experiment(object):
     def getFitParams(self):
         return self.config["supervisedAlgorithm"]
 
+    def getActions(self):
+        return self.config['mdp']['discreteActions']
+
     def getMDP(self):
         """
         This function loads the mdp required in the configuration file.
@@ -72,12 +76,6 @@ class Experiment(object):
             return CartPole(discreteRew=True)
         elif self.config["mdp"]["mdpName"] == "LQG1D":
             return LQG1D()
-        elif self.config["mdp"]["mdpName"] == "LQG1DDisc":
-            downerAct = np.linspace(-10, -3, 8)
-            upperAct = np.linspace(3, 10, 8)
-            middle = np.linspace(-2, 2, 13)
-            actions = downerAct.tolist() + middle.tolist() + upperAct.tolist()
-            return LQG1DDiscrete(actions)
         else:
             raise ValueError('Unknown mdp type.')
 
@@ -141,7 +139,7 @@ class Experiment(object):
                               "used.")
                 return model(**params)
             return ActionRegressor(model,
-                                   self.mdp.action_space.values,
+                                   self.mdp.action_space.values, decimals=5,
                                    **params)
 
     def getFQI(self, regressorIndex):
@@ -151,18 +149,23 @@ class Experiment(object):
         verbose = self.config['rlAlgorithm']['verbosity']
         scaled = self.config['rlAlgorithm']['scaled']
         #TODO: fix
-        if 'features' in self.config['model']:
-            features = self.config['model']['features']
+        if 'features' in self.config['regressors'][regressorIndex]:
+            features = self.config['regressors'][regressorIndex]['features']
         else:
             features = None
             
-        state_dim = environment.observation_space.shape[0]
-        
+        state_dim = self.mdp.observation_space.shape[0]
+
+        if(isinstance(self.mdp.action_space, spaces.Box)):
+            discreteActions = self.getActions()
+        else:
+            discreteActions = self.mdp.action_space.values
+
         fqi = FQI(estimator=regressor,
           stateDim=state_dim,
           #TODO: Fix action dimension
           actionDim=1,
-          discreteActions=exp.mdp.getDiscreteActions(),
+          discreteActions=discreteActions,
           gamma=gamma,
           horizon=horizon,
           verbose=verbose,

@@ -67,7 +67,8 @@ class ActionRegressor(object):
             action = self.actions[i]
             print("action=", action)
             print("x=", X[:10,-1])
-            idxs = np.all(X[:, -1] == action, axis=1)
+            #TODO: I should not write -1 but -actionDim
+            idxs = np.all(X[:, -1:] == action, axis=1)
             self.models[i].fit(X[idxs, :-1], y[idxs], **kwargs)
 
     def predict(self, x, **kwargs):
@@ -84,7 +85,9 @@ class ActionRegressor(object):
         Returns:
             output (np.array): target associated to sample x
         """
-        assert x.shape[0] == 1
+        #TODO: why x.shape[0] should be == 1?
+        #assert x.shape[0] == 1
+        #Why action = x[0,-1]
         action = x[0, -1]
         idxs = np.asscalar(np.where(np.all(self.actions.T == action, axis=0)))
         output = self.models[idxs].predict(x[:, :-1], **kwargs)
