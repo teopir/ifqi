@@ -17,7 +17,7 @@ name = 'ifqi'
 
 # Get the long description from the README file
 requires_list = []
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
     for line in f:
         requires_list.append(str(line))
 
