@@ -44,7 +44,6 @@ class ActionRegressor(object):
             (np.void, discreteActions.dtype.itemsize * discreteActions.shape[1])))
         self.actions = np.unique(b).view(discreteActions.dtype).reshape(-1, discreteActions.shape[1])
 
-        print(self.actions)
         # actions is a #action x #variables. Ie each row is an action
         if self.decimals == 0:
             self.actions = self.actions.astype('int')
@@ -65,8 +64,6 @@ class ActionRegressor(object):
         # todo arange on X[:, -1]
         for i in range(len(self.models)):
             action = self.actions[i]
-            print("action=", action)
-            print("x=", X[:10,-1])
             #TODO: I should not write -1 but -actionDim
             idxs = np.all(X[:, -1:] == action, axis=1)
             self.models[i].fit(X[idxs, :-1], y[idxs], **kwargs)
@@ -89,7 +86,8 @@ class ActionRegressor(object):
         #assert x.shape[0] == 1
         #Why action = x[0,-1]
         action = x[0, -1]
-        idxs = np.asscalar(np.where(np.all(self.actions.T == action, axis=0)))
+        #Don't know why but np.where returns tuple
+        idxs = np.asscalar(np.where(np.all(self.actions.T == action, axis=0))[0])
         output = self.models[idxs].predict(x[:, :-1], **kwargs)
         return output
 

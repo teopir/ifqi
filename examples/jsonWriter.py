@@ -78,7 +78,7 @@ isList = False
 discreteActions = None
 message = "Insert a list of actions (sorrunded with square brackets, separated with commas): "
 while not isinstance(discreteActions, list) or len(discreteActions) < 2:
-    discreteActions = print(message)
+    discreteActions = input(message)
     message = "Please, insert a list of action of kind: [a1, a2, .. ] where a1, a2 are floats and with len>=2: "
 print("OK!")
 

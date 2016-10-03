@@ -42,7 +42,7 @@ class DatasetGenerator:
                     stateDim = int(row[0])
                     actionDim = int(row[1])
                     rewardDim = int(row[2])
-                    assert stateDim==self.environment.observation_space.shape[0], "Dimension of the state must be the same"
+                    assert stateDim == self.environment.observation_space.shape[0], "Dimension of the state must be the same"
                     
                 else:
                     if len(row) == stateDim + 2:

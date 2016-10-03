@@ -61,6 +61,7 @@ nEvaluation = exp.config['experimentSetting']["evaluations"]['nEvaluations']
 evaluationEveryNIteration = exp.config['experimentSetting']["evaluations"]['everyNIterations']
 
 saveFQI = False
+saveEveryNIteration = 0
 if "saveEveryNIteration" in exp.config['experimentSetting']:
     saveFQI = True
     saveEveryNIteration = exp.config['experimentSetting']["saveEveryNIteration"]
@@ -156,12 +157,13 @@ for repetition in range(actualRepetition, repetitions):
         # SAVE FQI STATUS
         # ----------------------------------------------------------------------
 
-        if iteration % saveEveryNIteration == 0:
-            directory = os.path.dirname(pkl_filename)
-            if not os.path.isdir(directory):
-                os.makedirs(directory)
-            cPickle.dump({'fqi': fqi, 'actualIteration': iteration, "actualRepetition": repetition},
-                         open(pkl_filename, "wb"))
-            dataset.save(ds_filename)
+        if saveFQI:
+            if iteration % saveEveryNIteration == 0:
+                directory = os.path.dirname(pkl_filename)
+                if not os.path.isdir(directory):
+                    os.makedirs(directory)
+                cPickle.dump({'fqi': fqi, 'actualIteration': iteration, "actualRepetition": repetition},
+                             open(pkl_filename, "wb"))
+                dataset.save(ds_filename)
 
     actualIteration = 0
