@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import gym.spaces as spaces
-from ..utils.space.discretevalues import DiscreteValued
+from ifqi.utils.spaces.discretevalued import  DiscreteValued
 
 def getSpaceInfo(env):
     
