@@ -171,3 +171,5 @@ for i in range(iterations):
         plt.ylim(min(iterationValues), max(iterationValues))
         plt.xlim(0,i+1)
     #plt.show()
+
+raw_input("Press enter to finish.. ")
