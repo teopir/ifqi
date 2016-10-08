@@ -12,13 +12,25 @@ class DatasetGenerator:
     def __init__(self, environment):
         self.environment = environment
         self._stateDim = self.environment.observation_space.shape[0]
+        #TODO: have to generalize with more actions
         self.data = np.zeros((0, 3 + self._stateDim * 2 + 1))
 
 
     def save(self, fileName):
+        """
+        Let's save the dataset on disc
+        :param fileName:  Name of the file
+        :return: Nothing
+        """
         np.save(fileName, self.data)
         
     def load(self,fileName):
+        # type: (str) -> np.ndarray
+        """
+        Load dataset from file
+        :param fileName: file name
+        :return: numpy matrix
+        """
         self.data = np.load(fileName)
         
     def loadReLeDataset(self, path, nEpisodes=None):
@@ -28,6 +40,8 @@ class DatasetGenerator:
         state, action, reward, next state, absStateFlag
     
         """
+        raise Exception("Not implemented yet")
+
         fileName = os.path.realpath(path)
     
         print("Loading dataset...")
@@ -71,51 +85,97 @@ class DatasetGenerator:
         #TODO:
         self.data = None #np.concatenate()
 
-    def load(self, fileName):
-        self.data = np.load(fileName)
-
     def loadAppend(self, fileName):
+        """
+        Let's load the dataset from the disk without throwing away the actual dataset
+        :param fileName: name of the file
+        :return: np.ndarray
+        """
         tempData = np.load(fileName)
         self.data = np.concatenate((self.data, tempData))
 
     def generateAppend(self, policy=None, n_episodes=100):
+        """
+        Here we generate some data given a pilicy and a number of dataset
+        :param policy: policy (if None then it will be random)
+        :param n_episodes: natural positive number of episode
+        :return: nothing
+        """
         for _ in xrange(n_episodes):
             tempData = evaluate.collectEpisode(self.environment, policy)
             self.data = np.concatenate((self.data, tempData), axis=0)
 
     def generate(self, policy=None, n_episodes=100):
+        """
+        Here we generate some data given a pilicy and a number of dataset
+        :param policy: policy (if None then it will be random)
+        :param n_episodes: natural positive number of episode
+        :return: nothing
+        """
         self.reset()
         for _ in xrange(n_episodes):
             tempData = evaluate.collectEpisode(self.environment, policy)
             self.data = np.concatenate((self.data, tempData), axis=0)
 
     def reset(self):
+        """
+        Here the dataset is reset
+        :return:
+        """
         self.data = np.zeros((0, 3 + self._stateDim * 2 + 1))
 
     @property
     def action(self):
+        """
+        column of the action
+        :return: ndarray
+        """
         return self.data[:, 1+self._stateDim]
 
     @property
     def state(self):
+        """
+        matrix of the state
+        :return:
+        """
         return self.data[:, 1:1 + self._stateDim]
 
     @property
     def nextState(self):
+        """
+        matrix of the next state
+        :return:
+        """
         return self.data[:, self._stateDim + 3: 2 * self._stateDim + 3]
 
     @property
     def absorbing(self):
+        """
+        is the state absorbing
+        :return:
+        """
         return self.data[:, -1]
 
     @property
     def endEpisode(self):
+        """
+        is it the end of the episode
+        :return:
+        """
         return self.data[:, 0]
 
     @property
     def reward(self):
+        """
+        reward column
+        :return:
+        """
         return self.data[:, self._stateDim + 2]
 
     @property
     def sastr(self):
+        """
+        state, action, nextstate, terminate=True, reward
+        :return: (sast, r)
+        """
         return (np.concatenate((self.state, np.matrix(self.action).T, self.nextState, np.matrix(self.absorbing).T), axis=1), self.reward)
