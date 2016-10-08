@@ -106,6 +106,7 @@ class FQI:
             actionPos = self.stateDim
             nextstatePos = self.stateDim + self.actionDim
             absorbingPos = nextstatePos + self.stateDim
+            print("AbsorbingPos", absorbingPos)
 
             sa = np.copy(sast[:, 0:nextstatePos]).reshape(nSamples, -1)
             snext = sast[:, nextstatePos:absorbingPos].reshape(nSamples, -1)
@@ -114,6 +115,7 @@ class FQI:
             if self.scaled and self.iteration == 0:
                 # create scaler and fit it
                 self._sa_scaler = preprocessing.StandardScaler()
+                #TODO we are assuming actionDim=1
                 sa[:, :-1] = self._sa_scaler.fit_transform(sa[:, :-1])
 
             if self.features is not None:

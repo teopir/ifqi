@@ -51,7 +51,7 @@ class Experiment(object):
     def getActions(self):
         return self.config['mdp']['discreteActions']
 
-    def getMDP(self):
+    def getMDP(self, seed=None):
         """
         This function loads the mdp required in the configuration file.
         Returns:
@@ -59,7 +59,7 @@ class Experiment(object):
 
         """
         if self.config['mdp']['mdpName'] == 'CarOnHill':
-            return CarOnHill()
+            return CarOnHill(seed=seed)
         elif self.config['mdp']['mdpName'] == 'SwingUpPendulum':
             return InvPendulum()
         elif self.config['mdp']['mdpName'] == 'Acrobot':

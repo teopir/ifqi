@@ -49,12 +49,15 @@ def _eval_and_render(mdp, policy, nbEpisodes=1, metric='discounted',
             if render:
                 mdp.render()
                 time.sleep(1.0 / fps)
+        if(t>= H):
+            print("Horizon!!")
         if gamma == 1:
             epPerformance /= t
+        print("\tperformance", epPerformance)
         values[e] = epPerformance
         steps[e] = t
-        
-    return values.mean(), 2 * values.std() / np.sqrt(nbEpisodes),  steps, 2 * steps.std() / np.sqrt(nbEpisodes)
+
+    return values.mean(), 2 * values.std() / np.sqrt(nbEpisodes),  steps.mean(), 2 * steps.std() / np.sqrt(nbEpisodes)
 
 
 def _parallel_eval(mdp, policy, nbEpisodes, metric, initialState):
@@ -141,7 +144,7 @@ def collectEpisode(mdp, policy=None):
         #assert len(newEl.shape) == 1
         #data.append(newEl.tolist())
         data.append(newEl)
-        state = nextState
+        state = nextState[:]
         t += 1
 
     return np.array(data)

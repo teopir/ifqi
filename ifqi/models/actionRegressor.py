@@ -43,7 +43,6 @@ class ActionRegressor(object):
         b = np.ascontiguousarray(discreteActions).view(np.dtype(
             (np.void, discreteActions.dtype.itemsize * discreteActions.shape[1])))
         self.actions = np.unique(b).view(discreteActions.dtype).reshape(-1, discreteActions.shape[1])
-
         # actions is a #action x #variables. Ie each row is an action
         if self.decimals == 0:
             self.actions = self.actions.astype('int')
@@ -82,14 +81,22 @@ class ActionRegressor(object):
         Returns:
             output (np.array): target associated to sample x
         """
-        #TODO: why x.shape[0] should be == 1?
-        #assert x.shape[0] == 1
-        #Why action = x[0,-1]
-        action = x[0, -1]
-        #Don't know why but np.where returns tuple
-        idxs = np.asscalar(np.where(np.all(self.actions.T == action, axis=0))[0])
-        output = self.models[idxs].predict(x[:, :-1], **kwargs)
-        return output
+
+        ret = np.zeros((x.shape[0]))
+        for idAction in range(self.actions.shape[0]):
+
+            #select all xs that belong to action of idAction
+            idxs = np.all(x[:, -1:] == self.actions[idAction], axis=1)
+            #return...
+            if(np.sum(idxs)>0):
+                if (np.sum(idxs) < x.shape[0]):
+                    print("Error Catch!")
+                if (len(idxs.shape)>1):
+                    n = idxs.shape[0]
+                    idxs = np.reshape(np.asarray(idxs),(n))
+                ret[idxs] = self.models[idAction].predict(x[idxs, :-1], **kwargs)
+
+        return ret
 
     def adapt(self, iteration):
         for i in range(len(self.models)):
