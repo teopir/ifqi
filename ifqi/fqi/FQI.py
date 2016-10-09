@@ -246,10 +246,11 @@ class FQI:
             predictions = self.estimator.predict(samples)
 
             Q[:, idx] = predictions.ravel()
-            Q[:, idx] = Q[:, idx] * (1 - absorbing)
+            zero_idxs = np.argwhere(absorbing==1)
+            Q[zero_idxs,idx] = 0
 
             assert np.allclose(Q[:, idx],
-                               self._evaluate_Q(newstate, actions, absorbing).reshape(-1,1)),\
+                               self._evaluate_Q(newstate, actions, absorbing)),\
                 'error in the function _evaluate_Q' # TODO check that it is correct
             #if it is correct the lines above can be replaced with
             # Q[:, idx] = self._evaluate_Q(newstate, actions, absorbing)
@@ -353,8 +354,12 @@ class FQI:
             samples = self.features.testFeatures(samples)
 
         # predict Q-function
-        predictions = self.estimator.predict(samples).ravel() * (1 - absorbing)
-
+        #predictions = self.estimator.predict(samples).ravel() * (1 - absorbing)
+        print("ravel begin")
+        predictions = self.estimator.predict(samples).ravel()
+        print("ravel done")
+        zero_idxs = np.argwhere(absorbing==1)
+        predictions[zero_idxs] = 0
         return predictions
 
     def reset(self):
