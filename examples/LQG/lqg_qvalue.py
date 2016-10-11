@@ -5,6 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath('../'))
 from context import *
+import ifqi.evaluation.evaluation as evaluate
 
 import numpy as np
 
@@ -27,21 +28,21 @@ class tmp_policy():
         if isinstance(S, (int, float)):
             self.S = np.array([S]).reshape(1, 1)
 
-    def predict(self, state):
+    def drawAction(self, state):
         return np.dot(self.K, state) + np.random.multivariate_normal(
-            np.zeros(self.S.shape[0]), self.S, 1), 0
+            np.zeros(self.S.shape[0]), self.S, 1)#, 0
 
 
 def estimate_qvalue(mdp, x, u, policy, ep_length=100, n_rep=100):
     returns = np.zeros(n_rep)
     for j in range(n_rep):
         mdp.state = x
-        returns[j] = mdp._step(u)
+        returns[j] = mdp._step(u)[1]
         df = mdp.gamma
         for i in range(ep_length):
             s_t = mdp._getState()
-            u_t = policy.predict(s_t)[0]
-            returns[j] += df * mdp._step(u_t)
+            u_t = policy.drawAction(s_t)
+            returns[j] += df * mdp._step(u_t)[1]
             df *= mdp.gamma
     return returns.mean(), 2 * returns.std() / np.sqrt(n_rep)
 
@@ -53,7 +54,7 @@ J = mdp.computeJ(K, S, n_random_x0=n_rep)
 pol = tmp_policy(K, S)
 Jsample = 0
 for i in range(n_rep):
-    Jsample += mdp.runEpisode(pol, False, True)[0]
+    Jsample += evaluate.evaluate_policy(mdp, pol)[0]
 Jsample /= n_rep
 print(J, Jsample)
 
