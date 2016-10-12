@@ -8,26 +8,34 @@ import numpy as np
 class Ensemble(object):
     def __init__(self):
         self.models = self.initModel()
+        self.modelAdded = True
+        self.optimizePrediction=False
 
     def fit(self, X, y, **kwargs):
         if not hasattr(self, 'sum_'):
             self.sum_ = np.zeros(y.shape)
 
-        delta = y - self.sum_
+        sum_ = np.zeros(y.shape)
+        for m in self.models[:-1]:
+            sum_ += m.predict(X).ravel()
+        delta = y - sum_
         ret = self.models[-1].fit(X, delta, **kwargs)
-        self.sum_ += self.models[-1].predict(X).ravel()
+        #self.sum_ += self.models[-1].predict(X).ravel()
 
         return ret
 
     def predict(self, x, **kwargs):
         n_samples = x.shape[0]
 
-        if n_samples > 1:
-            if not hasattr(self, 'sumNext_'):
-                self.sumNext_ = np.zeros((n_samples,))
-            self.sumNext_ += self.models[-1].predict(x, **kwargs).ravel()
+        if self.optimizePrediction:
+            if n_samples > 1:
+                if not hasattr(self, 'sumNext_'):
+                    self.sumNext_ = np.zeros((n_samples,))
+                if self.modelAdded:
+                    self.sumNext_ += self.models[-1].predict(x, **kwargs).ravel()
+                    self.modelAdded=False
 
-            return self.sumNext_
+                return self.sumNext_
 
         output = np.zeros((n_samples,))
         for model in self.models:
@@ -36,6 +44,7 @@ class Ensemble(object):
         return output
 
     def adapt(self, iteration):
+        self.modelAdded=True
         self.models.append(self.generateModel(iteration))
 
     def initModel(self):
