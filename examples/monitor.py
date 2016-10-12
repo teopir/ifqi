@@ -65,7 +65,8 @@ while True:
 
             figplots[key].figure.canvas.draw()
 
-        plt.ylim(min_y, max_y)
+        boundaries = max(abs(min_y*0.1),abs(max_y*0.1))
+        plt.ylim(min_y - boundaries, max_y + boundaries)
         plt.xlim(0, max_x)
     except:
         pass

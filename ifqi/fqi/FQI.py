@@ -332,7 +332,7 @@ class FQI:
         maxQ, maxa = self.maxQA(states, absorbing)
         return maxa
 
-    def _evaluate_Q(self, states, actions, absorbing=None):
+    def evaluate_Q(self, states, actions, absorbing=None):
         """
         Evaluate the Q-function approximation in the given (state, action)-pair
         Args:

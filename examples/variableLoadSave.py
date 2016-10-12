@@ -48,7 +48,13 @@ class ExperimentVariables:
                 pass
             x+=1.
             time.sleep(np.random.random()*x)
-    
+
+    def loadSingle(self, regressor, size, dataset, repetition, iteration, varName):
+        filename = self.experimentName + "/" + str(regressor) + str(varName) + "/" + str(size) + "/" + str(
+            dataset) + "_" + str(repetition) + "_" + str(iteration) + ".npy"
+        if os.path.isfile(filename):
+            return np.load(filename)
+
     def load(self, regressor, size, iteration, varName):
         """
         Here you load already an "aggregate" value for the variable, computing the expected value over the repetitions and the datasets
@@ -62,6 +68,7 @@ class ExperimentVariables:
         values = []
         for dataset in self.datasetLoaded:
             for repetition in self.repetitionLoaded:
+                    #TODO: replace with loadSingle
                     filename = self.experimentName + "/" + str(regressor) +  str(varName) + "/" + str(size) + "/" + str(dataset) + "_" + str(repetition) + "_" + str(iteration) + ".npy"
                     if os.path.isfile(filename):
                         values.append(np.load(filename))
@@ -72,6 +79,23 @@ class ExperimentVariables:
             return mean, std, len(values), True
         else:
             return 0., 0., 0, False
+
+    def getSizeLines(self,varname):
+        reg = {}
+        for regressor in self.regressorLoaded:
+            x = []
+            y = []
+            conf = []
+            for size in self.sizeLoaded:
+                iteration =  self.iterationLoaded[-1]
+                mean, std, n, validity = self.load(regressor, size, iteration, varname)
+                if validity:
+                    y.append(mean)
+                    x.append(size)
+                    conf.append(std/np.sqrt(n)*1.96)
+                if len(x) > 0:
+                    reg[regressor] = (x,y,conf)
+        return reg
 
     def getOverallSituation(self, varName):
         """
@@ -144,7 +168,5 @@ class ExperimentVariables:
     def aggregate(self, regressor):
         raise Exception("Not implemented yet")
     
-    
-    
-        
+
         
