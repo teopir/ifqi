@@ -96,11 +96,20 @@ If you will like to add a plot or a picture of you wish inside the diary, just o
 
 .. code:: json
 
-	[{"jsonFile": ["configuration/Config1.json"], "name": "Experiment1", "importance": "1", "images": [], "postComment": "", "date": "12-10-2016 15:31:44", "description": "boh1"},{"jsonFile": ["configuration/Config2.json"], "name": "Experiment2", "importance": "1", "images": [], "postComment": "", "date": "12-10-2016 15:31:44", "description": "boh1"}]
+	[{"jsonFile": ["configuration/Config1.json"], "name": "Experiment1", 
+	"importance": "1", "images": [], "postComment": "", "date": "12-10-2016 15:31:44", "description": "boh1"},
+	{"jsonFile": ["configuration/Config2.json"], "name": "Experiment2", 
+	"importance": "1", "images": [], "postComment": "", "date": "12-10-2016 15:31:44", "description": "boh1"}]
 	
 If you need to add a picture to Experiment2 add your picture to plot/Experiment2/picture.jpg and modify the json as follow:
 
-[{"jsonFile": ["configuration/Config1.json"], "name": "Experiment1", "importance": "1", "images": [], "postComment": "", "date": "12-10-2016 15:31:44", "description": "boh1"},{"jsonFile": ["configuration/Config2.json"], "name": "Experiment2", "importance": "1", "images": [{"dir":"plot/Experiment2/picture.jpg","description":"picture1 ect","title":"picture1"}], "postComment": "", "date": "12-10-2016 15:31:44", "description": "boh1"}]
+.. code:: json
+
+	[{"jsonFile": ["configuration/Config1.json"], "name": "Experiment1", 
+	"importance": "1", "images": [], "postComment": "", "date": "12-10-2016 15:31:44", "description": "boh1"},
+	{"jsonFile": ["configuration/Config2.json"], "name": "Experiment2", 
+	"importance": "1", "images": [{"dir":"plot/Experiment2/picture.jpg","description":"picture1 ect","title":"picture1"}], "postComment": "", 
+	"date": "12-10-2016 15:31:44", "description": "boh1"}]
 
 As you can see, you are not really forced to save you picture in plot/ExperimentName/name.jpg, but we strongly suggest to you to do like this, and to name the file with the same title reported in your json.
 
