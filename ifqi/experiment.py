@@ -45,8 +45,8 @@ class Experiment(object):
         modelConfig = self.config['regressors'][nRegressor]
         return modelConfig['modelName']
 
-    def getFitParams(self):
-        return self.config["supervisedAlgorithm"]
+    def getFitParams(self,nRegressor):
+        return self.config['regressors'][nRegressor]["supervisedAlgorithm"]
 
     def getActions(self):
         return self.config['mdp']['discreteActions']
@@ -59,7 +59,7 @@ class Experiment(object):
 
         """
         if self.config['mdp']['mdpName'] == 'CarOnHill':
-            return CarOnHill(seed=seed)
+            return CarOnHill()
         elif self.config['mdp']['mdpName'] == 'SwingUpPendulum':
             return InvPendulum()
         elif self.config['mdp']['mdpName'] == 'Acrobot':
@@ -90,14 +90,14 @@ class Experiment(object):
         if modelConfig['modelName'] == 'ExtraTree':
             model = ExtraTreesRegressor
             params = {'n_estimators': modelConfig['nEstimators'],
-                      'criterion': self.config['supervisedAlgorithm']
+                      'criterion': self.config["regressors"][index]['supervisedAlgorithm']
                                               ['criterion'],
                       'min_samples_split': modelConfig['minSamplesSplit'],
                       'min_samples_leaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'ExtraTreeEnsemble':
             model = ExtraTreeEnsemble
             params = {'nEstimators': modelConfig['nEstimators'],
-                      'criterion': self.config['supervisedAlgorithm']
+                      'criterion': self.config["regressors"][index]['supervisedAlgorithm']
                                               ['criterion'],
                       'minSamplesSplit': modelConfig['minSamplesSplit'],
                       'minSamplesLeaf': modelConfig['minSamplesLeaf']}
