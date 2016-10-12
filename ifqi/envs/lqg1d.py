@@ -6,6 +6,7 @@ import numpy as np
 
 from environment import Environment
 
+from gym.spaces import prng
 """
 Linear quadratic gaussian regulator task.
 
@@ -68,7 +69,8 @@ class LQG1D(Environment):
 
     def _step(self, action, render=False):
         u = np.clip(action, -self.max_action, self.max_action)
-        noise = np.random.randn() * self.sigma_noise
+        #noise = np.random.randn() * self.sigma_noise
+        noise =  self.np_random.randn() * self.sigma_noise
         xn = np.dot(self.A, self.state) + np.dot(self.B, u) + noise
         cost = np.dot(self.state,
                       np.dot(self.Q, self.state)) + \
@@ -81,7 +83,7 @@ class LQG1D(Environment):
 
     def _reset(self, state=None):
         if state is None:
-            self.state = np.array([self.np_random.uniform(low=-self.max_pos, high=self.max_pos)])
+            self.state = np.array([prng.np_random.uniform(low=-self.max_pos, high=self.max_pos)])
         else:
             self.state = np.array(state)
         return np.array(self.state)

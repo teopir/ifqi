@@ -7,6 +7,9 @@ class Environment(gym.Env):
         self.gamma = 1
         self.horizon = None
 
+    def setSeed(self,seed=None):
+        self._seed(seed=seed)
+
     def evaluate(self, policy, nbEpisodes=1,
                  metric='discounted', initialState=None, render=False):
         """

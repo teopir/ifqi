@@ -97,7 +97,7 @@ class CarOnHill(Environment):
     def _dpds(self, stateAction, t):
         position = stateAction[0]
         velocity = stateAction[1]
-        action = stateAction[-1]
+        u = stateAction[-1]
 
         if position < 0.:
             diffHill = 2 * position + 1
@@ -105,8 +105,6 @@ class CarOnHill(Environment):
         else:
             diffHill = 1 / ((1 + 5 * position ** 2) ** 1.5)
             diff2Hill = (-15 * position) / ((1 + 5 * position ** 2) ** 2.5)
-
-        u = -4. if action == 0 else 4.
 
         dp = velocity
         ds = (u - self._g * self._m * diffHill - velocity ** 2 * self._m *

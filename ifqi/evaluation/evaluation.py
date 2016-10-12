@@ -49,8 +49,8 @@ def _eval_and_render(mdp, policy, nbEpisodes=1, metric='discounted',
             if render:
                 mdp.render()
                 time.sleep(1.0 / fps)
-        if(t>= H):
-            print("Horizon!!")
+        #if(t>= H):
+        #    print("Horizon!!")
         if gamma == 1:
             epPerformance /= t
         print("\tperformance", epPerformance)

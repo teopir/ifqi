@@ -106,7 +106,6 @@ class FQI:
             actionPos = self.stateDim
             nextstatePos = self.stateDim + self.actionDim
             absorbingPos = nextstatePos + self.stateDim
-            print("AbsorbingPos", absorbingPos)
 
             sa = np.copy(sast[:, 0:nextstatePos]).reshape(nSamples, -1)
             snext = sast[:, nextstatePos:absorbingPos].reshape(nSamples, -1)
@@ -243,15 +242,25 @@ class FQI:
                 samples = self.features.testFeatures(samples)
 
             # predict Q-function
+
             predictions = self.estimator.predict(samples)
 
-            Q[:, idx] = predictions.ravel()
+            Q[:, idx] = predictions.ravel() * np.asarray((1 - absorbing)).ravel()
+            #print("absorbing.shape", absorbing.shape)
+            #print("predictions.shape", np.reshape(predictions.ravel(),(nbstates,1)).shape)
+            #print("absorbing.dtype", type(absorbing))
+            #print("predictions.dtype", type(predictions.ravel()))
+            #Q[:,idx] = np.reshape(predictions.ravel(),(nbstates,1)) * np.asarray((1-absorbing)).ravel()
+            for i in range(nbstates):
+                if absorbing[i]==1:
+                    assert Q[i,idx]==0, str(Q[i,idx])
+            """Q[:, idx] = predictions.ravel()
             zero_idxs = np.argwhere(absorbing==1)
-            Q[zero_idxs,idx] = 0
+            Q[zero_idxs,idx] = 0"""
 
-            assert np.allclose(Q[:, idx],
+            """assert np.allclose(Q[:, idx],
                                self._evaluate_Q(newstate, actions, absorbing)),\
-                'error in the function _evaluate_Q' # TODO check that it is correct
+                'error in the function _evaluate_Q'"""
             #if it is correct the lines above can be replaced with
             # Q[:, idx] = self._evaluate_Q(newstate, actions, absorbing)
 
@@ -354,13 +363,10 @@ class FQI:
             samples = self.features.testFeatures(samples)
 
         # predict Q-function
-        #predictions = self.estimator.predict(samples).ravel() * (1 - absorbing)
-        print("ravel begin")
-        predictions = self.estimator.predict(samples).ravel()
-        print("ravel done")
-        zero_idxs = np.argwhere(absorbing==1)
-        predictions[zero_idxs] = 0
-        return predictions
+
+        predictions = self.estimator.predict(samples)
+
+        return predictions.ravel() * np.asarray((1 - absorbing)).ravel()
 
     def reset(self):
         """

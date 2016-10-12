@@ -19,6 +19,7 @@ class CartPole(Environment):
 
         # get state info
         self.action_space = self.env.action_space
+        self.action_space.values = range(self.action_space.n)
         self.observation_space = self.env.observation_space
 
         self.horizon = 400
@@ -39,8 +40,8 @@ class CartPole(Environment):
 
     def _step(self, action):
         self._count += 1
-        
-        action = np.reshape(action,())
+
+        action = int(np.reshape(action,()))
 
         nextState, reward, absorbing, info = self.env.step(action)
         # if isinstance(action, int):
