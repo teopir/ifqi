@@ -76,19 +76,21 @@ mdpName = askList("Insert the name of the environemnt ", ["CarOnHill","SwingUpPe
 
 isList = False
 discreteActions = None
-message = "Insert a list of actions (sorrunded with square brackets, separated with commas): "
-while not isinstance(discreteActions, list) or len(discreteActions) < 2:
-    discreteActions = input(message)
-    message = "Please, insert a list of action of kind: [a1, a2, .. ] where a1, a2 are floats and with len>=2: "
-print("OK!")
+fitActions = False
+
+if mdpName in ["LQG1D"]:
+    message = "Insert a list of actions (sorrunded with square brackets, separated with commas): "
+    while not isinstance(discreteActions, list) or len(discreteActions) < 2:
+        discreteActions = input(message)
+        message = "Please, insert a list of action of kind: [a1, a2, .. ] where a1, a2 are floats and with len>=2: "
+    print("OK!")
+    fitActions = True
 
 print("-"*nLine + "\nExperimentSetting\n" + "-"*nLine)
 
 jsonFile = {}
 
 jsonFile["experimentSetting"] = {
-        "loadPath":ask("Select the load path ", "loadPath should be a string ", str ),
-        "savePath":ask("Select the save path ", "savePath should be a string ", str ),
         "datasets":ask("Select the number of datasets ", "Number of dataset should be integer and positive ", positiveNumber),
         "nRepetitions":ask("Select the number of repetition on each dataset ", "Number of dataset should be integer and positive ", positiveNumber),
         "evaluations":{
@@ -122,14 +124,24 @@ while newRegressor:
             "nHiddenNeurons":ask("Define the number of hidden neurons you wish to have: ", "Insert a positive numer ", positiveNumber),
             "nLayers":ask("Define the number of hidden layers you wish to have: ", "Insert a positive numer ", positiveNumber),
             "optimizer":ask("Which optimizer would you like to have: ", "Insert a valid string ", str),
-            "activation":ask("Which activation function would you like to have: ", "Insert a valid string ", str)
+            "activation":ask("Which activation function would you like to have: ", "Insert a valid string ", str),
+            "supervisedAlgorithm":{
+                "nEpochs":ask("How many epochs would you like? ", "Positive integer required ", yesQuestion),
+                "batchSize":ask("What's the batch size? ", "Positive integer required ", yesQuestion),
+                "validationSplit":ask("What's the validation split (from 0 to 1)? ", "Float between 0 e 1 ", float ),
+                "verbosity":ask("Would you like Supervised Algorithm to be verbose(Y|n)? ", "Just type 'y' for yes ", yesQuestion),
+                "criterion":"mse"
+            }
         }
     elif regressorName == "ExtraTree" or regressorName == "ExtraTreeEnsemble":
         regressor = {
             "modelName": regressorName,
             "nEstimators": ask("Define the number of trees you would like to have: ", "Insert a positive numer ", positiveNumber),
             "minSamplesSplit": ask("Define minSamplesSplit: ", "Insert a positive numer ", positiveNumber),
-            "minSamplesLeaf": ask("Define minSamplesLeaf: ", "Insert a positive numer ", positiveNumber)
+            "minSamplesLeaf": ask("Define minSamplesLeaf: ", "Insert a positive numer ", positiveNumber),
+            "supervisedAlgorithm": {
+                "criterion": "mse"
+            }
         }
     elif regressorName == "Linear" or regressorName == "LinearEnsemble":
         regressor =  {
@@ -137,6 +149,9 @@ while newRegressor:
             "features": {
                 "name": "poly",
                 "degree": ask("Define the degree of the polinomial features: ", "Insert a positive numer ", positiveNumber)
+            },
+            "supervisedAlgorithm": {
+                "criterion": "mse"
             }
         }
     else:
@@ -144,6 +159,8 @@ while newRegressor:
 
     if not raw_input("Would you like to insert another regerssor?").capitalize() in ["Y", "YE", "YES", 1, "1"]:
         newRegressor = False
+
+    regressor["fitActions"] = fitActions
 
     regressorList.append(regressor)
 
@@ -170,27 +187,22 @@ jsonFile["rlAlgorithm"] = lrAlgorithm
 
 print("-"*nLine + "\nSupervised Algorithm Session\n" + "-"*nLine)
 
-
-jsonFile["supervisedAlgorithm"] = {
-        "nEpochs":ask("How many epochs would you like? ", "Positive integer required ", yesQuestion),
-        "batchSize":ask("What's the batch size? ", "Positive integer required ", yesQuestion),
-        "validationSplit":ask("What's the validation split (from 0 to 1)? ", "Float between 0 e 1 ", float ),
-        "verbosity":ask("Would you like Supervised Algorithm to be verbose(Y|n)? ", "Just type 'y' for yes ", yesQuestion),
-        "criterion":"mse"
-    }
+#TODO: move inside MLP in regressors
+#jsonFile["supervisedAlgorithm"] =
 
 jsonFile["mdp"] = {
         "mdpName":mdpName,
         "discreteActions":discreteActions
     }
 
+jsonFile["version"]=1
+
 fileName =  ask("What is the name of your new json?" , "Just type a string", str)
 
 print("-"*nLine + "\nHere Your file\n" + "-"*nLine)
 print (jsonFile)
-with open("results/" + fileName + ".json", 'w') as fp:
-    json.dump(jsonFile, fp)
 
-nThread = ask("How many threads would you like to run? ", "Positive Integer ", positiveNumber)
-cmd = "python -m examples.experimentThreadManager " + "results/" + fileName + ".json" + " " + str(nThread)#) + " " + str(add_last)
-os.system(cmd)
+directory = os.path.dirname(fileName)
+if not os.path.isdir(directory): os.makedirs(directory)
+with open(fileName, 'w') as fp:
+    json.dump(jsonFile, fp)

@@ -25,6 +25,9 @@ steps and so on.
 This version allow multithreading
 
 """
+
+import argparse
+
 def execute(commands, nThread, refresh_time=10.,shuffled=False):
 
     if(shuffled):
@@ -52,21 +55,32 @@ def execute(commands, nThread, refresh_time=10.,shuffled=False):
     print("All sample executed")
 
 if __name__ == '__main__':
-    config_file = sys.argv[1]
-    nThread = int(sys.argv[2])
-    #add_last = sys.argv[3]
-    exp = Experiment(config_file)
 
-    """if not add_last=='True':
-        name = raw_input("Please define the name of the new experiment: ")
-        description = raw_input("Please write a description of the experiment: ")"""
+    parser = argparse.ArgumentParser(
+        description="""Welcome in experimentLauncher
+        Here we will launch the experiment and we will (if required) include it in the diary.json
+        """)
 
+    parser.add_argument("experimentName", type=str, help="Provide the name of the experiment")
+    parser.add_argument("configFile", type=str, help="Provide the name of the json file")
+    parser.add_argument("-d", "--diary", help="The experiment will be included in the diary", action="store_true")
+    parser.add_argument("-l", "--addLast", help="The experiment will be merged with the last one present in the diary", action="store_true")
+    parser.add_argument("nThread", type=int, help="Set the number of cores")
+
+    args = parser.parse_args()
+
+    experimentName = args.experimentName
+    configFile = args.configFile
+    diaryFlag = args.diary
+    nThread = args.nThread
+    addLast = args.addLast
+    exp = Experiment(configFile)
 
     commands = []
     for regressor in range(len(exp.config["regressors"])):
         for size in range(len(exp.config["experimentSetting"]["sizes"])):
             for dataset in range(exp.config['experimentSetting']['datasets']):
-                    commands.append(["python", "-m", "examples.experimentThread", config_file , str(regressor) ,  str(size), str(dataset)])
+                    commands.append(["python", "-m", "examples.experimentThread",experimentName, configFile , str(regressor) ,  str(size), str(dataset)])
     
     execute(commands,nThread,10.)
     
@@ -74,33 +88,33 @@ if __name__ == '__main__':
     # DiaryExperiment
     #--------------------------------------------------------------------------
 
-    exit()
-    
-    
-    try:
-        with open("results/diary.json", 'r') as fp:
-            diary = json.load(fp)
-    except:
-        diary = []
-    
-    if add_last=='True':
-        last_exp = diary[-1]
-        last_exp["jsonFile"].append(config_file)
-        diary[-1] = last_exp
-    else:
-        diaryExperiment = {
-        "name":name,
-        "date":strftime("%d-%m-%Y %H:%M:%S", gmtime()),
-        "description":description,
-        "jsonFile":[config_file],
-        "images":[],
-        "postComment":"",
-        "importance":"1"
-        }
-        diary.append(diaryExperiment)
-    
-    with open("results/diary.json", 'w') as fp:
-        json.dump(diary,fp)
+    if diaryFlag:
+        try:
+            with open("diary.json", 'r') as fp:
+                diary = json.load(fp)
+        except:
+            diary = []
+
+        if addLast=='True':
+            last_exp = diary[-1]
+            last_exp["jsonFile"].append(configFile)
+            diary[-1] = last_exp
+        else:
+            description = raw_input("Prompt a description of the experiment please: ")
+            stars = raw_input("Prompt a  number from 0 to 5 about the importance of this experiment: ")
+            diaryExperiment = {
+            "name":experimentName,
+            "date":strftime("%d-%m-%Y %H:%M:%S", gmtime()),
+            "description":description,
+            "jsonFile":[configFile],
+            "images":[],
+            "postComment":"",
+            "importance":str(stars)
+            }
+            diary.append(diaryExperiment)
+
+        with open("diary.json", 'w') as fp:
+            json.dump(diary,fp)
     
     
     
