@@ -187,18 +187,18 @@ for repetition in range(actualRepetition, repetitions):
     #---------------------------------------------------------------------------
     # Q-Value
     #---------------------------------------------------------------------------
+    if exp.config["mdp"]["mdpName"]=="LQG1D":
+        xs = np.linspace(-environment.max_pos, environment.max_pos, 60)
+        us = np.linspace(-environment.max_action, environment.max_action, 50)
 
-    xs = np.linspace(-environment.max_pos, environment.max_pos, 60)
-    us = np.linspace(-environment.max_action, environment.max_action, 50)
+        l = []
+        for x in xs:
+            for u in us:
+                v = fqi.evaluate_Q(x,u)
+                l.append([x, u, v])
+        tabular_Q = np.array(l)
 
-    l = []
-    for x in xs:
-        for u in us:
-            v = fqi.evaluate_Q(x,u)
-            l.append([x, u, v])
-    tabular_Q = np.array(l)
-
-    varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "Q", tabular_Q)
+        varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "Q", tabular_Q)
 
     actualIteration = 0
 
