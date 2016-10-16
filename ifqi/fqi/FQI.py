@@ -156,12 +156,8 @@ class FQI:
         adaptive = False
 
         # TODO: didn't understand what is models
-        if hasattr(self.estimator, "models"):
-            if hasattr(self.estimator.models[0], 'adapt'):
-                adaptive = True
-        else:
-            if hasattr(self.estimator, 'adapt'):
-                adaptive = True
+        if hasattr(self.estimator, 'adapt'):
+            adaptive = True
 
         y = self.r
         if self.iteration == 0:
