@@ -22,43 +22,10 @@ def _eval_and_render(mdp, policy, nbEpisodes=1, metric='discounted',
         step (float): average number of step before finish
         stepConfidence (float):  95% confidence level for step average
     """
-    fps = mdp.metadata.get('video.frames_per_second') or 100
-    values = np.zeros(nbEpisodes)
-    steps = np.zeros(nbEpisodes)
-    gamma = mdp.gamma
-    if metric == 'average':
-        gamma = 1
-    for e in range(nbEpisodes):
-        epPerformance = 0.0
-        df = 1
-        t = 0
-        H = None
-        done = False
-        if render:
-            mdp.render(mode='human')
-        if hasattr(mdp, 'horizon'):
-            H = mdp.horizon
-        mdp.reset()
-        state = mdp._reset(initialState)
-        while (t < H) and (not done):
-            action = policy.drawAction(state)
-            state, r, done, _ = mdp.step(action)
-            epPerformance += df * r
-            df *= gamma
-            t += 1
+    values, steps = _eval_and_render_vectorial(mdp, policy, nbEpisodes, metric, initialState, render)
 
-            if render:
-                mdp.render()
-                time.sleep(1.0 / fps)
-        # if(t>= H):
-        #    print("Horizon!!")
-        if gamma == 1:
-            epPerformance /= t
-        print("\tperformance", epPerformance)
-        values[e] = epPerformance
-        steps[e] = t
-
-    return values.mean(), 2 * values.std() / np.sqrt(nbEpisodes), steps.mean(), 2 * steps.std() / np.sqrt(nbEpisodes)
+    return values.mean(), 2 * values.std() / np.sqrt(nbEpisodes), \
+           steps.mean(), 2 * steps.std() / np.sqrt(nbEpisodes)
 
 
 def _eval_and_render_vectorial(mdp, policy, nbEpisodes=1, metric='discounted',
@@ -128,9 +95,9 @@ def _parallel_eval(mdp, policy, nbEpisodes, metric, initialState, n_jobs, nEpiso
 
     # out is a list of quadruplet: mean J, 95% conf lev J, mean steps, 95% conf lev steps
     # (confidence level should be 0 or NaN)
-    V = np.array(out)
-    return V[:, 0].mean(), 2 * V[:, 0].std() / np.sqrt(nbEpisodes), \
-           V[:, 1].mean(), 2 * V[:, 1].std() / np.sqrt(nbEpisodes)
+    values, steps = np.array(out)
+    return values.mean(), 2 * values.std() / np.sqrt(nbEpisodes), \
+           steps.mean(), 2 * steps.std() / np.sqrt(nbEpisodes)
 
 
 def evaluate_policy(mdp, policy, nbEpisodes=1,
