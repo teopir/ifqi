@@ -241,7 +241,7 @@ class FQI:
 
             predictions = self.estimator.predict(samples)
 
-            Q[:, idx] = predictions.ravel() * np.asarray((1 - absorbing)).ravel()
+            Q[:, idx] = predictions.ravel() * np.asarray((1 - absorbing)).ravel() #TODO fix (too expensive)
             #print("absorbing.shape", absorbing.shape)
             #print("predictions.shape", np.reshape(predictions.ravel(),(nbstates,1)).shape)
             #print("absorbing.dtype", type(absorbing))

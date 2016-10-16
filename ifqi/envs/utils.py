@@ -1,10 +1,10 @@
 from __future__ import print_function
 
 import gym.spaces as spaces
-from ifqi.utils.spaces.discretevalued import  DiscreteValued
+from ifqi.utils.spaces.discretevalued import DiscreteValued
+
 
 def getSpaceInfo(env):
-
     state_space = env.observation_space
     if isinstance(state_space, spaces.Box):
         stateDim = state_space.shape[0]
