@@ -53,7 +53,7 @@ def _eval_and_render_vectorial(mdp, policy, nbEpisodes=1, metric='discounted',
         epPerformance = 0.0
         df = 1
         t = 0
-        H = None
+        H = np.inf
         done = False
         if render:
             mdp.render(mode='human')
@@ -158,7 +158,7 @@ def collectEpisode(mdp, policy=None):
     """
     done = False
     t = 0
-    H = None
+    H = np.inf
     data = list()
     action = None
     if hasattr(mdp, 'horizon'):
