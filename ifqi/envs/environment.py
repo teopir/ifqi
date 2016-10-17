@@ -1,5 +1,5 @@
 import gym
-import ifqi.evaluation as evaluation
+from .. import evaluation as eval
 
 
 class Environment(gym.Env):
@@ -27,7 +27,7 @@ class Environment(gym.Env):
             metric (float): the selected evaluation metric
             confidence (float): 95% confidence level for the provided metric
         """
-        return evaluation.evaluate_policy(self, policy, nbEpisodes,
+        return eval.evaluate_policy(self, policy, nbEpisodes,
                                           metric, initialState, render)
 
     def collectEpisode(self, policy=None):
@@ -48,4 +48,4 @@ class Environment(gym.Env):
                 - next state
                 - a flag indicating whether the reached state is absorbing
         """
-        return evaluation.collectEpisode(self, policy)
+        return eval.collectEpisode(self, policy)
