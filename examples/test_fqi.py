@@ -7,7 +7,7 @@ from sklearn.ensemble import AdaBoostClassifier, ExtraTreesRegressor
 from ifqi.models.actionRegressor import ActionRegressor
 import matplotlib.pyplot as plt
 
-mdp = envs.CarOnHill()
+mdp = envs.CartPole()
 stateDim, actionDim = envs.getSpaceInfo(mdp)
 regressor_params = {'n_estimators': 50}
 discrete_actions = mdp.action_space.values
@@ -41,7 +41,7 @@ fqi.partial_fit(*dataset.sastr, **fitParams)
 
 iterations = 10
 iterationValues = []
-for i in range(iterations):
+for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
     values = evaluate.evaluate_policy(mdp, fqi, nbEpisodes=10)
     iterationValues.append(values[0])
