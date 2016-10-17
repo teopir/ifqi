@@ -98,7 +98,7 @@ def _parallel_eval(mdp, policy, nbEpisodes, metric, initialState, n_jobs, nEpiso
         # (confidence level should be 0 or NaN)
         values, steps = np.array(out)
     else:
-        values, steps = _eval_and_render(mdp, policy, nbEpisodes, metric, initialState, False)
+        values, steps = _eval_and_render_vectorial(mdp, policy, nbEpisodes, metric, initialState, False)
     return values.mean(), 2 * values.std() / np.sqrt(nbEpisodes), \
            steps.mean(), 2 * steps.std() / np.sqrt(nbEpisodes)
 
