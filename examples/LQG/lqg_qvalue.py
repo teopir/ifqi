@@ -73,10 +73,20 @@ xs = np.linspace(-mdp.max_pos, mdp.max_pos, 60)
 us = np.linspace(-mdp.max_action, mdp.max_action, 50)
 
 l = []
+i_range = xs.shape[0]
+j_range = us.shape[0]
+Q_plot = np.zeros((i_range,j_range))
+print (Q_plot.shape)
+i=0
+j=0
 for x in xs:
+    j=0
     for u in us:
         v = mdp.computeQFunction(x, u, K, S, 100)
         l.append([x, u, v])
+        Q_plot[i,j] = v
+        j+=1
+    i+=1
 tabular_Q = np.array(l)
 np.savetxt('lqg_qtable.txt', tabular_Q)
 print('printed Q-table')
@@ -87,4 +97,7 @@ fig = plt.figure()
 ax = fig.gca(projection='3d')
 ax.scatter(tabular_Q[:, 0], tabular_Q[:, 1], tabular_Q[:, 2])
 plt.savefig("Q.jpg")
+plt.show()
+
+plt.matshow(Q_plot)
 plt.show()

@@ -13,6 +13,7 @@ from envs.bicycle import Bicycle
 from envs.swingPendulum import SwingPendulum
 from envs.cartPole import CartPole
 from envs.lqg1d import LQG1D
+import envs.utils as spaceInfo
 from ifqi.fqi.FQI import FQI
 import warnings
 
@@ -86,7 +87,14 @@ class Experiment(object):
             the required model.
 
         """
+
+        stateDim, actionDim = spaceInfo.getSpaceInfo(self.mdp)
         modelConfig = self.config['regressors'][index]
+
+        fitActions = False
+        if 'fitActions' in modelConfig:
+            fitActions = modelConfig['fitActions']
+
         if modelConfig['modelName'] == 'ExtraTree':
             model = ExtraTreesRegressor
             params = {'n_estimators': modelConfig['nEstimators'],
@@ -103,20 +111,24 @@ class Experiment(object):
                       'minSamplesLeaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'MLP':
             model = MLP
-            params = {'nInput': self.mdp.stateDim,
+            params = {'nInput': stateDim,
                       'nOutput': 1,
                       'hiddenNeurons': modelConfig['nHiddenNeurons'],
                       'nLayers': modelConfig['nLayers'],
                       'optimizer': modelConfig['optimizer'],
                       'activation': modelConfig['activation']}
+            if fitActions:
+                params["nInput"] = stateDim + actionDim
         elif modelConfig['modelName'] == 'MLPEnsemble':
             model = MLPEnsemble
-            params = {'nInput': self.mdp.stateDim,
+            params = {'nInput': stateDim,
                       'nOutput': 1,
                       'hiddenNeurons': modelConfig['nHiddenNeurons'],
                       'nLayers': modelConfig['nLayers'],
                       'optimizer': modelConfig['optimizer'],
                       'activation': modelConfig['activation']}
+            if fitActions:
+                params["nInput"] = stateDim + actionDim
         elif modelConfig['modelName'] == 'Linear':
             model = LinearRegression
             params = {}
@@ -126,9 +138,7 @@ class Experiment(object):
         else:
             raise ValueError('Unknown estimator type.')
 
-        fitActions = False
-        if 'fitActions' in modelConfig:
-            fitActions = modelConfig['fitActions']
+
 
         if fitActions:
             return model(**params)
