@@ -50,7 +50,7 @@ sizeN = args.size
 # Every experiment just run a specific dataset. ExperimentThreadManager select one specific dataset
 datasetN = args.dataset
 
-print("Started experiment with dataset " + str(datasetN) + ", size " + str(sizeN))
+print("Started experiment with regressor " + str(regressorN)+ " dataset " + str(datasetN) + ", size " + str(sizeN))
 
 
 prng.seed(datasetN)
