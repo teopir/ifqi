@@ -86,16 +86,19 @@ def _parallel_eval(mdp, policy, nbEpisodes, metric, initialState, n_jobs, nEpiso
     # TODO using joblib
     # return _eval_and_render(mdp, policy, nbEpisodes, metric,
     #                         initialState, False)
-    how_many = int(round(nbEpisodes / nEpisodesPerJob))
-    out = Parallel(
-        n_jobs=n_jobs, verbose=2,
-    )(
-        delayed(_eval_and_render)(gym.make(mdp.spec.id), policy, nEpisodesPerJob, metric, initialState)
-        for _ in range(how_many))
+    if hasattr(mdp, 'spec') and mdp.spec is not None:
+        how_many = int(round(nbEpisodes / nEpisodesPerJob))
+        out = Parallel(
+            n_jobs=n_jobs, verbose=2,
+        )(
+            delayed(_eval_and_render)(gym.make(mdp.spec.id), policy, nEpisodesPerJob, metric, initialState)
+            for _ in range(how_many))
 
-    # out is a list of quadruplet: mean J, 95% conf lev J, mean steps, 95% conf lev steps
-    # (confidence level should be 0 or NaN)
-    values, steps = np.array(out)
+        # out is a list of quadruplet: mean J, 95% conf lev J, mean steps, 95% conf lev steps
+        # (confidence level should be 0 or NaN)
+        values, steps = np.array(out)
+    else:
+        values, steps = _eval_and_render(mdp, policy, nbEpisodes, metric, initialState, False)
     return values.mean(), 2 * values.std() / np.sqrt(nbEpisodes), \
            steps.mean(), 2 * steps.std() / np.sqrt(nbEpisodes)
 
@@ -126,15 +129,18 @@ def evaluate_policy(mdp, policy, nbEpisodes=1,
 
 
 def collectEpisodes(mdp, policy=None, nbEpisodes=1, n_jobs=1):
-    out = Parallel(
-        n_jobs=n_jobs, verbose=2,
-    )(
-        delayed(collectEpisode)(gym.make(mdp.spec.id), policy)
-        for i in range(nbEpisodes))
+    if hasattr(mdp, 'spec') and mdp.spec is not None:
+        out = Parallel(
+            n_jobs=n_jobs, verbose=2,
+        )(
+            delayed(collectEpisode)(gym.make(mdp.spec.id), policy)
+            for i in range(nbEpisodes))
 
-    # out is a list of np.array, each one representing an episode
-    # merge the results
-    data = np.concatenate(out, axis=0)
+        # out is a list of np.array, each one representing an episode
+        # merge the results
+        data = np.concatenate(out, axis=0)
+    else:
+        raise ValueError('CollectEpisodes must be implemented')
     return data
 
 
