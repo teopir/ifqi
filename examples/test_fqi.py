@@ -3,15 +3,16 @@ import ifqi.models as md
 from ifqi.utils.datasetGenerator import DatasetGenerator
 from ifqi.fqi.FQI import FQI
 import ifqi.evaluation.evaluation as evaluate
-from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import AdaBoostClassifier, ExtraTreesRegressor
+from ifqi.models.actionRegressor import ActionRegressor
 import matplotlib.pyplot as plt
 
-mdp = envs.SwingPendulum()
+mdp = envs.CarOnHill()
 stateDim, actionDim = envs.getSpaceInfo(mdp)
 regressor_params = {'n_estimators': 50}
-regressor = AdaBoostClassifier(**regressor_params)
+discrete_actions = mdp.action_space.values
+regressor = ExtraTreesRegressor(**regressor_params)
 
-discrete_actions = []
 # md.ActionRegressor(regressor, discreteActions=discrete_actions, decimals=5, **regressor_params)
 
 dataset = DatasetGenerator(mdp)
