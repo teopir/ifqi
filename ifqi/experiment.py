@@ -77,6 +77,10 @@ class Experiment(object):
             return CartPole(discreteRew=True)
         elif self.config["mdp"]["mdpName"] == "LQG1D":
             return LQG1D()
+        elif self.config["mdp"]["mdpName"] == "LQG1DDisc":
+            mdp = LQG1D()
+            mdp.discreteReward = True
+            return mdp
         else:
             raise ValueError('Unknown mdp type.')
 

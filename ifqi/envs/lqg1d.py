@@ -47,6 +47,7 @@ class LQG1D(Environment):
         self.Q = np.array([0.9]).reshape((1, 1))
         self.R = np.array([0.9]).reshape((1, 1))
 
+        self.discreteReward = False
         # env attributes
         self.horizon = 100
         self.gamma = 0.99
@@ -78,6 +79,10 @@ class LQG1D(Environment):
         # print(self.state, u, noise, xn, cost)
 
         self.state = np.array(xn.ravel())
+        if self.discreteReward:
+            if cost > 10:
+                return self._getState(), -1, False, {}
+            return self._getState(), 0, False, {}
         return self._getState(), -np.asscalar(cost), False, {}
         # return -np.asscalar(cost)
 
