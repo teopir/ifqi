@@ -12,7 +12,7 @@ import sys
 import cPickle
 import ifqi.envs as envs
 from ifqi.utils.datasetGenerator import DatasetGenerator
-from examples.variableLoadSave import ExperimentVariables
+from variableLoadSave import ExperimentVariables
 import ifqi.evaluation.evaluation as evaluate
 from ifqi.experiment import Experiment
 import argparse

@@ -57,7 +57,7 @@ Jsample = []
 for i in range(n_rep):
     Jsample.append(evaluate.evaluate_policy(mdp, pol, initialState=initialState)[0])
 #Jsample /= n_rep
-print("J", np.mean(Jsample), np.std(Jsample) / np.sqrt(n_rep) * 1.96)
+print("J", J, np.mean(Jsample), np.std(Jsample) / np.sqrt(n_rep) * 1.96)
 
 ##############################################################
 # Compute the q-function
