@@ -10,11 +10,13 @@ from __future__ import print_function
 import os
 import sys
 import cPickle
+import ifqi.envs as envs
 from ifqi.utils.datasetGenerator import DatasetGenerator
 from examples.variableLoadSave import ExperimentVariables
 import ifqi.evaluation.evaluation as evaluate
 from ifqi.experiment import Experiment
 import argparse
+import time
 from gym.spaces import prng
 
 import numpy as np
@@ -75,6 +77,11 @@ if "saveEveryNIteration" in exp.config['experimentSetting']:
     saveFQI = True
     saveEveryNIteration = exp.config['experimentSetting']["saveEveryNIteration"]
 
+easyReplicability = False
+if "easyReplicability" in exp.config['experimentSetting']:
+    easyReplicability = exp.config['experimentSetting']['easyReplicability']
+
+
 experienceReplay = False
 if "experienceReplay" in exp.config['experimentSetting']:
     experienceReplay = True
@@ -90,7 +97,7 @@ environment.setSeed(datasetN)
 regressorName = exp.getModelName(regressorN)
 
 #TODO:clearly not a good solution
-if(regressorName=="MDP" or regressorName=="MDPEnsemble"):
+if(regressorName=="MLP" or regressorName=="MLPEnsemble"):
     fit_params = exp.getFitParams(regressorN)
 else:
     fit_params = {}
@@ -141,6 +148,10 @@ if os.path.isfile(pkl_filename):
 # FQI Iterations
 # ------------------------------------------------------------------------------
 
+#We evaluate with a different horizon
+if "horizon" in exp.config["mdp"]:
+    environment.horizon = exp.config["mdp"]["horizon"]
+
 varSetting = ExperimentVariables(experimentName)
 replay_experience = False
 for repetition in range(actualRepetition, repetitions):
@@ -149,27 +160,60 @@ for repetition in range(actualRepetition, repetitions):
         # ----------------------------------------------------------------------
         # Fit
         # ----------------------------------------------------------------------
-        if iteration==1:
-            fqi = exp.getFQI(regressorN)
-            fqi.partial_fit(sastFirst[:], rFirst[:], **fit_params)
-        else:
-            if replay_experience:
-                fqi.partial_fit(sast[:], r[:], **fit_params)
-                replay_experience = False
-            else:
-                fqi.partial_fit(None, None, **fit_params)
+        start_fit = time.time()
 
+        fqi_ = False
+        if easyReplicability:
+            fqi_ = varSetting.loadPickle(regressorN, sizeN, datasetN, repetition, iteration, "FQI")
+
+        if fqi_:
+            fqi = fqi_
+        else:
+
+            if iteration==1:
+                fqi = exp.getFQI(regressorN)
+                fqi.partial_fit(sastFirst[:], rFirst[:], **fit_params)
+            else:
+                if replay_experience:
+                    fqi.partial_fit(sast[:], r[:], **fit_params)
+                    replay_experience = False
+                else:
+                    fqi.partial_fit(None, None, **fit_params)
+
+            if easyReplicability:
+                varSetting.savePickle(regressorN,sizeN,datasetN,repetition,iteration,"FQI",fqi)
+
+        end_fit = time.time()
         # ----------------------------------------------------------------------
         # Evaluation
         # ----------------------------------------------------------------------
 
         if iteration % evaluationEveryNIteration == 0:
-            score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation)
-            print("score", score)
+            start_eval = time.time()
+            score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation, initialState=10)
+            end_eval = time.time()
+
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "score", score)
-            #varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "stdScore", stdScore)
+            varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "stdScore", stdScore)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "step", step)
-            #varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "stdStep", stdStep)
+            varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "evalTime", end_eval- start_eval)
+            varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "fitTime", end_fit - start_fit)
+
+            # ---------------------------------------------------------------------------
+            # Q-Value
+            # ---------------------------------------------------------------------------
+            if exp.config["mdp"]["mdpName"] == "LQG1D" and datasetN==0:
+                xs = np.linspace(-environment.max_pos, environment.max_pos, 60)
+                us = np.linspace(-environment.max_action, environment.max_action, 50)
+
+                l = []
+                for x in xs:
+                    for u in us:
+                        v = fqi.evaluate_Q(x, u)
+                        l.append([x, u, v])
+                tabular_Q = np.array(l)
+
+                varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "Q", tabular_Q)
 
         # ----------------------------------------------------------------------
         # SAVE FQI STATUS
@@ -184,21 +228,7 @@ for repetition in range(actualRepetition, repetitions):
                              open(pkl_filename, "wb"))
                 dataset.save(ds_filename)
 
-    #---------------------------------------------------------------------------
-    # Q-Value
-    #---------------------------------------------------------------------------
-    if exp.config["mdp"]["mdpName"]=="LQG1D":
-        xs = np.linspace(-environment.max_pos, environment.max_pos, 60)
-        us = np.linspace(-environment.max_action, environment.max_action, 50)
 
-        l = []
-        for x in xs:
-            for u in us:
-                v = fqi.evaluate_Q(x,u)
-                l.append([x, u, v])
-        tabular_Q = np.array(l)
-
-        varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "Q", tabular_Q)
 
     actualIteration = 0
 
