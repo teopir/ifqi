@@ -40,15 +40,15 @@ def multiOneDimPlot(data, xlabel, ylabel, title, path):
         dict_ = data[dic]
         name = dict_["name"]
         mean = dict_["mean"]
-        std = dict_["std"]
+        conf = dict_["conf"]
 
         if min(mean) < min_:
             min_ = min(mean)
         if max(mean) > max_:
             max_ = max(mean)
 
-        if (len(std) != 0):
-            plt.errorbar(dict_["iteration"], mean, color=color[i], yerr=std, lw=1, label=name)
+        if (len(conf) != 0):
+            plt.errorbar(dict_["iteration"], mean, color=color[i], yerr=conf, lw=1, label=name)
         hand.append(plt.plot(dict_["iteration"], mean, color=color[i], lw=1, label=name)[0])
 
         plt.ylabel(ylabel)
@@ -83,82 +83,85 @@ def ask(message, err_message, function):
 
 experimentPath = ask("Prompt the folder of your experiment: ", "Please choose a right path", str)
 jsonFile = ask("JsonFile of your experiment: ", "Please choose a right path", str)
-variable = ask("Which variable would you like to consider? ", "Please insert a string for the name", str)
 exp = Experiment(configFile=jsonFile)
-
 expVar = ExperimentVariables(experimentPath)
-get = expVar.getOverallSituation(variable)
-nLines = len(get)
-print(str(nLines) + " lines are found.")
 
-for s in expVar.sizeLoaded:
-    data = {}
-    for reg in expVar.regressorLoaded:
-        key = (reg, s)
-        data[key] = {}
-        size = exp.config['experimentSetting']['sizes'][s]
-        data[key]["name"] = str(exp.getModelName(reg)) + "_" + str(size)
-        data[key]["iteration"] = get[key][0]
-        data[key]["mean"] = get[key][1]
-        data[key]["std"] = get[key][2]
-    filepath = "plot/" + experimentPath + "/" + "size" + str(size)+".jpg"
-    directory =os.path.dirname(filepath)
-    if not os.path.isdir(directory): os.makedirs(directory)
-    multiOneDimPlot(data,"iterations","score","size=" + str(size),filepath)
+variables = ["score", "stdScore", "evalTime", "fitTime"]
+for variable in variables:
+    if input("Would you like to plot variable " + variable + " [True / False]?"):
+        get = expVar.getOverallSituation(variable)
+        nLines = len(get)
+        print(str(nLines) + " lines are found.")
 
-get = expVar.getSizeLines("score")
-data = {}
-for reg in expVar.regressorLoaded:
-    key=reg
-    data[key] = {}
-    data[key]["name"] = str(exp.getModelName(reg))
-    data[key]["iteration"] = [exp.config['experimentSetting']['sizes'][x] for x in get[key][0]]
-    data[key]["mean"] = get[key][1]
-    data[key]["std"] = get[key][2]
+        for s in expVar.sizeLoaded:
+            data = {}
+            for reg in expVar.regressorLoaded:
+                key = (reg, s)
+                data[key] = {}
+                size = exp.config['experimentSetting']['sizes'][s]
+                data[key]["name"] = str(exp.getModelName(reg)) + "_" + str(size)
+                data[key]["iteration"] = get[key][0]
+                iteration = get[key][0]
+                if variable=="stdScore":
+                    data[key]["mean"] = np.array(get[key][1]) * np.sqrt(exp.config['experimentSetting']['evaluations']['nEvaluations']) / 1.96
+                    data[key]["conf"] = np.array(get[key][2]) * np.sqrt(exp.config['experimentSetting']['evaluations']['nEvaluations']) / 1.96
+                else:
+                    data[key]["mean"] = get[key][1]
+                    data[key]["conf"] = get[key][2]
+            filepath = "plot/" + experimentPath + "/" + variable + "_size" + str(size)+".jpg"
+            directory =os.path.dirname(filepath)
+            if not os.path.isdir(directory): os.makedirs(directory)
+            if variable == "score":
+                key = ("opt",s)
+                data[key] = {}
+                data[key]["name"] = "Optimal score"
+                data[key]["iteration"] = iteration
+                data[key]["mean"] = [-295.002538038] * len(iteration)
+                data[key]["conf"] = [1.3775479337] * len(iteration)
+            multiOneDimPlot(data,"iterations",variable,"size=" + str(size),filepath)
 
-filepath = "plot/" + experimentPath + "/" + "sizeview.jpg"
-directory =os.path.dirname(filepath)
-if not os.path.isdir(directory): os.makedirs(directory)
-multiOneDimPlot(data,"sizes","score","SizeView",filepath)
+        get = expVar.getSizeLines(variable)
+        data = {}
+        for reg in expVar.regressorLoaded:
+            key=reg
+            data[key] = {}
+            data[key]["name"] = str(exp.getModelName(reg))
+            data[key]["iteration"] = [exp.config['experimentSetting']['sizes'][x] for x in get[key][0]]
+            iteration = data[key]["iteration"]
+            data[key]["mean"] = get[key][1]
+            data[key]["conf"] = get[key][2]
+
+        if variable == "score":
+            key = ("opt", s)
+            data[key] = {}
+            data[key]["name"] = "Optimal score"
+            data[key]["iteration"] = iteration
+            data[key]["mean"] = [-295.002538038] * len(iteration)
+            data[key]["conf"] = [1.3775479337] * len(iteration)
+        filepath = "plot/" + experimentPath + "/" + variable + "_sizeview.jpg"
+        directory =os.path.dirname(filepath)
+        if not os.path.isdir(directory): os.makedirs(directory)
+        multiOneDimPlot(data,"sizes",variable,"SizeView",filepath)
 
 
+#TODO Better
 if input("Would you like to plot Q [True]?"):
     environment = exp.getMDP(1)
-    path = raw_input("path of the file")
-    tabular_Q = np.load(path)
-    l = []
-    xs = np.linspace(-environment.max_pos, environment.max_pos, 60)
-    us = np.linspace(-environment.max_action, environment.max_action, 50)
+    for i in expVar.iterationLoaded:
+        path = experimentPath + "/0Q/0/0_0_" + str(i) + ".npy"
+        l = []
+        xs = np.linspace(-environment.max_pos, environment.max_pos, 60)
+        us = np.linspace(-environment.max_action, environment.max_action, 50)
 
+        tabular_Q = np.load(path)
 
-    # print(tabular_Q.shape)
-    # print(tabular_Q)
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-    ax.scatter(tabular_Q[:, 0], tabular_Q[:, 1], tabular_Q[:, 2])
-    filepath = "plot/" + experimentPath + "/" + "QRegressor.jpg"
-    directory = os.path.dirname(filepath)
-    if not os.path.isdir(directory): os.makedirs(directory)
-    plt.savefig(filepath)
-    plt.show()
-
-path = "prova.jpg"
-if input("Would you like to save [True]?"):
-    plot_name = raw_input("Plot title: ")
-    description = raw_input("Plot description: ")
-    path = "plot/" + experimentPath + "/" + plot_name + ".jpg"
-    directory =os.path.dirname(path)
-    if not os.path.isdir(directory): os.makedirs(directory)
-
-
-    myExp["images"].append({"title":plot_name,
-    "dir":path,
-    "description":description
-    }
-    )
-    with open("results/diary.json", 'w') as fp:
-        json.dump(diary,fp)
-
-for varname in varnames:
-    for size in sizes:
-        multiOneDimPlot(data_plot[varname][size],"iteration",varname,"variable: "+varname + " dataset size: " + str(size),path)
+        # print(tabular_Q.shape)
+        # print(tabular_Q)
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        ax.scatter(tabular_Q[:, 0], tabular_Q[:, 1], tabular_Q[:, 2])
+        filepath = "plot/" + experimentPath + "/" + "QRegressor.jpg"
+        directory = os.path.dirname(filepath)
+        if not os.path.isdir(directory): os.makedirs(directory)
+        plt.savefig(filepath)
+        plt.show()
