@@ -77,10 +77,14 @@ if __name__ == '__main__':
     exp = Experiment(configFile)
 
     commands = []
+
+    myPath = os.path.realpath(__file__)
+    myPath = os.path.dirname(myPath)
+    myPath += "/experimentThread.py"
     for regressor in range(len(exp.config["regressors"])):
         for size in range(len(exp.config["experimentSetting"]["sizes"])):
             for dataset in range(exp.config['experimentSetting']['datasets']):
-                    commands.append(["python", "-m", "examples.experimentThread",experimentName, configFile , str(regressor) ,  str(size), str(dataset)])
+                    commands.append(["python", myPath ,experimentName, configFile , str(regressor) ,  str(size), str(dataset)])
     
     execute(commands,nThread,10.)
     
