@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from ifqi.envs.lqg1d import LQG1D
 
 mdp = LQG1D()
+initialState = 10
 K = mdp.computeOptimalK()
 print('Optimal K: {}'.format(K))
 S = 1  # covariance of the controller
@@ -52,11 +53,11 @@ def estimate_qvalue(mdp, x, u, policy, ep_length=100, n_rep=100):
 n_rep = 1000
 J = mdp.computeJ(K, S, n_random_x0=n_rep)
 pol = tmp_policy(K, S)
-Jsample = 0
+Jsample = []
 for i in range(n_rep):
-    Jsample += evaluate.evaluate_policy(mdp, pol)[0]
-Jsample /= n_rep
-print(J, Jsample)
+    Jsample.append(evaluate.evaluate_policy(mdp, pol, initialState=initialState)[0])
+#Jsample /= n_rep
+print("J", np.mean(Jsample), np.std(Jsample) / np.sqrt(n_rep) * 1.96)
 
 ##############################################################
 # Compute the q-function
@@ -65,7 +66,7 @@ u = np.array([0])
 q_val, q_std = estimate_qvalue(mdp, x, u, policy=pol, ep_length=400, n_rep=n_rep)
 v = mdp.computeQFunction(x, u, K, S, n_rep)
 
-print(q_val, q_std, v)
+print("Q", q_val, q_std, v)
 
 ##############################################################
 # Plot the q-function
