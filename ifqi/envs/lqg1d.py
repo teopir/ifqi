@@ -80,9 +80,11 @@ class LQG1D(Environment):
 
         self.state = np.array(xn.ravel())
         if self.discreteReward:
-            if cost > 10:
-                return self._getState(), -1, False, {}
-            return self._getState(), 0, False, {}
+            print ("s=" + str(self.state[0]), "u=" + str(u))
+            if abs(self.state[0]) <= 2 and abs(u) <=2:
+                print("zero")
+                return self._getState(), 0, False, {}
+            return self._getState(), -1, False, {}
         return self._getState(), -np.asscalar(cost), False, {}
         # return -np.asscalar(cost)
 
