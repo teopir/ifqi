@@ -6,6 +6,9 @@ import os.path
 import numpy as np
 import json
 import time
+
+import cPickle
+
 class ExperimentVariables:
     
     def __init__(self, experimentName): # type: (str) -> None
@@ -49,11 +52,36 @@ class ExperimentVariables:
             x+=1.
             time.sleep(np.random.random()*x)
 
+    def savePickle(self, regressor, size, dataset, repetition, iteration, varName, value):
+        """
+        We save here the results of a variable
+        :param regressor: number of the regressor in the json
+        :param size: number of the size in the json
+        :param dataset: number of the index
+        :param repetition: number of the repetition
+        :param iteration: number of the iteration
+        :param varName: name of the variable to save
+        :param value: value of the variable to save
+        :return:
+        """
+        filename = self.experimentName + "/" + str(regressor) + str(varName) + "/" + str(size) + "/" + str(dataset) + "_" + str(repetition) + "_" + str(iteration) + ".npy"
+        directory = os.path.dirname(filename)
+        if not os.path.isdir(directory): os.makedirs(directory)
+        cPickle.dump(value,open(filename, "wb"))
+
+    def loadPickle(self, regressor, size, dataset, repetition, iteration, varName):
+        filename = self.experimentName + "/" + str(regressor) + str(varName) + "/" + str(size) + "/" + str(
+            dataset) + "_" + str(repetition) + "_" + str(iteration) + ".npy"
+        if os.path.isfile(filename):
+            return cPickle.load(open(filename, "rb"))
+        return False
+
     def loadSingle(self, regressor, size, dataset, repetition, iteration, varName):
         filename = self.experimentName + "/" + str(regressor) + str(varName) + "/" + str(size) + "/" + str(
             dataset) + "_" + str(repetition) + "_" + str(iteration) + ".npy"
         if os.path.isfile(filename):
             return np.load(filename)
+        return False
 
     def load(self, regressor, size, iteration, varName):
         """
