@@ -40,7 +40,8 @@ def getMDP(name):
         or name == "SwingPendulum"
         or name == "CartPole"
         or name == "CartPoleDisc"
-        or name == "LQG1D"):
+        or name == "LQG1D"
+        or name == "LQG1DDisc"):
             return name
     else:
         raise Exception("Insert a valid Environment name")
@@ -78,7 +79,7 @@ isList = False
 discreteActions = None
 fitActions = False
 
-if mdpName in ["LQG1D"]:
+if mdpName in ["LQG1D", "LQG1DDisc"]:
     message = "Insert a list of actions (sorrunded with square brackets, separated with commas): "
     while not isinstance(discreteActions, list) or len(discreteActions) < 2:
         discreteActions = input(message)
@@ -126,11 +127,10 @@ while newRegressor:
             "optimizer":ask("Which optimizer would you like to have: ", "Insert a valid string ", str),
             "activation":ask("Which activation function would you like to have: ", "Insert a valid string ", str),
             "supervisedAlgorithm":{
-                "nEpochs":ask("How many epochs would you like? ", "Positive integer required ", yesQuestion),
-                "batchSize":ask("What's the batch size? ", "Positive integer required ", yesQuestion),
-                "validationSplit":ask("What's the validation split (from 0 to 1)? ", "Float between 0 e 1 ", float ),
-                "verbosity":ask("Would you like Supervised Algorithm to be verbose(Y|n)? ", "Just type 'y' for yes ", yesQuestion),
-                "criterion":"mse"
+                "nb_epochs":ask("How many epochs would you like? ", "Positive integer required ", yesQuestion),
+                "batch_size":ask("What's the batch size? ", "Positive integer required ", yesQuestion),
+                "validation_split":ask("What's the validation split (from 0 to 1)? ", "Float between 0 e 1 ", float ),
+                "verbosity":ask("Would you like Supervised Algorithm to be verbose(Y|n)? ", "Just type 'y' for yes ", yesQuestion)
             }
         }
     elif regressorName == "ExtraTree" or regressorName == "ExtraTreeEnsemble":
