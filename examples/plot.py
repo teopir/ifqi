@@ -111,13 +111,13 @@ for variable in variables:
             filepath = "plot/" + experimentPath + "/" + variable + "_size" + str(size)+".jpg"
             directory =os.path.dirname(filepath)
             if not os.path.isdir(directory): os.makedirs(directory)
-            if variable == "score":
+            """if variable == "score":
                 key = ("opt",s)
                 data[key] = {}
                 data[key]["name"] = "Optimal score"
                 data[key]["iteration"] = iteration
-                data[key]["mean"] = [-295.002538038] * len(iteration)
-                data[key]["conf"] = [1.3775479337] * len(iteration)
+                data[key]["mean"] = [-146.285467395] * len(iteration)
+                data[key]["conf"] = [0.75] * len(iteration)"""
             multiOneDimPlot(data,"iterations",variable,"size=" + str(size),filepath)
 
         get = expVar.getSizeLines(variable)
@@ -131,13 +131,13 @@ for variable in variables:
             data[key]["mean"] = get[key][1]
             data[key]["conf"] = get[key][2]
 
-        if variable == "score":
+        """if variable == "score":
             key = ("opt", s)
             data[key] = {}
             data[key]["name"] = "Optimal score"
             data[key]["iteration"] = iteration
-            data[key]["mean"] = [-295.002538038] * len(iteration)
-            data[key]["conf"] = [1.3775479337] * len(iteration)
+            data[key]["mean"] = [-146.285467395] * len(iteration)
+            data[key]["conf"] = [0.75] * len(iteration)"""
         filepath = "plot/" + experimentPath + "/" + variable + "_sizeview.jpg"
         directory =os.path.dirname(filepath)
         if not os.path.isdir(directory): os.makedirs(directory)
