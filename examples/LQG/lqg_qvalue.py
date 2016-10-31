@@ -19,7 +19,7 @@ mdp = LQG1D()
 initialState = 10
 K = mdp.computeOptimalK()
 print('Optimal K: {}'.format(K))
-S = 1  # covariance of the controller
+S = 0  # covariance of the controller
 print('Covariance S: {}'.format(S))
 
 
@@ -52,6 +52,7 @@ def estimate_qvalue(mdp, x, u, policy, ep_length=100, n_rep=100):
 # Compute the discounted reward
 n_rep = 1000
 J = mdp.computeJ(K, S, n_random_x0=n_rep)
+print("K", K)
 pol = tmp_policy(K, S)
 Jsample = []
 for i in range(n_rep):
