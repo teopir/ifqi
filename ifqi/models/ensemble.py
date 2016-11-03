@@ -8,43 +8,45 @@ import numpy as np
 class Ensemble(object):
     def __init__(self):
         self.models = self.initModel()
-        self.modelAdded = True
-        self.optimizePrediction=False
+        self.lastSum = -1
+        self.optimizable = True
 
-    def fit(self, X, y, **kwargs):
-        if not hasattr(self, 'sum_'):
-            self.sum_ = np.zeros(y.shape)
-
-        sum_ = np.zeros(y.shape)
-        for m in self.models[:-1]:
-            sum_ += m.predict(X).ravel()
-        delta = y - sum_
-        ret = self.models[-1].fit(X, delta, **kwargs)
+    def fit(self, X, y, optimize=False, **kwargs):
+        if not optimize:
+            sum_ = np.zeros(y.shape)
+            for m in self.models[:-1]:
+                sum_ += m.predict(X).ravel()
+            delta = y - sum_
+            ret = self.models[-1].fit(X, delta, **kwargs)
+        else:
+            if not hasattr(self, 'sum_'):
+                self.sum_ = np.zeros(y.shape)
+            for m in self.models[self.lastSum+1:-1]:
+                self.sum_ += m.predict(X).ravel()
+            delta = y - self.sum_
+            ret = self.models[-1].fit(X, delta, **kwargs)
+            self.sum_ += self.models[-1].predict(X).ravel()
+            self.lastSum = len(self.models) - 1
         #self.sum_ += self.models[-1].predict(X).ravel()
-
         return ret
 
-    def predict(self, x, **kwargs):
+    def predict(self, x, optimize=False, **kwargs):
         n_samples = x.shape[0]
 
-        if self.optimizePrediction:
-            if n_samples > 1:
-                if not hasattr(self, 'sumNext_'):
-                    self.sumNext_ = np.zeros((n_samples,))
-                if self.modelAdded:
-                    self.sumNext_ += self.models[-1].predict(x, **kwargs).ravel()
-                    self.modelAdded=False
-
-                return self.sumNext_
+        if optimize:
+            sum_ = self.sum_
+            for m in self.models[self.lastSum + 1:]:
+                sum_ += m.predict(x).ravel()
+            return sum_
 
         output = np.zeros((n_samples,))
         for model in self.models:
             output += model.predict(x).ravel()
 
+
         return output
 
     def adapt(self, iteration):
-        self.modelAdded=True
         self.models.append(self.generateModel(iteration))
 
     def initModel(self):

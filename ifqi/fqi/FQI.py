@@ -3,6 +3,7 @@ import numpy as np
 from numpy.matlib import repmat
 import sklearn.preprocessing as preprocessing
 from ifqi.preprocessors.features import selectFeatures
+from ifqi.models.actionRegressor import ActionRegressor
 
 """
 This class implements the function to run Fitted Q-Iteration algorithm.
@@ -28,7 +29,7 @@ class FQI:
     def __init__(self, estimator, stateDim, actionDim,
                  discreteActions,
                  gamma=0.9, horizon=10,
-                 scaled=False, features=None, verbose=0):
+                 scaled=False, features=None, verbose=0,optimized=False):
         self.estimator = estimator
         self.gamma = gamma
         self.horizon = horizon
@@ -37,6 +38,7 @@ class FQI:
         self.actionDim = actionDim
 
         self.verbose = verbose
+        self.optimized = optimized
         if isinstance(discreteActions, np.ndarray):
             #TODO:
             if len(discreteActions.shape) > 1:
@@ -163,19 +165,29 @@ class FQI:
             if self.verbose > 0:
                 print('Iteration {}'.format(self.iteration + 1))
 
-            self.estimator.fit(self.sa, y, **kwargs)
+            if hasattr(self.estimator, "optimizable") and self.optimized:
+                self.estimator.fit(self.sa, y, optimize=True, **kwargs)
+            else:
+                self.estimator.fit(self.sa, y, **kwargs)
         else:
-            maxq, maxa = self.maxQA(self.snext, self.absorbing)
+            #The optimization here works only in the case of action regressor
+            if hasattr(self.estimator, "optimizable") and self.optimized and isinstance(self.estimator,ActionRegressor):
+                maxq, maxa = self.maxQA(self.snext, self.absorbing,optimized=True)
+            else:
+                maxq, maxa = self.maxQA(self.snext, self.absorbing)
+
             y = self.r + self.gamma * maxq
 
             if self.verbose > 0:
                 print('Iteration {}'.format(self.iteration + 1))
-
             if adaptive:
                 # update estimator structure
                 self.estimator.adapt(iteration=self.iteration)
 
-            self.estimator.fit(self.sa, y, **kwargs)
+            if hasattr(self.estimator,"optimizable") and self.optimized:
+                self.estimator.fit(self.sa, y,optimize=True, **kwargs)
+            else:
+                self.estimator.fit(self.sa, y, **kwargs)
 
         self.iteration += 1
 
@@ -203,7 +215,7 @@ class FQI:
             self._partial_fit()
     """
 
-    def maxQA(self, states, absorbing=None):
+    def maxQA(self, states, absorbing=None, optimized=False):
         """
         Computes the maximum Q-function and the associated action
         in the provided states.
@@ -235,9 +247,7 @@ class FQI:
 
             if self.features is not None:
                 samples = self.features.testFeatures(samples)
-
             # predict Q-function
-
             predictions = self.estimator.predict(samples)
 
             Q[:, idx] = predictions.ravel() * np.asarray((1 - absorbing)).ravel() #TODO fix (too expensive)

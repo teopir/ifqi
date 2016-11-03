@@ -162,6 +162,9 @@ class Experiment(object):
         horizon = self.config['rlAlgorithm']['horizon']
         verbose = self.config['rlAlgorithm']['verbosity']
         scaled = self.config['rlAlgorithm']['scaled']
+        optimized=False
+        if "optimized" in self.config["rlAlgorithm"]:
+            optimized = self.config['rlAlgorithm']['optimized']
         #TODO: fix
         if 'features' in self.config['regressors'][regressorIndex]:
             features = self.config['regressors'][regressorIndex]['features']
@@ -184,6 +187,6 @@ class Experiment(object):
           horizon=horizon,
           verbose=verbose,
           features=features,
-          scaled=scaled)
+          scaled=scaled, optimized=optimized)
           
         return fqi 
