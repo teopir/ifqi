@@ -190,7 +190,10 @@ for repetition in range(actualRepetition, repetitions):
 
         if iteration % evaluationEveryNIteration == 0:
             start_eval = time.time()
-            score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation, initialState=10)
+            if exp.config["mdp"]["mdpName"] == "LQG1D":
+                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation, initialState=10)
+            else:
+                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation)
             end_eval = time.time()
 
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "score", score)
