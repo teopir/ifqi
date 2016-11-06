@@ -40,6 +40,7 @@ parser.add_argument("configFile", type=str, help="Provide the filename of the co
 parser.add_argument("regressor", type=int, help="Provide the index of the regressor listed in the configuration file")
 parser.add_argument("size", type=int, help="Provide the index of the size listed in the configuration file")
 parser.add_argument("dataset", type=int, help="Provide the index of the dataset")
+parser.add_argument("-c","--cont", action="store_true", help="Provide the index of the dataset")
 args = parser.parse_args()
 
 experimentName = args.experimentName
@@ -51,6 +52,8 @@ regressorN = args.regressor
 sizeN = args.size
 # Every experiment just run a specific dataset. ExperimentThreadManager select one specific dataset
 datasetN = args.dataset
+
+continue_ = args.cont
 
 print("Started experiment with regressor " + str(regressorN)+ " dataset " + str(datasetN) + ", size " + str(sizeN))
 
@@ -155,6 +158,10 @@ if "horizon" in exp.config["mdp"]:
 varSetting = ExperimentVariables(experimentName)
 replay_experience = False
 for repetition in range(actualRepetition, repetitions):
+
+    if continue_ and not varSetting.loadSingle(regressorN,sizeN,datasetN,repetition,iterations,"score"):
+        break
+
     for iteration in range(actualIteration, iterations + 1):
 
         # ----------------------------------------------------------------------
