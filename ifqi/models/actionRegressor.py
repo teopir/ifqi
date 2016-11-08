@@ -100,7 +100,8 @@ class ActionRegressor(object):
 
     def adapt(self, iteration):
         for i in range(len(self.models)):
-            self.models[i].adapt(iteration)
+            if hasattr(self.models[i], "adapt"):
+                self.models[i].adapt(iteration)
 
     def initModel(self, model, **params):
         """
