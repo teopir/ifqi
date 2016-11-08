@@ -4,6 +4,9 @@ This file create, manage, and save on disk a dataset
 import numpy as np
 import csv
 import os
+
+from builtins import range
+
 import ifqi.evaluation.evaluation as evaluate
 
 
@@ -23,7 +26,7 @@ class DatasetGenerator:
         :return: Nothing
         """
         np.save(fileName, self.data)
-        
+
     def load(self,fileName):
         # type: (str) -> np.ndarray
         """
@@ -32,18 +35,18 @@ class DatasetGenerator:
         :return: numpy matrix
         """
         self.data = np.load(fileName)
-        
+
     def loadReLeDataset(self, path, nEpisodes=None):
         """
         Function to parse rele dataset and create
         a sars matrix with tuples with:
         state, action, reward, next state, absStateFlag
-    
+
         """
         raise Exception("Not implemented yet")
 
         fileName = os.path.realpath(path)
-    
+
         print("Loading dataset...")
         dataList = list()
         with open(fileName, 'r') as f:
@@ -57,7 +60,7 @@ class DatasetGenerator:
                     actionDim = int(row[1])
                     rewardDim = int(row[2])
                     assert stateDim == self.environment.observation_space.shape[0], "Dimension of the state must be the same"
-                    
+
                 else:
                     if len(row) == stateDim + 2:
                         currentRow = row + [0] * (actionDim + rewardDim)
@@ -65,16 +68,16 @@ class DatasetGenerator:
                         episodesCounter += 1
                     else:
                         dataList.append(row)
-    
+
                 if nEpisodes is not None and episodesCounter == nEpisodes:
                     break
-    
+
         data = np.array(dataList, dtype='float32')
-    
+
         statepos = 2
         actionpos = statepos + stateDim
         rewardpos = actionpos + actionDim
-    
+
         idxs = np.argwhere(data[:, 0] != 1).ravel()
         states = data[idxs, statepos:actionpos].reshape(-1, stateDim)
         actions = data[idxs, actionpos:rewardpos].reshape(-1, actionDim)
@@ -101,7 +104,7 @@ class DatasetGenerator:
         :param n_episodes: natural positive number of episode
         :return: nothing
         """
-        for _ in xrange(n_episodes):
+        for _ in range(n_episodes):
             tempData = evaluate.collectEpisode(self.environment, policy)
             self.data = np.concatenate((self.data, tempData), axis=0)
 
@@ -113,7 +116,7 @@ class DatasetGenerator:
         :return: nothing
         """
         self.reset()
-        for _ in xrange(n_episodes):
+        for _ in range(n_episodes):
             tempData = evaluate.collectEpisode(self.environment, policy)
             self.data = np.concatenate((self.data, tempData), axis=0)
 
