@@ -2,11 +2,11 @@
 # import gym
 from gym import spaces
 from gym.utils import seeding
+from gym.spaces import prng
 import numpy as np
 
-from environment import Environment
+from .environment import Environment
 
-from gym.spaces import prng
 """
 Linear quadratic gaussian regulator task.
 

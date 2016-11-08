@@ -17,7 +17,8 @@
 import numpy
 from gym import spaces
 from gym.utils import seeding
-from environment import Environment
+
+from .environment import Environment
 
 from builtins import range
 

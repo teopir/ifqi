@@ -4,7 +4,7 @@ from gym.utils import seeding
 import numpy as np
 from scipy.integrate import odeint
 
-from environment import Environment
+from .environment import Environment
 
 """
 The Acrobot environment as presented in:
