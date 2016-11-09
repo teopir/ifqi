@@ -170,11 +170,7 @@ class FQI:
             else:
                 self.estimator.fit(self.sa, y, **kwargs)
         else:
-            #The optimization here works only in the case of action regressor
-            if hasattr(self.estimator, "optimizable") and self.optimized and isinstance(self.estimator,ActionRegressor):
-                maxq, maxa = self.maxQA(self.snext, self.absorbing,optimized=True)
-            else:
-                maxq, maxa = self.maxQA(self.snext, self.absorbing)
+            maxq, maxa = self.maxQA(self.snext, self.absorbing)
 
             y = self.r + self.gamma * maxq
 
@@ -215,7 +211,7 @@ class FQI:
             self._partial_fit()
     """
 
-    def maxQA(self, states, absorbing=None, optimized=False):
+    def maxQA(self, states, absorbing=None):
         """
         Computes the maximum Q-function and the associated action
         in the provided states.
@@ -248,7 +244,11 @@ class FQI:
             if self.features is not None:
                 samples = self.features.testFeatures(samples)
             # predict Q-function
-            predictions = self.estimator.predict(samples)
+            if hasattr(self.estimator, "optimizable") and self.optimized and isinstance(self.estimator,
+                                                                                        ActionRegressor):
+                predictions = self.estimator.predict(samples,optimize=True)
+            else:
+                predictions = self.estimator.predict(samples)
 
             Q[:, idx] = predictions.ravel() * np.asarray((1 - absorbing)).ravel() #TODO fix (too expensive)
             #print("absorbing.shape", absorbing.shape)

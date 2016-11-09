@@ -9,6 +9,7 @@ class Ensemble(object):
     def __init__(self):
         self.models = self.initModel()
         self.lastSum = -1
+        self.lastPredictSum = -1
         self.optimizable = True
 
     def fit(self, X, y, optimize=False, **kwargs):
@@ -34,10 +35,13 @@ class Ensemble(object):
         n_samples = x.shape[0]
 
         if optimize:
-            sum_ = self.sum_
-            for m in self.models[self.lastSum + 1:]:
-                sum_ += m.predict(x).ravel()
-            return sum_
+            if n_samples>1:
+                if not hasattr(self, 'predictSum_'):
+                    self.predictSum_ = np.zeros(x.shape[0])
+                for m in self.models[self.lastPredictSum + 1:]:
+                    self.predictSum_ += m.predict(x).ravel()
+                self.lastPredictSum = len(self.models) - 1
+                return self.predictSum_
 
         output = np.zeros((n_samples,))
         for model in self.models:

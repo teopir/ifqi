@@ -47,6 +47,8 @@ class ActionRegressor(object):
         if self.decimals == 0:
             self.actions = self.actions.astype('int')
         self.models = self.initModel(model, **params)
+        if hasattr(self.models[0], 'optimizable'):
+            self.optimizable=True
 
     def fit(self, X, y, **kwargs):
         """
@@ -94,7 +96,8 @@ class ActionRegressor(object):
                 if (len(idxs.shape)>1):
                     n = idxs.shape[0]
                     idxs = np.reshape(np.asarray(idxs),(n))
-                ret[idxs] = self.models[idAction].predict(x[idxs, :-1], **kwargs)
+                ret[idxs] = self.models[idAction].predict(x[idxs, :-1],**kwargs)
+
 
         return ret
 
