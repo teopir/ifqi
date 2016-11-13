@@ -188,12 +188,12 @@ def collect_episode(mdp, policy=None):
         else:
             action = mdp.action_space.sample()
         next_state, reward, done, _ = mdp.step(action)
+        new_el = state.tolist() + action.tolist() + [reward] + \
+            next_state.tolist()
         if not done:
-            new_el = state.tolist() + action.tolist() + [reward] + \
-                    next_state.tolist() + [0]
+            new_el += [0]
         else:
-            new_el = state.tolist() + action.tolist() + [reward] + \
-                    next_state.tolist() + [1]
+            new_el += [1]
 
         data.append(new_el)
         state = next_state

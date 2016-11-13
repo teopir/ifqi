@@ -110,8 +110,8 @@ class FQI:
         if r is not None:
             if self.scaled:
                 # create scaler and fit it
-                self._sa_scaler = preprocessing.StandardScaler()
-                r = self._sa_scaler.fit_transform(r.reshape((-1, 1)))
+                self._r_scaler = preprocessing.StandardScaler()
+                r = self._r_scaler.fit_transform(r.reshape((-1, 1)))
 
             self.r = r.ravel()
 
