@@ -1,9 +1,11 @@
-from sklearn.preprocessing import PolynomialFeatures
 import numpy as np
+from sklearn.preprocessing import PolynomialFeatures
 
 
-def selectFeatures(f):
-    if f['name'] == 'poly':
+def select_features(f):
+    if f is None:
+        return None
+    elif f['name'] == 'poly':
         return PolyFeatures(f['degree'])
     else:
         print('Unknown feature type. None will be applied')

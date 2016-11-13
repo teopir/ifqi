@@ -4,21 +4,19 @@ from keras.layers.core import Dense
 
 class MLP(object):
     def __init__(self,
-                 nInput=2,
-                 nOutput=1,
-                 hiddenNeurons=15,
-                 nLayers=1,
-                 activation="relu",
-                 optimizer=None,
+                 n_input,
+                 n_output,
+                 hidden_neurons,
+                 activation,
+                 optimizer,
                  regularizer=None):
-        self.hiddenNeurons = hiddenNeurons
+        self.hidden_neurons = hidden_neurons
         self.optimizer = optimizer
-        self.nInput = nInput
-        self.nOutput = nOutput
-        self.nLayers = nLayers
+        self.n_input = n_input
+        self.n_output = n_output
         self.activation = activation
         self.regularizer = regularizer
-        self.model = self.initModel()
+        self.model = self.init_model()
 
     def fit(self, X, y, **kwargs):
         return self.model.fit(X, y, **kwargs)
@@ -26,22 +24,22 @@ class MLP(object):
     def predict(self, x, **kwargs):
         return self.model.predict(x, **kwargs)
 
-    def adapt(self, iteration=1):
+    def adapt(self, iteration):
         pass
 
-    def initModel(self):
+    def init_model(self):
         model = Sequential()
-        model.add(Dense(self.hiddenNeurons,
-                        input_shape=(self.nInput,),
+        model.add(Dense(self.hidden_neurons[0],
+                        input_shape=(self.n_input,),
                         activation=self.activation,
                         W_regularizer=self.regularizer,
                         b_regularizer=self.regularizer))
-        for i in range(1, self.nLayers):
-            model.add(Dense(self.hiddenNeurons,
+        for i in range(1, len(self.hidden_neurons)):
+            model.add(Dense(self.hidden_neurons[i],
                             activation=self.activation,
                             W_regularizer=self.regularizer,
                             b_regularizer=self.regularizer))
-        model.add(Dense(self.nOutput,
+        model.add(Dense(self.n_output,
                         activation='linear',
                         W_regularizer=self.regularizer,
                         b_regularizer=self.regularizer))

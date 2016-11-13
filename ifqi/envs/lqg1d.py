@@ -70,25 +70,22 @@ class LQG1D(Environment):
 
     def _step(self, action, render=False):
         u = np.clip(action, -self.max_action, self.max_action)
-        #noise = np.random.randn() * self.sigma_noise
-        noise =  self.np_random.randn() * self.sigma_noise
+        noise = self.np_random.randn() * self.sigma_noise
         xn = np.dot(self.A, self.state) + np.dot(self.B, u) + noise
         cost = np.dot(self.state,
-                      np.dot(self.Q, self.state)) + \
-               np.dot(u, np.dot(self.R, u))
-        # print(self.state, u, noise, xn, cost)
+                      np.dot(self.Q, self.state)) + np.dot(u, np.dot(self.R, u))
 
         self.state = np.array(xn.ravel())
         if self.discreteReward:
-            if abs(self.state[0]) <= 2 and abs(u) <=2:
+            if abs(self.state[0]) <= 2 and abs(u) <= 2:
                 return self._getState(), 0, False, {}
             return self._getState(), -1, False, {}
         return self._getState(), -np.asscalar(cost), False, {}
-        # return -np.asscalar(cost)
 
     def _reset(self, state=None):
         if state is None:
-            self.state = np.array([prng.np_random.uniform(low=-self.max_pos, high=self.max_pos)])
+            self.state = np.array([prng.np_random.uniform(low=-self.max_pos,
+                                                          high=self.max_pos)])
         else:
             self.state = np.array(state)
         return np.array(self.state)

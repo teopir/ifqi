@@ -20,7 +20,7 @@ import warnings
 import numpy as np
 
 
-class Experiment(object):
+class loadConfig(object):
     """
     This class has the purpose to load the configuration
     file of the experiment and return the required model
@@ -41,16 +41,6 @@ class Experiment(object):
             self.mdp = self.getMDP()
         else:
             self.config = dict()
-
-    def getModelName(self, nRegressor):
-        modelConfig = self.config['regressors'][nRegressor]
-        return modelConfig['modelName']
-
-    def getFitParams(self,nRegressor):
-        return self.config['regressors'][nRegressor]["supervisedAlgorithm"]
-
-    def getActions(self):
-        return self.config['mdp']['discreteActions']
 
     def getMDP(self, seed=None):
         """
@@ -73,14 +63,8 @@ class Experiment(object):
             return SwingPendulum()
         elif self.config["mdp"]["mdpName"] == "CartPole":
             return CartPole()
-        elif self.config["mdp"]["mdpName"] == "CartPoleDisc":
-            return CartPole(discreteRew=True)
         elif self.config["mdp"]["mdpName"] == "LQG1D":
             return LQG1D()
-        elif self.config["mdp"]["mdpName"] == "LQG1DDisc":
-            mdp = LQG1D()
-            mdp.discreteReward = True
-            return mdp
         else:
             raise ValueError('Unknown mdp type.')
 
@@ -142,8 +126,6 @@ class Experiment(object):
         else:
             raise ValueError('Unknown estimator type.')
 
-
-
         if fitActions:
             return model(**params)
         else:
@@ -155,38 +137,3 @@ class Experiment(object):
             return ActionRegressor(model,
                                    self.mdp.action_space.values, decimals=5,
                                    **params)
-
-    def getFQI(self, regressorIndex):
-        regressor = self._getModel(regressorIndex)
-        gamma = self.config['rlAlgorithm']['gamma']
-        horizon = self.config['rlAlgorithm']['horizon']
-        verbose = self.config['rlAlgorithm']['verbosity']
-        scaled = self.config['rlAlgorithm']['scaled']
-        optimized=False
-        if "optimized" in self.config["rlAlgorithm"]:
-            optimized = self.config['rlAlgorithm']['optimized']
-        #TODO: fix
-        if 'features' in self.config['regressors'][regressorIndex]:
-            features = self.config['regressors'][regressorIndex]['features']
-        else:
-            features = None
-            
-        state_dim = self.mdp.observation_space.shape[0]
-
-        if(isinstance(self.mdp.action_space, spaces.Box)):
-            discreteActions = self.getActions()
-        else:
-            discreteActions = self.mdp.action_space.values
-
-        fqi = FQI(estimator=regressor,
-          stateDim=state_dim,
-          #TODO: Fix action dimension
-          actionDim=1,
-          discreteActions=discreteActions,
-          gamma=gamma,
-          horizon=horizon,
-          verbose=verbose,
-          features=features,
-          scaled=scaled, optimized=optimized)
-          
-        return fqi 

@@ -1,11 +1,8 @@
 import numpy as np
-
 import gym
-from gym.spaces import prng
 
 
 class DiscreteValued(gym.Space):
-    
     def __init__(self, values, decimals=6):
         """
         Each row represents an action
@@ -15,8 +12,8 @@ class DiscreteValued(gym.Space):
         self.values = np.around(values, decimals=decimals)
 
     def sample(self):
-        idx = prng.np_random.randint(self.values.shape[0])
-        return self.values[idx]
+        idx = np.random.randint(self.values.shape[0])
+        return np.array([self.values[idx]])
 
     def contains(self, x):
         x = np.asscalar(np.around(x, decimals=self.decimals))
@@ -48,7 +45,6 @@ class DiscreteValued(gym.Space):
         Return the number of discrete values
         """
         return self.values.shape[0]
-
 
     def __repr__(self):
         return "DiscreteValued({})".format(self.values.tolist)
