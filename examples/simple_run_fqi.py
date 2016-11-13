@@ -15,7 +15,7 @@ regressor_params = {'n_estimators': 50,
                     'min_samples_leaf': 2}
 discrete_actions = mdp.action_space.values
 regressor = ExtraTreesRegressor(**regressor_params)
-regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
+#regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
 # mdp.ActionRegressor(regressor, discrete_actions=discrete_actions,
 #                     decimals=5, **regressor_params)
@@ -61,7 +61,6 @@ for i in range(iterations - 1):
     values = evaluation.evaluate_policy(mdp, fqi,
                                         initial_states=initial_states,
                                         n_episodes=289)
-    print(values)
     iteration_values.append(values[0])
 
     if i == 1:
