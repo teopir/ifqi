@@ -211,9 +211,9 @@ class FQI:
 
             # concatenate [new_state, action] and scalarize them
             if self.scaled:
-                samples = np.concatenate((self._sa_scaler.transform(new_state),
-                                          actions),
-                                         axis=1)
+                samples = self._sa_scaler.transform(np.concatenate((new_state,
+                                                                    actions),
+                                                                   axis=1))
             else:
                 samples = np.concatenate((new_state, actions), axis=1)
 
