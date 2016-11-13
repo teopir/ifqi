@@ -5,7 +5,7 @@ from sklearn.ensemble import ExtraTreesRegressor
 from ifqi import envs
 from ifqi.evaluation import evaluation
 from ifqi.fqi.FQI import FQI
-from ifqi.models.actionRegressor import ActionRegressor
+from ifqi.models.actionregressor import ActionRegressor
 from ifqi.models.mlp import MLP
 
 mdp = envs.CarOnHill()
@@ -17,8 +17,9 @@ discrete_actions = mdp.action_space.values
 regressor = ExtraTreesRegressor(**regressor_params)
 #regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
-# mdp.ActionRegressor(regressor, discrete_actions=discrete_actions,
-#                     decimals=5, **regressor_params)
+regressor = ActionRegressor(ExtraTreesRegressor,
+                            discrete_actions=discrete_actions, decimals=5,
+                            **regressor_params)
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=1000)
 
