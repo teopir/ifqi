@@ -1,6 +1,10 @@
 from keras.models import Sequential
 from keras.layers.core import Dense
 
+"""
+Keras MLP wrapper.
+"""
+
 
 class MLP(object):
     def __init__(self,
@@ -10,6 +14,9 @@ class MLP(object):
                  activation,
                  optimizer,
                  regularizer=None):
+        assert isinstance(hidden_neurons, list), 'hidden_neurons should be \
+            of type list specifying the number of hidden neurons for each \
+            hidden layer.'
         self.hidden_neurons = hidden_neurons
         self.optimizer = optimizer
         self.n_input = n_input
@@ -19,7 +26,7 @@ class MLP(object):
         self.model = self.init_model()
 
     def fit(self, X, y, **kwargs):
-        return self.model.fit(X, y, **kwargs)
+        self.model.fit(X, y, **kwargs)
 
     def predict(self, x, **kwargs):
         return self.model.predict(x, **kwargs)

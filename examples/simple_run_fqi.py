@@ -7,6 +7,7 @@ from ifqi.evaluation import evaluation
 from ifqi.fqi.FQI import FQI
 from ifqi.models.actionregressor import ActionRegressor
 from ifqi.models.mlp import MLP
+from ifqi.models.ensemble import ExtraTreesEnsemble
 
 mdp = envs.CarOnHill()
 state_dim, action_dim = envs.get_space_info(mdp)
@@ -14,7 +15,7 @@ regressor_params = {'n_estimators': 50,
                     'min_samples_split': 4,
                     'min_samples_leaf': 2}
 discrete_actions = mdp.action_space.values
-regressor = ExtraTreesRegressor(**regressor_params)
+regressor = ExtraTreesEnsemble(**regressor_params)
 # regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
 regressor = ActionRegressor(ExtraTreesRegressor,
