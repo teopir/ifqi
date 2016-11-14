@@ -22,6 +22,8 @@ regressor = ActionRegressor(ExtraTreesRegressor,
                             **regressor_params)
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=1000)
+print(dataset.shape)
+exit()
 
 reward_idx = state_dim + action_dim
 sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
@@ -52,8 +54,6 @@ for i in range(-8, 9):
     for j in range(-8, 9):
         initial_states[count, :] = np.array([0.125 * i, 0.375 * j])
         count += 1
-
-initial_states = None
 
 fqi.partial_fit(sast, r, **fitParams)
 
