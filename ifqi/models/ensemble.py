@@ -18,11 +18,11 @@ class Ensemble(object):
         self._models = self._init_model()
 
     def fit(self, X, y, **kwargs):
-        if not hasattr(self, '_sum'):
-            self._sum = np.zeros(y.shape)
-        delta = y - self._sum
+        if not hasattr(self, '_target_sum'):
+            self._target_sum = np.zeros(y.shape)
+        delta = y - self._target_sum
         self._models[-1].fit(X, delta, **kwargs)
-        self._sum += self._models[-1].predict(X).ravel()
+        self._target_sum += self._models[-1].predict(X).ravel()
 
     def predict(self, x, **kwargs):
         if 'idx' in kwargs:

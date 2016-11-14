@@ -42,7 +42,7 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
     multiple episode and visualize its performance
     Params:
         mdp (object): the environment to solve
-        policy (object): a policy object (method drawAction is expected)
+        policy (object): a policy object (method draw_action is expected)
         n_episodes (int, 1): the number of episodes to execute
         metric (string, 'discounted'): the evaluation metric ['discounted',
             'average']
@@ -74,7 +74,7 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
         state = mdp.reset(initial_states[e, :] if initial_states is not None
                           else None)
         while t < H and not done:
-            action = policy.draw_action(state, done)
+            action = policy.draw_action(state, done, True)
             state, r, done, _ = mdp.step(action)
             ep_performance += df * r
             df *= gamma
@@ -126,7 +126,7 @@ def evaluate_policy(mdp, policy, n_episodes=1,
     the specified metric by executing multiple episode.
     Params:
         mdp (object): the environment to solve
-        policy (object): a policy object (method drawAction is expected)
+        policy (object): a policy object (method draw_action is expected)
         n_episodes (int, 1): the number of episodes to execute
         metric (string, 'discounted'): the evaluation metric ['discounted',
             'average']

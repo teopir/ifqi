@@ -188,7 +188,7 @@ class FQI:
         for t in range(1, self.horizon):
             self.partial_fit(sast=None, r=None, **kwargs)
 
-    def maxQA(self, states, absorbing):
+    def maxQA(self, states, absorbing, evaluation=False):
         """
         Computes the maximum Q-function and the associated action
         in the provided states.
@@ -221,7 +221,7 @@ class FQI:
                 samples = self._features.test_features(samples)
 
             # predict Q-function
-            if samples.shape[0] > 1:
+            if not evaluation:
                 opt_pars = {'n_actions': n_actions, 'idx': idx}
             else:
                 opt_pars = dict()
@@ -240,7 +240,7 @@ class FQI:
 
         return rQ, rA
 
-    def draw_action(self, states, absorbing):
+    def draw_action(self, states, absorbing, evaluation=False):
         """
         Compute the action with the highest Q value.
         Args:
@@ -255,7 +255,7 @@ class FQI:
             raise ValueError(
                 'The model must be trained before being evaluated')
 
-        _, maxa = self.maxQA(states, absorbing)
+        _, maxa = self.maxQA(states, absorbing, evaluation)
 
         return maxa
 
