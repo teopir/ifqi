@@ -26,11 +26,11 @@ class ActionRegressor(object):
         """
         if isinstance(discrete_actions, (int, float)):
             discrete_actions = np.arange(int(discrete_actions))
-            self._decimals = 0
+            self.decimals = 0
         else:
             # fix number of decimals (i.e., precision)
             discrete_actions = np.around(discrete_actions, decimals=decimals)
-            self._decimals = decimals
+            self.decimals = decimals
 
         # transform discrete actions into a matrix
         dim = len(discrete_actions.shape)
@@ -43,13 +43,13 @@ class ActionRegressor(object):
         b = np.ascontiguousarray(discrete_actions).view(np.dtype(
             (np.void,
              discrete_actions.dtype.itemsize * discrete_actions.shape[1])))
-        self._actions = np.unique(b).view(
+        self.actions = np.unique(b).view(
             discrete_actions.dtype).reshape(-1, discrete_actions.shape[1])
         # actions is a #action x #variables. Ie each row is an action
-        if self._decimals == 0:
-            self._actions = self._actions.astype('int')
+        if self.decimals == 0:
+            self.actions = self.actions.astype('int')
 
-        self._models = self._init_model(model, **params)
+        self.models = self.init_model(model, **params)
 
     def fit(self, X, y, **kwargs):
         """
@@ -62,12 +62,14 @@ class ActionRegressor(object):
             y (np.array): Target values. Dimensions: n_samples x 1
             **kwargs: additional parameters to be passed to the fit function of
                       the estimator
+        Returns:
+            None
         """
-        for i in range(len(self._models)):
-            action = self._actions[i]
+        for i in range(len(self.models)):
+            action = self.actions[i]
             idxs = np.all(X[:, -1:] == action, axis=1)
 
-            self._models[i].fit(X[idxs, :-1], y[idxs], **kwargs)
+            self.models[i].fit(X[idxs, :-1], y[idxs], **kwargs)
 
     def predict(self, x, **kwargs):
         """
@@ -87,17 +89,17 @@ class ActionRegressor(object):
         """
 
         predictions = np.zeros(x.shape[0])
-        for i in range(self._actions.shape[0]):
-            action = self._actions[i]
+        for i in range(self.actions.shape[0]):
+            action = self.actions[i]
             idxs = np.all(x[:, -1:] == action, axis=1)
 
             if np.any(idxs):
-                p = self._models[i].predict(x[idxs, :-1], **kwargs)
+                p = self.models[i].predict(x[idxs, :-1], **kwargs)
                 predictions[idxs] = p
 
         return predictions
 
-    def _init_model(self, model, **params):
+    def init_model(self, model, **params):
         """
         Initialize a new estimator for each discrete action.
         The output is a list of estimators with length equal to the
@@ -110,7 +112,7 @@ class ActionRegressor(object):
             models (list): list of initialized estimators
         """
         models = list()
-        for i in range(self._actions.shape[0]):
+        for i in range(self.actions.shape[0]):
             models.append(model(**params))
 
         return models

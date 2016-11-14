@@ -22,8 +22,6 @@ regressor = ActionRegressor(ExtraTreesRegressor,
                             **regressor_params)
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=1000)
-print(dataset.shape)
-exit()
 
 reward_idx = state_dim + action_dim
 sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
