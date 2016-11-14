@@ -16,7 +16,7 @@ regressor_params = {'n_estimators': 50,
                     'min_samples_split': 4,
                     'min_samples_leaf': 2}
 discrete_actions = mdp.action_space.values
-regressor = ExtraTreesEnsemble
+regressor = ExtraTreesRegressor
 # regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
 regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,

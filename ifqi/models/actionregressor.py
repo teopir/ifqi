@@ -1,6 +1,8 @@
 import numpy as np
 from builtins import range
 
+from ifqi.models.ensemble import Ensemble
+
 
 class ActionRegressor(object):
     """
@@ -98,9 +100,12 @@ class ActionRegressor(object):
         return predictions
 
     def adapt(self, iteration):
-        if hasattr(self._models[0], 'adapt'):
+        if self.has_ensembles:
             for model in self._models:
                 model.adapt(iteration)
+
+    def has_ensembles(self):
+        return isinstance(self._models[0], Ensemble)
 
     def _init_model(self, model, **params):
         """

@@ -135,12 +135,6 @@ class FQI:
         if sast is not None or r is not None:
             self._preprocess_data(sast, r)
 
-        # check if the estimator change the structure at each iteration
-        adaptive = False
-
-        if hasattr(self._estimator, 'adapt'):
-            adaptive = True
-
         if self._iteration == 0:
             if self._verbose > 0:
                 print('Iteration {}'.format(self._iteration + 1))
@@ -152,7 +146,7 @@ class FQI:
             if self._verbose > 0:
                 print('Iteration {}'.format(self._iteration + 1))
 
-            if adaptive:
+            if self._estimator.has_ensembles():
                 # update estimator structure
                 self._estimator.adapt(iteration=self._iteration)
 
@@ -221,7 +215,7 @@ class FQI:
                 samples = self._features.test_features(samples)
 
             # predict Q-function
-            if not evaluation:
+            if not evaluation and self._estimator.has_ensembles():
                 opt_pars = {'n_actions': n_actions, 'idx': idx}
             else:
                 opt_pars = dict()
