@@ -139,7 +139,6 @@ class FQI:
         adaptive = False
 
         if hasattr(self._estimator, 'adapt'):
-            exit(0)
             adaptive = True
 
         if self._iteration == 0:
