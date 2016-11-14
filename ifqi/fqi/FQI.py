@@ -138,8 +138,9 @@ class FQI:
         # check if the estimator change the structure at each iteration
         adaptive = False
 
-        if hasattr(self._estimator, 'adapt'):
-            adaptive = True
+        if isinstance(self._estimator, ActionRegressor):
+            if hasattr(self._estimator._models[0], 'adapt'):
+                adaptive = True
 
         if self._iteration == 0:
             if self._verbose > 0:

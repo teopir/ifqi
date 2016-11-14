@@ -19,9 +19,8 @@ discrete_actions = mdp.action_space.values
 regressor = ExtraTreesEnsemble
 # regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
-regressor = ActionRegressor(regressor,
-                            discrete_actions=discrete_actions, decimals=5,
-                            **regressor_params)
+regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
+                            decimals=5, **regressor_params)
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=1000)
 

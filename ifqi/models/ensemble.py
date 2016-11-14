@@ -36,11 +36,11 @@ class Ensemble(object):
 
             return self._predict_sum[:, idx]
 
-        predictions = np.array([0.])
+        prediction = np.zeros(x.shape[0])
         for model in self._models:
-            predictions += model.predict(x).ravel()
+            prediction += model.predict(x).ravel()
 
-        return predictions
+        return prediction
 
     def adapt(self, iteration):
         self._models.append(self._generate_model(iteration))
