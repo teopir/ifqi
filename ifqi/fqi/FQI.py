@@ -221,7 +221,10 @@ class FQI:
                 samples = self._features.test_features(samples)
 
             # predict Q-function
-            opt_pars = {'n_actions': n_actions, 'idx': idx}
+            if samples.shape[0] > 1:
+                opt_pars = {'n_actions': n_actions, 'idx': idx}
+            else:
+                opt_pars = dict()
             predictions = self._estimator.predict(samples, **opt_pars)
 
             Q[:, idx] = predictions * (1 - absorbing)

@@ -36,7 +36,7 @@ class Ensemble(object):
 
             return self._predict_sum[:, idx]
 
-        predictions = np.zeros(n_samples)
+        predictions = np.array([0.])
         for model in self._models:
             predictions += model.predict(x).ravel()
 
