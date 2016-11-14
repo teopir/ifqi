@@ -146,8 +146,8 @@ class FQI:
             if self._verbose > 0:
                 print('Iteration {}'.format(self._iteration + 1))
 
-            if hasattr(self._estimator, 'has_ensembles'):
-                if self._estimator.has_ensembles():
+            if hasattr(self._estimator, 'has_ensembles') \
+               and self._estimator.has_ensembles():
                     # update estimator structure
                     self._estimator.adapt(iteration=self._iteration)
 
