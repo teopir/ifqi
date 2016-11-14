@@ -1,0 +1,6 @@
+ifqi.egg-info/PKG-INFO
+ifqi.egg-info/SOURCES.txt
+ifqi.egg-info/dependency_links.txt
+ifqi.egg-info/not-zip-safe
+ifqi.egg-info/requires.txt
+ifqi.egg-info/top_level.txt
