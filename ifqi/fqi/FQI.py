@@ -146,9 +146,10 @@ class FQI:
             if self._verbose > 0:
                 print('Iteration {}'.format(self._iteration + 1))
 
-            if self._estimator.has_ensembles():
-                # update estimator structure
-                self._estimator.adapt(iteration=self._iteration)
+            if hasattr(self._estimator, 'has_ensembles'):
+                if self._estimator.has_ensembles():
+                    # update estimator structure
+                    self._estimator.adapt(iteration=self._iteration)
 
             y = self._r + self.gamma * maxq
 
@@ -215,7 +216,8 @@ class FQI:
                 samples = self._features.test_features(samples)
 
             # predict Q-function
-            if not evaluation and self._estimator.has_ensembles():
+            if not evaluation and hasattr(self._estimator, 'has_ensembles') \
+               and self._estimator.has_ensembles():
                 opt_pars = {'n_actions': n_actions, 'idx': idx}
             else:
                 opt_pars = dict()

@@ -45,6 +45,9 @@ class Ensemble(object):
     def adapt(self, iteration):
         self._models.append(self._generate_model(iteration))
 
+    def has_ensembles(self):
+        return True
+
     def _init_model(self):
         model = self._generate_model(0)
 
