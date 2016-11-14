@@ -6,6 +6,12 @@ from sklearn.linear_model import LinearRegression
 
 from ifqi.models.mlp import MLP
 
+"""
+Ensemble regressor.
+This class is supposed to be used in this package and it may not work
+properly outside.
+"""
+
 
 class Ensemble(object):
     def __init__(self):
@@ -14,22 +20,28 @@ class Ensemble(object):
     def fit(self, X, y, **kwargs):
         if not hasattr(self, '_sum'):
             self._sum = np.zeros(y.shape)
-            self._predict_sum = np.zeros(y.shape)
         delta = y - self._sum
         self._models[-1].fit(X, delta, **kwargs)
-        self._sum += self.models[-1].predict(X).ravel()
+        self._sum += self._models[-1].predict(X).ravel()
 
     def predict(self, x, **kwargs):
-        n_samples = x.shape[0]
+        if 'idx' in kwargs:
+            idx = kwargs['idx']
+            n_actions = kwargs['n_actions']
+            if not hasattr(self, '_predict_sum'):
+                self._predict_sum = np.zeros((x.shape[0], n_actions))
 
-        prediction = np.array((n_samples))
-        for model in self.models:
-            prediction += model.predict(x).ravel()
+            predictions = self._models[-1].predict(x).ravel()
+            self._predict_sum[:, idx] += predictions
+        else:
+            predictions = np.zeros(n_samples)
+            for model in self._models:
+                predictions += model.predict(x).ravel()
 
-        return prediction
+        return predictions
 
     def adapt(self, iteration):
-        self.models.append(self._generate_model(iteration))
+        self._models.append(self._generate_model(iteration))
 
     def _init_model(self):
         model = self._generate_model(0)

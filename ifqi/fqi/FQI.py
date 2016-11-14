@@ -203,9 +203,10 @@ class FQI:
         """
         new_state = self._check_states(states)
         n_states = new_state.shape[0]
+        n_actions = self._actions.shape[0]
 
-        Q = np.zeros((n_states, self._actions.shape[0]))
-        for idx in range(self._actions.shape[0]):
+        Q = np.zeros((n_states, n_actions))
+        for idx in range(n_actions):
             actions = np.matlib.repmat(self._actions[idx], n_states, 1)
 
             # concatenate [new_state, action] and scalarize them
@@ -220,7 +221,8 @@ class FQI:
                 samples = self._features.test_features(samples)
 
             # predict Q-function
-            predictions = self._estimator.predict(samples)
+            opt_pars = {'n_actions': n_actions, 'idx': idx}
+            predictions = self._estimator.predict(samples, **opt_pars)
 
             Q[:, idx] = predictions * (1 - absorbing)
 
