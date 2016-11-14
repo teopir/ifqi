@@ -12,6 +12,7 @@ from ifqi.models.ensemble import ExtraTreesEnsemble
 mdp = envs.CarOnHill()
 state_dim, action_dim = envs.get_space_info(mdp)
 regressor_params = {'n_estimators': 50,
+                    'criterion': 'mse',
                     'min_samples_split': 4,
                     'min_samples_leaf': 2}
 discrete_actions = mdp.action_space.values

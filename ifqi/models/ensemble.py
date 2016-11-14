@@ -9,11 +9,12 @@ from ifqi.models.mlp import MLP
 
 class Ensemble(object):
     def __init__(self):
-        self._models = self.init_model()
-        self._sum = np.zeros(y.shape)
-        self._predict_sum = np.zeros(y.shape)
+        self._models = self._init_model()
 
     def fit(self, X, y, **kwargs):
+        if not hasattr(self, '_sum'):
+            self._sum = np.zeros(y.shape)
+            self._predict_sum = np.zeros(y.shape)
         delta = y - self._sum
         self._models[-1].fit(X, delta, **kwargs)
         self._sum += self.models[-1].predict(X).ravel()
@@ -28,15 +29,15 @@ class Ensemble(object):
         return prediction
 
     def adapt(self, iteration):
-        self.models.append(self.generate_model(iteration))
+        self.models.append(self._generate_model(iteration))
 
     def _init_model(self):
-        model = self.generate_model(0)
+        model = self._generate_model(0)
 
         return [model]
 
 
-class ExtraTreeEnsemble(Ensemble):
+class ExtraTreesEnsemble(Ensemble):
     def __init__(self,
                  n_estimators,
                  criterion,
@@ -46,10 +47,10 @@ class ExtraTreeEnsemble(Ensemble):
         self.criterion = criterion
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
-        super(ExtraTreeEnsemble, self).__init__()
+        super(ExtraTreesEnsemble, self).__init__()
 
     def _generate_model(self, iteration):
-        model = ExtraTreesRegressor(n_estimators=self.nEstimators,
+        model = ExtraTreesRegressor(n_estimators=self.n_estimators,
                                     criterion=self.criterion,
                                     min_samples_split=self.min_samples_split,
                                     min_samples_leaf=self.min_samples_leaf)
@@ -83,6 +84,6 @@ class MLPEnsemble(Ensemble):
                     self.hidden_neurons[iteration],
                     self.activation,
                     self.optimizer,
-                    self.regularizer=None)
+                    self.regularizer)
 
         return model
