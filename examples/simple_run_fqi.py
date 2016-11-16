@@ -48,7 +48,8 @@ fitParams = {}
 #     "criterion": "mse"
 # }
 
-initial_states = np.linspace(-2, 2, 41)
+initial_states = np.zeros((41, 4))
+initial_states[:, 0] = np.linspace(-2, 2, 41)
 
 fqi.partial_fit(sast, r, **fitParams)
 
