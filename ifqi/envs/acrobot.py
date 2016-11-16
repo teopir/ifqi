@@ -1,9 +1,10 @@
 # import gym
+import numpy as np
 from gym import spaces
 from gym.utils import seeding
-import numpy as np
 from scipy.integrate import odeint
 
+import ifqi.utils.spaces as fqispaces
 from environment import Environment
 
 """
@@ -42,14 +43,15 @@ class Acrobot(Environment):
         self.action_space = fqispaces.DiscreteValued([-5, 5], decimals=0)
 
         # initialize state
+        self.seed()
         self.reset()
 
     def step(self, u, render=False):
         sa = np.append(self._state, u)
         new_state = odeint(self._dpds,
-                          sa,
-                          [0, self._dt],
-                          rtol=1e-5, atol=1e-5, mxstep=2000)
+                           sa,
+                           [0, self._dt],
+                           rtol=1e-5, atol=1e-5, mxstep=2000)
 
         x = new_state[-1, :-1]
 
@@ -67,7 +69,11 @@ class Acrobot(Environment):
             self._absorbing = True
             reward = 1 - d
 
-        return self._get_state(), reward, self._absorbing, {}
+        return self.get_state(), reward, self._absorbing, {}
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def reset(self, state=None):
         self._absorbing = False
@@ -85,7 +91,7 @@ class Acrobot(Environment):
 
         return self.get_state()
 
-    def _render(self, mode='human', close=False):
+    def render(self, mode='human', close=False):
         if close:
             if self.viewer is not None:
                 self.viewer.close()
@@ -121,7 +127,7 @@ class Acrobot(Environment):
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
-    def _get_state(self):
+    def get_state(self):
         return self._state
 
     def _dpds(self, state_action, t):

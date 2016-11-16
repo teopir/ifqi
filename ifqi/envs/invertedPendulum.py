@@ -40,6 +40,7 @@ class InvPendulum(Environment):
         self.action_space = fqispaces.DiscreteValued([-50, 0, 50], decimals=0)
 
         # initialize state
+        self.seed()
         self.reset()
 
     def step(self, u):
@@ -62,6 +63,10 @@ class InvPendulum(Environment):
             reward = -1
 
         return self.get_state(), reward, self._absorbing, {}
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def reset(self, state=None):
         self._absorbing = False

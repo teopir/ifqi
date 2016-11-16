@@ -1,6 +1,7 @@
 import numpy as np
 from builtins import range
 from gym import spaces
+from gym.utils import seeding
 from scipy.integrate import odeint
 
 import ifqi.utils.spaces as fqispaces
@@ -36,6 +37,7 @@ class CarOnHill(Environment):
         self.action_space = fqispaces.DiscreteValued([-4., 4.], decimals=0)
 
         # initialize state
+        self.seed()
         self.reset()
 
     def step(self, u):
@@ -56,6 +58,10 @@ class CarOnHill(Environment):
             reward = 0
 
         return self.get_state(), reward, self._absorbing, {}
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def reset(self, state=None):
         self._absorbing = False

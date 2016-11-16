@@ -59,9 +59,10 @@ class LQG1D(Environment):
         self.observation_space = spaces.Box(low=-high, high=high)
 
         # initialize state
-        self._reset()
+        self.seed()
+        self.reset()
 
-    def _step(self, action, render=False):
+    def step(self, action, render=False):
         u = np.clip(action, -self.max_action, self.max_action)
         noise = self.np_random.randn() * self.sigma_noise
         xn = np.dot(self.A, self.state) + np.dot(self.B, u) + noise
@@ -75,6 +76,10 @@ class LQG1D(Environment):
                 return self._getState(), 0, False, {}
             return self._getState(), -1, False, {}
         return self._getState(), -np.asscalar(cost), False, {}
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def reset(self, state=None):
         if state is None:
