@@ -54,7 +54,7 @@ initial_states[:, 0] = np.linspace(-2, 2, 41)
 fqi.partial_fit(sast, r, **fitParams)
 
 iterations = 100
-n_test_episodes = initial_states.size
+n_test_episodes = initial_states.shape[0]
 iteration_values = []
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
