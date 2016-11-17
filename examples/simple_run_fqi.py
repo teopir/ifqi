@@ -9,6 +9,15 @@ from ifqi.models.actionregressor import ActionRegressor
 from ifqi.models.mlp import MLP
 from ifqi.models.ensemble import ExtraTreesEnsemble
 
+"""
+Simple script to quickly run fqi. It solves the Acrobot environment according
+to the experiment presented in:
+
+Ernst, Damien, Pierre Geurts, and Louis Wehenkel.
+"Tree-based batch mode reinforcement learning."
+Journal of Machine Learning Research 6.Apr (2005): 503-556.
+"""
+
 mdp = envs.Acrobot()
 state_dim, action_dim = envs.get_space_info(mdp)
 regressor_params = {'n_estimators': 50,
@@ -19,8 +28,8 @@ discrete_actions = mdp.action_space.values
 regressor = ExtraTreesRegressor(**regressor_params)
 # regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
-# regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
-#                             decimals=5, **regressor_params)
+regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
+                            decimals=5, **regressor_params)
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=2000)
 print('Dataset has %d samples' % dataset.shape[0])
@@ -58,14 +67,12 @@ n_test_episodes = initial_states.shape[0]
 iteration_values = []
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
-    if i % 5:
+    if not i % 5:
         values = evaluation.evaluate_policy(mdp, fqi,
                                             initial_states=initial_states,
                                             n_episodes=n_test_episodes)
-        print(values)
         iteration_values.append(values[0])
 
-        """
         if i == 1:
             fig1 = plt.figure(1)
             ax = fig1.add_subplot(1, 1, 1)
@@ -80,4 +87,3 @@ for i in range(iterations - 1):
             plt.ylim(min(iteration_values), max(iteration_values))
             plt.xlim(0, i + 1)
             plt.show()
-        """
