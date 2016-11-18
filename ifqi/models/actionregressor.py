@@ -50,6 +50,7 @@ class ActionRegressor(object):
         # actions is a #action x #variables. Ie each row is an action
         if self._decimals == 0:
             self._actions = self._actions.astype('int')
+        self._actions = np.sort(self._actions.ravel())
 
         self._models = self._init_model(model, **params)
 

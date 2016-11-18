@@ -18,7 +18,7 @@ Ernst, Damien, Pierre Geurts, and Louis Wehenkel.
 Journal of Machine Learning Research 6.Apr (2005): 503-556.
 """
 
-mdp = envs.SwingPendulum()
+mdp = envs.Acrobot()
 state_dim, action_dim = envs.get_space_info(mdp)
 regressor_params = {'n_estimators': 50,
                     'criterion': 'mse',
@@ -48,11 +48,11 @@ fqi = FQI(estimator=regressor,
           features=None,
           verbose=True)
 
-fitParams = {}
-# fitParams = {
-#     "nEpochs": 300,
-#     "batchSize": 50,
-#     "validationSplit": 0.1,
+fit_params = {}
+# fit_params = {
+#     "n_epochs": 300,
+#     "batch_size": 50,
+#     "validation_split": 0.1,
 #     "verbosity": False,
 #     "criterion": "mse"
 # }
@@ -60,13 +60,13 @@ fitParams = {}
 initial_states = np.zeros((41, 4))
 initial_states[:, 0] = np.linspace(-2, 2, 41)
 
-fqi.partial_fit(sast, r, **fitParams)
+fqi.partial_fit(sast, r, **fit_params)
 
 iterations = 100
 n_test_episodes = initial_states.shape[0]
 iteration_values = []
 for i in range(iterations - 1):
-    fqi.partial_fit(None, None, **fitParams)
+    fqi.partial_fit(None, None, **fit_params)
     values = evaluation.evaluate_policy(mdp, fqi,
                                         initial_states=None,
                                         n_episodes=n_test_episodes)
