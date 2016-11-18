@@ -67,23 +67,23 @@ n_test_episodes = initial_states.shape[0]
 iteration_values = []
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
-    if not i % 5:
-        values = evaluation.evaluate_policy(mdp, fqi,
-                                            initial_states=initial_states,
-                                            n_episodes=n_test_episodes)
-        iteration_values.append(values[0])
+    values = evaluation.evaluate_policy(mdp, fqi,
+                                        initial_states=initial_states,
+                                        n_episodes=n_test_episodes)
+    print(values)
+    iteration_values.append(values[0])
 
-        if i == 1:
-            fig1 = plt.figure(1)
-            ax = fig1.add_subplot(1, 1, 1)
-            h = ax.plot(range(i + 1), iteration_values, 'ro-')
-            plt.ylim(min(iteration_values), max(iteration_values))
-            plt.xlim(0, i + 1)
-            plt.ion()  # turns on interactive mode
-            plt.show()
-        elif i > 1:
-            h[0].set_data(range(i + 1), iteration_values)
-            ax.figure.canvas.draw()
-            plt.ylim(min(iteration_values), max(iteration_values))
-            plt.xlim(0, i + 1)
-            plt.show()
+    if i == 1:
+        fig1 = plt.figure(1)
+        ax = fig1.add_subplot(1, 1, 1)
+        h = ax.plot(range(i + 1), iteration_values, 'ro-')
+        plt.ylim(min(iteration_values), max(iteration_values))
+        plt.xlim(0, i + 1)
+        plt.ion()  # turns on interactive mode
+        plt.show()
+    elif i > 1:
+        h[0].set_data(range(i + 1), iteration_values)
+        ax.figure.canvas.draw()
+        plt.ylim(min(iteration_values), max(iteration_values))
+        plt.xlim(0, i + 1)
+        plt.show()
