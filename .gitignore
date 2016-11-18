@@ -1,6 +1,6 @@
 *.pyc
 *.*~
 *.npy
-*/ifqi.egg-info/*
+ifqi.egg-info/*
 build/
 dist/
