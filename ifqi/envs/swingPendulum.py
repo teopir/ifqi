@@ -57,8 +57,8 @@ class SwingPendulum(Environment):
         high = np.array([self.max_angle, self.max_velocity])
         self.observation_space = spaces.Box(low=-high, high=high)
 
-        nactions = 11
-        actions = [u * 10.0 / 11.0 - 5.0 for u in range(nactions)]
+        nactions = 3
+        actions = [u * 10.0 / (nactions-1) - 5.0 for u in range(nactions)]
         self.action_space = fqispaces.DiscreteValued(actions, decimals=5)
 
         # initialize state
