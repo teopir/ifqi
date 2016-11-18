@@ -106,6 +106,9 @@ class FQI:
             # Scaling and feature of next states are computed in maxQA
             self._snext = snext
 
+            if isinstance(self._estimator, ActionRegressor):
+                self._estimator._actions = np.unique(self._sa[:, -1])
+
         if r is not None:
             if self._scaled:
                 # create scaler and fit it
