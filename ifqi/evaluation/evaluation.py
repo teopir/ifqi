@@ -63,6 +63,8 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
         H = np.inf
     if metric == 'average':
         gamma = 1
+    n_initial_states = initial_states.shape[0] if initial_states is not None \
+                          else None
     for e in range(n_episodes):
         ep_performance = 0.0
         df = 1
@@ -71,7 +73,7 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
         done = False
         if render:
             mdp.render(mode='human')
-        state = mdp.reset(initial_states[e, :] if initial_states is not None
+        state = mdp.reset(initial_states[e % n_initial_states, :] if initial_states is not None
                           else None)
         while t < H and not done:
             action = policy.draw_action(state, done, True)

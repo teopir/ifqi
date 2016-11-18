@@ -116,24 +116,22 @@ class Experiment(object):
                       'minSamplesLeaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'MLP':
             model = MLP
-            params = {'nInput': stateDim,
-                      'nOutput': 1,
-                      'hiddenNeurons': modelConfig['nHiddenNeurons'],
-                      'nLayers': modelConfig['nLayers'],
+            params = {'n_input': stateDim,
+                      'n_output': 1,
+                      'hidden_neurons': modelConfig['hidden_neurons'],
                       'optimizer': modelConfig['optimizer'],
                       'activation': modelConfig['activation']}
             if fitActions:
-                params["nInput"] = stateDim + actionDim
+                params["n_input"] = stateDim + actionDim
         elif modelConfig['modelName'] == 'MLPEnsemble':
             model = MLPEnsemble
-            params = {'nInput': stateDim,
-                      'nOutput': 1,
-                      'hiddenNeurons': modelConfig['nHiddenNeurons'],
-                      'nLayers': modelConfig['nLayers'],
+            params = {'n_input': stateDim,
+                      'n_output': 1,
+                      'hidden_neurons': modelConfig['hidden_neurons'],
                       'optimizer': modelConfig['optimizer'],
                       'activation': modelConfig['activation']}
             if fitActions:
-                params["nInput"] = stateDim + actionDim
+                params["n_input"] = stateDim + actionDim
         elif modelConfig['modelName'] == 'Linear':
             model = LinearRegression
             params = {}

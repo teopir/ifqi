@@ -69,6 +69,9 @@ class SwingPendulum(Environment):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
+    def reset(self,state=None):
+        return self._reset(state=state)
+
     def _reset(self, state=None):
         if state is None:
             theta = np.random.uniform(-np.pi, np.pi)
