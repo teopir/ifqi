@@ -18,18 +18,18 @@ Ernst, Damien, Pierre Geurts, and Louis Wehenkel.
 Journal of Machine Learning Research 6.Apr (2005): 503-556.
 """
 
-mdp = envs.Acrobot()
+mdp = envs.SwingPendulum()
 state_dim, action_dim = envs.get_space_info(mdp)
 regressor_params = {'n_estimators': 50,
                     'criterion': 'mse',
                     'min_samples_split': 5,
                     'min_samples_leaf': 2}
 discrete_actions = mdp.action_space.values
-regressor = ExtraTreesRegressor
-# regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
+regressor = ExtraTreesRegressor()
+regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
-regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
-                            decimals=5, **regressor_params)
+#regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
+#                            decimals=5, **regressor_params)
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=2000)
 print('Dataset has %d samples' % dataset.shape[0])

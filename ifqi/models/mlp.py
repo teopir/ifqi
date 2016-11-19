@@ -29,7 +29,8 @@ class MLP(object):
         self.model.fit(X, y, **kwargs)
 
     def predict(self, x, **kwargs):
-        return self.model.predict(x, **kwargs)
+        predictions = self.model.predict(x, **kwargs)
+        return predictions.ravel()
 
     def adapt(self, iteration):
         pass

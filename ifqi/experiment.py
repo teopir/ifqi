@@ -109,11 +109,11 @@ class Experiment(object):
                       'min_samples_leaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'ExtraTreeEnsemble':
             model = ExtraTreesEnsemble
-            params = {'nEstimators': modelConfig['nEstimators'],
+            params = {'n_estimators': modelConfig['nEstimators'],
                       'criterion': self.config["regressors"][index]['supervisedAlgorithm']
                                               ['criterion'],
-                      'minSamplesSplit': modelConfig['minSamplesSplit'],
-                      'minSamplesLeaf': modelConfig['minSamplesLeaf']}
+                      'min_samples_split': modelConfig['minSamplesSplit'],
+                      'min_samples_leaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'MLP':
             model = MLP
             params = {'n_input': stateDim,
@@ -125,7 +125,7 @@ class Experiment(object):
                 params["n_input"] = stateDim + actionDim
         elif modelConfig['modelName'] == 'MLPEnsemble':
             model = MLPEnsemble
-            params = {'n_input': stateDim,
+            params = {'n_input': stateDim if not fitActions else stateDim + actionDim,
                       'n_output': 1,
                       'hidden_neurons': modelConfig['hidden_neurons'],
                       'optimizer': modelConfig['optimizer'],
