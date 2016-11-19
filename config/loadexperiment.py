@@ -12,33 +12,35 @@ from models.actionregressor import ActionRegressor
 from ifqi.fqi.FQI import FQI
 
 
-def _get_MDP(self):
+def get_MDP(env):
     """
     This function loads the mdp required in the configuration file.
+    Args:
+        env (string): the name of the environment.
     Returns:
         The required mdp.
 
     """
-    if self.config['mdp']['mdp_name'] == 'CarOnHill':
+    if env == 'CarOnHill':
         return CarOnHill()
-    elif self.config['mdp']['mdp_name'] == 'SwingUpPendulum':
+    elif env == 'SwingUpPendulum':
         return InvPendulum()
-    elif self.config['mdp']['mdp_name'] == 'Acrobot':
+    elif env == 'Acrobot':
         return Acrobot()
-    elif self.config["mdp"]["mdp_name"] == "BicycleBalancing":
+    elif env == "BicycleBalancing":
         return Bicycle(navigate=False)
-    elif self.config["mdp"]["mdp_name"] == "BicycleNavigate":
+    elif env == "BicycleNavigate":
         return Bicycle(navigate=True)
-    elif self.config["mdp"]["mdp_name"] == "SwingPendulum":
+    elif env == "SwingPendulum":
         return SwingPendulum()
-    elif self.config["mdp"]["mdp_name"] == "CartPole":
+    elif env == "CartPole":
         return CartPole()
-    elif self.config["mdp"]["mdp_name"] == "LQG1D":
+    elif env == "LQG1D":
         return LQG1D()
     else:
         raise ValueError('Unknown mdp type.')
 
-def _get_model(self, index):
+def get_model(self, index):
     """
     This function loads the model required in the configuration file.
     Returns:
