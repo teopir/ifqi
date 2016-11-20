@@ -35,7 +35,9 @@ dataset = evaluation.collect_episodes(mdp, n_episodes=2000)
 print('Dataset has %d samples' % dataset.shape[0])
 
 reward_idx = state_dim + action_dim
-sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
+sast = np.append(dataset[:, :reward_idx],
+                 dataset[:, reward_idx + 1:-1],
+                 axis=1)
 r = dataset[:, reward_idx]
 
 fqi = FQI(estimator=regressor,

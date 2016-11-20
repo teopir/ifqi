@@ -183,6 +183,7 @@ def collect_episode(mdp, policy=None):
             - reward
             - next state
             - a flag indicating whether the reached state is absorbing
+            - a flag indicating whether the episode is finished
     """
     done = False
     t = 0
@@ -201,9 +202,12 @@ def collect_episode(mdp, policy=None):
         new_el = state.tolist() + action.tolist() + [reward] + \
             next_state.tolist()
         if not done:
-            new_el += [0]
+            if t < horizon - 1:
+                new_el += [0, 0]
+            else:
+                new_el += [0, 1]
         else:
-            new_el += [1]
+            new_el += [1, 1]
 
         data.append(new_el)
         state = next_state
