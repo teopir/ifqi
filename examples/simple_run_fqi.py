@@ -36,7 +36,7 @@ print('Dataset has %d samples' % dataset.shape[0])
 
 reward_idx = state_dim + action_dim
 sast = np.append(dataset[:, :reward_idx],
-                 dataset[:, reward_idx + reward_dim:-1], # TODO: bisogna togliere il flag dell'episodio?
+                 dataset[:, reward_idx + reward_dim:-1],
                  axis=1)
 r = dataset[:, reward_idx]
 

@@ -3,36 +3,40 @@
         "name": "exp1",
         "date": "..."
     },
-    
-    "experimentSetting": {
-        "loadPath": "acro/acro",
-        "savePath": "extraTree",
-        "nDatasets": 10,
-        "nExperiments": 10,
-        "datasetSizeStep": 200
+    "experiment_setting": {
+        "load_path": "acro/acro",
+        "save_path": "extra_tree",
+        "evaluation": {
+            "metric": "dataset_size",
+            "n_experiments": 1,
+            "dataset_size": [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000],
+            "n_steps": 1,
+            "seed": "None"
+        }
     },
-
     "model": {
-        "modelName": "ExtraTree",
-        "nEstimators": 50,
-        "minSamplesSplit": 5,
-        "minSamplesLeaf": 2
+        "name": "ExtraTree",
+        "fit_actions": 0,
+        "params": {
+            "n_estimators": 50,
+            "criterion": "mse",
+            "min_samples_split": 5,
+            "min_samples_leaf": 2
+        }
     },
-
     "mdp": {
-        "mdpName": "Acrobot"
+        "name": "Acrobot"
     },
-
-    "supervisedAlgorithm": {
-        "criterion": "mse"
-    },
-
-    "rlAlgorithm": {
-        "algorithm": "FQI",
-        "nIterations": 100,
-        "gamma": 0.95,
-        "verbosity": 1,
+    "fqi": {
         "horizon": 100,
+        "gamma": 0.95,
+        "verbose": 1,
+        "horizon": 100,
+        "features": {
+            "name": ""
+        },
         "scaled": 1
+    },
+    "fit_params": {
     }
 }
