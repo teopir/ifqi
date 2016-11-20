@@ -4,10 +4,11 @@
         "date": "..."
     },
     "experiment_setting": {
-        "save_path": "acro/extra_tree",
+        "save_path": "coh/extra_tree",
         "evaluation": {
-            "metric": "n_episodes",
-            "n_episodes": [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000],
+            "metric": "fqi_iteration",
+            "n_episodes": [1000],
+            "n_steps_to_evaluate": 5,
             "seed": "None"
         }
     },
@@ -22,10 +23,10 @@
         }
     },
     "mdp": {
-        "name": "Acrobot"
+        "name": "CarOnHill"
     },
     "fqi": {
-        "horizon": 100,
+        "horizon": 20,
         "gamma": 0.95,
         "verbose": 1,
         "features": {

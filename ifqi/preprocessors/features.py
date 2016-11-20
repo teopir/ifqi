@@ -3,13 +3,12 @@ from sklearn.preprocessing import PolynomialFeatures
 
 
 def select_features(f):
-    if f is None:
+    if f['name'] == "":
         return None
     elif f['name'] == 'poly':
         return PolyFeatures(f['degree'])
     else:
-        print('Unknown feature type. None will be applied')
-        return None
+        raise ValueError('unknown feature type.')
 
 
 class PolyFeatures(object):

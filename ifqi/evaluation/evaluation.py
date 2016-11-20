@@ -8,7 +8,7 @@ from ..envs.utils import get_space_info
 from joblib import Parallel, delayed
 
 
-def _eval_and_render(mdp, policy, n_episodes=1, metric='discounted',
+def _eval_and_render(mdp, policy, metric='discounted',
                      initial_states=None, render=True):
     """
     This function evaluate a policy on the specified metric by executing
@@ -16,7 +16,6 @@ def _eval_and_render(mdp, policy, n_episodes=1, metric='discounted',
     Params:
         mdp (object): the environment to solve
         policy (object): a policy object (method draw_action is expected)
-        n_episodes (int, 1): the number of episodes to execute
         metric (string, 'discounted'): the evaluation metric ['discounted',
             'average']
         initial_states (np.array, None): initial states to use to evaluate
@@ -28,14 +27,15 @@ def _eval_and_render(mdp, policy, n_episodes=1, metric='discounted',
         step (float): average number of step before finish
         step_confidence (float):  95% confidence level for step average
     """
-    values, steps = _eval_and_render_vectorial(mdp, policy, n_episodes,
-                                               metric, initial_states, render)
+    n_episodes = initial_states.shape[0]
+    values, steps = _eval_and_render_vectorial(mdp, policy, metric,
+                                               initial_states, render)
 
     return values.mean(), 2 * values.std() / np.sqrt(n_episodes), \
         steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
 
 
-def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
+def _eval_and_render_vectorial(mdp, policy, metric='discounted',
                                initial_states=None, render=True):
     """
     This function evaluate a policy on the specified metric by executing
@@ -43,7 +43,6 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
     Params:
         mdp (object): the environment to solve
         policy (object): a policy object (method draw_action is expected)
-        n_episodes (int, 1): the number of episodes to execute
         metric (string, 'discounted'): the evaluation metric ['discounted',
             'average']
         initial_states (np.array, None): initial states to use to evaluate
@@ -54,6 +53,8 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
         step (float): average number of step before finish
     """
     fps = mdp.metadata.get('video.frames_per_second') or 100
+
+    n_episodes = initial_states.shape[0]
     values = np.zeros(n_episodes)
     steps = np.zeros(n_episodes)
     gamma = mdp.gamma
@@ -91,8 +92,10 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
     return values, steps
 
 
-def _parallel_eval(mdp, policy, n_episodes, metric, initial_states,
+def _parallel_eval(mdp, policy, metric, initial_states,
                    n_jobs, n_episodes_per_job):
+    n_episodes = initial_states.shape[0]
+
     # TODO using joblib
     # return _eval_and_render(mdp, policy, n_episodes, metric,
     #                         initial_states, False)
@@ -111,23 +114,20 @@ def _parallel_eval(mdp, policy, n_episodes, metric, initial_states,
         # (confidence level should be 0 or NaN)
         values, steps = np.array(out)
     else:
-        values, steps = _eval_and_render_vectorial(mdp, policy, n_episodes,
-                                                   metric, initial_states,
-                                                   False)
+        values, steps = _eval_and_render_vectorial(mdp, policy, metric,
+                                                   initial_states, False)
     return values.mean(), 2 * values.std() / np.sqrt(n_episodes), \
         steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
 
 
-def evaluate_policy(mdp, policy, n_episodes=1,
-                    metric='discounted', initial_states=None, render=False,
-                    n_jobs=-1, n_episodes_per_job=10):
+def evaluate_policy(mdp, policy, metric='discounted', initial_states=None,
+                    render=False, n_jobs=-1, n_episodes_per_job=10):
     """
     This function evaluate a policy on the given environment w.r.t.
     the specified metric by executing multiple episode.
     Params:
         mdp (object): the environment to solve
         policy (object): a policy object (method draw_action is expected)
-        n_episodes (int, 1): the number of episodes to execute
         metric (string, 'discounted'): the evaluation metric ['discounted',
             'average']
         initial_states (np.array, None): initial states to use to evaluate
@@ -139,11 +139,10 @@ def evaluate_policy(mdp, policy, n_episodes=1,
     """
     assert metric in ['discounted', 'average'], "unsupported metric"
     if render:
-        return _eval_and_render(mdp, policy, n_episodes, metric,
-                                initial_states, True)
+        return _eval_and_render(mdp, policy, metric, initial_states, True)
     else:
-        return _parallel_eval(mdp, policy, n_episodes, metric,
-                              initial_states, n_jobs, n_episodes_per_job)
+        return _parallel_eval(mdp, policy, metric, initial_states,
+                              n_jobs, n_episodes_per_job)
 
 
 def collect_episodes(mdp, policy=None, n_episodes=1, n_jobs=1):
