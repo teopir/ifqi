@@ -139,6 +139,7 @@ elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
 else:
     raise ValueError('unknown metric requested.')
 
-os.mkdir('results')
+if not os.path.exists('results'):
+    os.mkdir('results')
 np.save('results/' + config['experiment_setting']['save_path'],
         np.array(results))
