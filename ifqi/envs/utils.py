@@ -4,25 +4,27 @@ import gym.spaces as spaces
 from ifqi.utils.spaces.discretevalued import DiscreteValued
 
 
-def getSpaceInfo(env):
+def get_space_info(env):
     state_space = env.observation_space
     if isinstance(state_space, spaces.Box):
-        stateDim = state_space.shape[0]
+        state_dim = state_space.shape[0]
     elif isinstance(state_space, spaces.Discrete):
-        stateDim = 1
+        state_dim = 1
     elif isinstance(state_space, DiscreteValued):
-        stateDim = state_space.value_dim
+        state_dim = state_space.value_dim
     else:
         raise NotImplementedError
 
     action_space = env.action_space
     if isinstance(action_space, spaces.Box):
-        actionDim = action_space.shape[0]
+        action_dim = action_space.shape[0]
     elif isinstance(action_space, spaces.Discrete):
-        actionDim = 1
+        action_dim = 1
     elif isinstance(action_space, DiscreteValued):
-        actionDim = action_space.value_dim
+        action_dim = action_space.value_dim
     else:
         raise NotImplementedError
 
-    return stateDim, actionDim
+    reward_dim = 1
+
+    return state_dim, action_dim, reward_dim

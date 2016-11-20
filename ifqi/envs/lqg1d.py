@@ -23,12 +23,13 @@ References
 """
 
 
-# #classic_control
-# register(
-#     id='LQG1D-v0',
-#     entry_point='gym.envs.classic_control:LQG1DEnv',
-#     timestep_limit=300,
-# )
+#classic_control
+from gym.envs.registration import register
+register(
+    id='LQG1D-v0',
+    entry_point='ifqi.envs.lqg1d:LQG1D',
+    timestep_limit=300,
+)
 
 
 class LQG1D(Environment):
@@ -37,8 +38,11 @@ class LQG1D(Environment):
         'video.frames_per_second': 30
     }
 
-    def __init__(self):
-        # model parameters
+    def __init__(self, discrete_reward=False):
+        self.horizon = 100
+        self.gamma = 0.99
+
+        self.discrete_reward = discrete_reward
         self.max_pos = 10.0
         self.max_action = 8.0
         self.sigma_noise = 0.1
@@ -46,11 +50,6 @@ class LQG1D(Environment):
         self.B = np.array([1]).reshape((1, 1))
         self.Q = np.array([0.9]).reshape((1, 1))
         self.R = np.array([0.9]).reshape((1, 1))
-
-        self.discreteReward = False
-        # env attributes
-        self.horizon = 100
-        self.gamma = 0.99
 
         # gym attributes
         self.viewer = None
@@ -61,40 +60,39 @@ class LQG1D(Environment):
         self.observation_space = spaces.Box(low=-high, high=high)
 
         # initialize state
-        self._seed()
-        self._reset()
+        self.seed()
+        self.reset()
 
-    def _seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
-
-    def _step(self, action, render=False):
+    def step(self, action, render=False):
         u = np.clip(action, -self.max_action, self.max_action)
-        #noise = np.random.randn() * self.sigma_noise
-        noise =  self.np_random.randn() * self.sigma_noise
+        noise = self.np_random.randn() * self.sigma_noise
         xn = np.dot(self.A, self.state) + np.dot(self.B, u) + noise
         cost = np.dot(self.state,
                       np.dot(self.Q, self.state)) + \
-               np.dot(u, np.dot(self.R, u))
-        # print(self.state, u, noise, xn, cost)
+            np.dot(u, np.dot(self.R, u))
 
         self.state = np.array(xn.ravel())
-        if self.discreteReward:
-            if abs(self.state[0]) <= 2 and abs(u) <=2:
-                return self._getState(), 0, False, {}
-            return self._getState(), -1, False, {}
-        return self._getState(), -np.asscalar(cost), False, {}
-        # return -np.asscalar(cost)
+        if self.discrete_reward:
+            if abs(self.state[0]) <= 2 and abs(u) <= 2:
+                return self.get_state(), 0, False, {}
+            return self.get_state(), -1, False, {}
+        return self.get_state(), -np.asscalar(cost), False, {}
 
-    def _reset(self, state=None):
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
+    def reset(self, state=None):
         if state is None:
-            self.state = np.array([prng.np_random.uniform(low=-self.max_pos, high=self.max_pos)])
+            self.state = np.array([prng.np_random.uniform(low=-self.max_pos,
+                                                          high=self.max_pos)])
         else:
             self.state = np.array(state)
-        return np.array(self.state)
 
-    def _getState(self):
-        return np.array(self.state)
+        return self.get_state()
+
+    def get_state(self):
+        return self.state
 
     def _render(self, mode='human', close=False):
         if close:
@@ -182,12 +180,13 @@ class LQG1D(Environment):
         """
         P = np.eye(self.Q.shape[0], self.Q.shape[1])
         for i in range(100):
-            K = -self.gamma * np.dot(np.linalg.inv(self.R + self.gamma *
-                                                   (np.dot(self.B.T, np.dot(P, self.B)))),
-                                     np.dot(self.B.T, np.dot(P, self.A)))
+            K = -self.gamma * np.dot(np.linalg.inv(
+                self.R + self.gamma * (np.dot(self.B.T, np.dot(P, self.B)))),
+                                       np.dot(self.B.T, np.dot(P, self.A)))
             P = self._computeP2(K)
         K = -self.gamma * np.dot(np.linalg.inv(self.R + self.gamma *
-                                               (np.dot(self.B.T, np.dot(P, self.B)))),
+                                               (np.dot(self.B.T,
+                                                       np.dot(P, self.B)))),
                                  np.dot(self.B.T, np.dot(P, self.A)))
         return K
 
@@ -197,8 +196,10 @@ class LQG1D(Environment):
         linear controller (u = Kx + \epsilon, \epsilon \sim N(0,\Sigma)).
         Args:
             K (matrix): the controller matrix
-            Sigma (matrix): covariance matrix of the zero-mean noise added to the controller action
-            n_random_x0: the number of samples to draw in order to average over the initial state
+            Sigma (matrix): covariance matrix of the zero-mean noise added to
+                            the controller action
+            n_random_x0: the number of samples to draw in order to average over
+                         the initial state
 
         Returns:
             J (float): The discounted reward
@@ -215,8 +216,10 @@ class LQG1D(Environment):
             self._reset()
             x0 = self._getState()
             J -= np.dot(x0.T, np.dot(P, x0)) \
-                 + (1 / (1 - self.gamma)) * \
-                   np.trace(np.dot(Sigma, (self.R + self.gamma * np.dot(self.B.T, np.dot(P, self.B)))))
+                + (1 / (1 - self.gamma)) * \
+                np.trace(np.dot(
+                    Sigma, (self.R + self.gamma * np.dot(self.B.T,
+                                                         np.dot(P, self.B)))))
         J /= n_random_x0
         return J
 
@@ -256,12 +259,12 @@ class LQG1D(Environment):
             nextstate = np.dot(self.A, x) + np.dot(self.B,
                                                    u + action_noise) + noise
             Qfun -= np.dot(x.T, np.dot(self.Q, x)) + \
-                    np.dot(u.T, np.dot(self.R, u)) + \
-                    self.gamma * np.dot(nextstate.T, np.dot(P, nextstate)) + \
-                    (self.gamma / (1 - self.gamma)) * \
-                    np.trace(np.dot(Sigma,
-                                    self.R + self.gamma *
-                                    np.dot(self.B.T, np.dot(P, self.B))))
+                np.dot(u.T, np.dot(self.R, u)) + \
+                self.gamma * np.dot(nextstate.T, np.dot(P, nextstate)) + \
+                (self.gamma / (1 - self.gamma)) * \
+                np.trace(np.dot(Sigma,
+                                self.R + self.gamma *
+                                np.dot(self.B.T, np.dot(P, self.B))))
         Qfun = np.asscalar(Qfun) / n_random_xn
         return Qfun
 

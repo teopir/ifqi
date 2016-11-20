@@ -2,7 +2,7 @@ from __future__ import print_function
 import numpy as np
 
 
-def discretizeActions(actionMatrix, actionNumber):
+def discretize_actions(action_matrix, action_number):
     """
     Uniform discretization of the actions in the range observed in the data.
 
@@ -16,26 +16,26 @@ def discretizeActions(actionMatrix, actionNumber):
         The output is a 6 x 2 matrix.
 
     Args:
-        actionMatrix: array-like
+        action_matrix: array-like
             Samples of actions
-        actionNumber: int, array-like
+        action_number: int, array-like
             Number of discrete actions for each action variable
 
     Returns:
         actions: np.array
             Array of discrete actions (e.g., grid in a 2D problem)
     """
-    if len(actionMatrix.shape) == 1:
-        actionMatrix = actionMatrix.reshape(-1, 1)
-    actionDim = actionMatrix.shape[1]
+    if len(action_matrix.shape) == 1:
+        action_matrix = action_matrix.reshape(-1, 1)
+    action_dim = action_matrix.shape[1]
     # select unique actions
-    if isinstance(actionNumber, int):
-        actionNumber = [actionNumber] * actionDim
+    if isinstance(action_number, int):
+        action_number = [action_number] * action_dim
 
-    ubound = np.amax(actionMatrix, axis=0)
-    lbound = np.amin(actionMatrix, axis=0)
-    if actionDim == 1:
-        actions = np.linspace(lbound, ubound, actionNumber[0]).reshape(-1, 1)
+    ubound = np.amax(action_matrix, axis=0)
+    lbound = np.amin(action_matrix, axis=0)
+    if action_dim == 1:
+        actions = np.linspace(lbound, ubound, action_number[0]).reshape(-1, 1)
     else:
-        print("not implemented in the general case (actionDim > 1")
+        print("not implemented in the general case (action_dim > 1")
         exit(9)

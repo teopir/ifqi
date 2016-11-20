@@ -1,4 +1,4 @@
-from .actionRegressor import ActionRegressor
-from .ensemble import ExtraTreeEnsemble, MLPEnsemble
+from .actionregressor import ActionRegressor
+from .ensemble import ExtraTreesEnsemble, MLPEnsemble
 
-__all__ = ['ActionRegressor', 'ExtraTreeEnsemble', 'MLPEnsemble']
+__all__ = ['ActionRegressor', 'ExtraTreesEnsemble', 'MLPEnsemble']

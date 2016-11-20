@@ -1,127 +1,106 @@
+import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense
 from sklearn.ensemble import ExtraTreesRegressor
 from sklearn.linear_model import LinearRegression
-import numpy as np
+
+from ifqi.models.mlp import MLP
+
+"""
+Ensemble regressor.
+This class is supposed to be used in this package and it may not work
+properly outside.
+"""
 
 
 class Ensemble(object):
     def __init__(self):
-        self.models = self.initModel()
-        self.lastSum = -1
-        self.optimizable = True
+        self._models = self._init_model()
 
-    def fit(self, X, y, optimize=False, **kwargs):
-        if not optimize:
-            sum_ = np.zeros(y.shape)
-            for m in self.models[:-1]:
-                sum_ += m.predict(X).ravel()
-            delta = y - sum_
-            ret = self.models[-1].fit(X, delta, **kwargs)
-        else:
-            if not hasattr(self, 'sum_'):
-                self.sum_ = np.zeros(y.shape)
-            for m in self.models[self.lastSum+1:-1]:
-                self.sum_ += m.predict(X).ravel()
-            delta = y - self.sum_
-            ret = self.models[-1].fit(X, delta, **kwargs)
-            self.sum_ += self.models[-1].predict(X).ravel()
-            self.lastSum = len(self.models) - 1
-        #self.sum_ += self.models[-1].predict(X).ravel()
-        return ret
+    def fit(self, X, y, **kwargs):
+        if not hasattr(self, '_target_sum'):
+            self._target_sum = np.zeros(y.shape)
+        delta = y - self._target_sum
+        self._models[-1].fit(X, delta, **kwargs)
+        self._target_sum += self._models[-1].predict(X).ravel()
 
-    def predict(self, x, optimize=False, **kwargs):
-        n_samples = x.shape[0]
+    def predict(self, x, **kwargs):
+        if 'idx' in kwargs:
+            idx = kwargs['idx']
+            n_actions = kwargs['n_actions']
+            if not hasattr(self, '_predict_sum'):
+                self._predict_sum = np.zeros((x.shape[0], n_actions))
 
-        if optimize:
-            sum_ = self.sum_
-            for m in self.models[self.lastSum + 1:]:
-                sum_ += m.predict(x).ravel()
-            return sum_
+            predictions = self._models[-1].predict(x).ravel()
+            self._predict_sum[:, idx] += predictions
 
-        output = np.zeros((n_samples,))
-        for model in self.models:
-            output += model.predict(x).ravel()
+            return self._predict_sum[:, idx]
 
+        prediction = np.zeros(x.shape[0])
+        for model in self._models:
+            prediction += model.predict(x).ravel()
 
-        return output
+        return prediction
 
     def adapt(self, iteration):
-        self.models.append(self.generateModel(iteration))
+        self._models.append(self._generate_model(iteration))
 
-    def initModel(self):
-        model = self.generateModel(0)
+    def has_ensembles(self):
+        return True
+
+    def _init_model(self):
+        model = self._generate_model(0)
 
         return [model]
 
 
-class ExtraTreeEnsemble(Ensemble):
+class ExtraTreesEnsemble(Ensemble):
     def __init__(self,
-                 nEstimators=50,
-                 criterion='mse',
-                 minSamplesSplit=4,
-                 minSamplesLeaf=2):
-        self.nEstimators = nEstimators
+                 n_estimators,
+                 criterion,
+                 min_samples_split,
+                 min_samples_leaf):
+        self.n_estimators = n_estimators
         self.criterion = criterion
-        self.minSamplesSplit = minSamplesSplit
-        self.minSamplesLeaf = minSamplesLeaf
-        super(ExtraTreeEnsemble, self).__init__()
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        super(ExtraTreesEnsemble, self).__init__()
 
-    def generateModel(self, iteration):
-        model = ExtraTreesRegressor(n_estimators=self.nEstimators,
+    def _generate_model(self, iteration):
+        model = ExtraTreesRegressor(n_estimators=self.n_estimators,
                                     criterion=self.criterion,
-                                    min_samples_split=self.minSamplesSplit,
-                                    min_samples_leaf=self.minSamplesLeaf)
+                                    min_samples_split=self.min_samples_split,
+                                    min_samples_leaf=self.min_samples_leaf)
 
         return model
 
 
 class MLPEnsemble(Ensemble):
     def __init__(self,
-                 nInput=2,
-                 nOutput=1,
-                 hiddenNeurons=[15],
-                 nLayers=1,
-                 activation=["relu"],
-                 loss='mse',
-                 optimizer=None,
+                 n_input,
+                 n_output,
+                 hidden_neurons,
+                 activation,
+                 optimizer,
                  regularizer=None):
-        self.nInput = nInput
-        self.nOutput = nOutput
-        self.hiddenNeurons = hiddenNeurons
-        self.nLayers = nLayers
-        self.activation = activation
-        self.loss = loss
+        assert isinstance(hidden_neurons, list), 'hidden_neurons should be \
+            of type list specifying the number of hidden neurons for each \
+            hidden layer.'
+        self.hidden_neurons = hidden_neurons
         self.optimizer = optimizer
+        self.n_input = n_input
+        self.n_output = n_output
+        self.activation = activation
         self.regularizer = regularizer
+        self.model = self.init_model()
         super(MLPEnsemble, self).__init__()
 
-    def generateModel(self, iteration):
-        model = Sequential()
-        model.add(Dense(self.hiddenNeurons,
-                        input_shape=(self.nInput,),
-                        activation=self.activation,
-                        W_regularizer=self.regularizer,
-                        b_regularizer=self.regularizer))
-        for i in range(1, self.nLayers):
-            model.add(Dense(self.hiddenNeurons,
-                            activation=self.activation,
-                            W_regularizer=self.regularizer,
-                            b_regularizer=self.regularizer))
-        model.add(Dense(self.nOutput,
-                        activation='linear',
-                        W_regularizer=self.regularizer,
-                        b_regularizer=self.regularizer))
-        model.compile(loss=self.loss, optimizer=self.optimizer)
-
-        return model
-
-
-class LinearEnsemble(Ensemble):
-    def __init__(self):
-        super(LinearEnsemble, self).__init__()
-
-    def generateModel(self, iteration):
-        model = LinearRegression()
+    def _generate_model(self, iteration):
+        model = MLP(self.n_input,
+                    self.n_output,
+                    self.hidden_neurons[iteration],
+                    self.activation,
+                    self.optimizer,
+                    self.regularizer)
 
         return model
