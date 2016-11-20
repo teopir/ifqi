@@ -1,5 +1,7 @@
 import argparse
 import json
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.ensemble import ExtraTreesRegressor
@@ -18,13 +20,14 @@ according to the required measure (e.g. dataset size or FQI steps).
 """
 
 
-def evaluate(mdp, fqi, initial_states, n_test_episodes,
-             iteration_values, args):
+def evaluate(mdp, fqi, initial_states, args):
     values = evaluation.evaluate_policy(mdp, fqi,
-                                        initial_states=None,
-                                        n_episodes=n_test_episodes)
-    print(values)
+                                        initial_states=initial_states)
+    iteration_values = list()
+    results = list()
+    print('J: %f' % values[0])
     iteration_values.append(values[0])
+    results.append(values)
 
     if args.plot:
         if i == 1:
@@ -41,6 +44,8 @@ def evaluate(mdp, fqi, initial_states, n_test_episodes,
             plt.ylim(min(iteration_values), max(iteration_values))
             plt.xlim(0, i + 1)
             plt.show()
+
+    return results
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--config', type=str, default=None,
@@ -59,7 +64,10 @@ else:
 
 # Load environment
 mdp = get_MDP(config['mdp']['name'])
+mdp.set_seed(config['experiment_setting']['evaluation']['seed'])
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
+assert reward_dim == 1
+reward_idx = state_dim + action_dim
 discrete_actions = mdp.action_space.values
 
 # Load model
@@ -86,22 +94,23 @@ fit_params = config['fit_params']
 # Load dataset
 dataset = evaluation.collect_episodes(
     mdp, n_episodes=config['experiment_setting']['evaluation']
-                          ['dataset_size'][-1])
+                          ['n_episodes'][-1])
 print('Dataset has %d samples' % dataset.shape[0])
 
-# Load evaluation settings
+# Load initial state to start evaluation episodes. This is the only setting
+# to be chosen outside the configuration file.
+# IF MULTIPLE EXPERIMENTS ARE TO BE PERFORMED STARTING FROM THE SAME
+# INITIAL STATE, USE AN ARRAY WITH THE SAME INITIAL STATE REPEATED FOR THE
+# DESIRED NUMBER OF EVALUATION RUNS.
 initial_states = np.zeros((41, 4))
 initial_states[:, 0] = np.linspace(-2, 2, 41)
-n_test_episodes = initial_states.shape[0]
-iteration_values = list()
 
-reward_idx = state_dim + action_dim
-
+results = list()
 # Run
-if config['experiment_setting']['evaluation']['metric'] == 'dataset_size':
-    for i in config['experiment_setting']['evaluation']['dataset_size']:
+if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
+    for i in config['experiment_setting']['evaluation']['n_episodes']:
         episode_end_idxs = np.argwhere(dataset[:, -1] == 1).ravel()
-        last_el = episode_end_idxs[i]
+        last_el = episode_end_idxs[i - 1]
         sast = np.append(dataset[:last_el + 1, :reward_idx],
                          dataset[:last_el + 1, reward_idx + 1:-1],
                          axis=1)
@@ -109,9 +118,8 @@ if config['experiment_setting']['evaluation']['metric'] == 'dataset_size':
 
         fqi.fit(sast, r, **fit_params)
 
-        if not i % config['experiment_setting']['evaluation']['n_steps']:
-            evaluate(mdp, fqi, initial_states, n_test_episodes,
-                     iteration_values, args)
+        results.append(
+            evaluate(mdp, fqi, initial_states, args))
 elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
     sast = np.append(dataset[:, :reward_idx],
                      dataset[:, reward_idx + 1:-1],
@@ -120,11 +128,15 @@ elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
 
     fqi.partial_fit(sast, r, **fit_params)
 
-    for i in range(1, fqi.horizon - 1):
+    for i in range(2, fqi.horizon + 1):
         fqi.partial_fit(None, None, **fit_params)
 
-        if not i % config['experiment_setting']['n_steps_to_evaluate']:
-            evaluate(mdp, fqi, initial_states, n_test_episodes,
-                     iteration_values, args)
+        if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
+            results.append(
+                evaluate(mdp, fqi, initial_states, args))
 else:
     raise ValueError('unknown metric requested.')
+
+os.mkdir('results')
+np.save('results/' + config['experiment_setting']['save_path'],
+        np.array(results))

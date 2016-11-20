@@ -20,6 +20,8 @@ Journal of Machine Learning Research 6.Apr (2005): 503-556.
 
 mdp = envs.Acrobot()
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
+assert reward_dim == 1
+reward_idx = state_dim + action_dim
 regressor_params = {'n_estimators': 50,
                     'criterion': 'mse',
                     'min_samples_split': 5,
@@ -34,7 +36,6 @@ regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
 dataset = evaluation.collect_episodes(mdp, n_episodes=2000)
 print('Dataset has %d samples' % dataset.shape[0])
 
-reward_idx = state_dim + action_dim
 sast = np.append(dataset[:, :reward_idx],
                  dataset[:, reward_idx + reward_dim:-1],
                  axis=1)
@@ -65,13 +66,10 @@ initial_states[:, 0] = np.linspace(-2, 2, 41)
 fqi.partial_fit(sast, r, **fit_params)
 
 iterations = 100
-n_test_episodes = initial_states.shape[0]
 iteration_values = []
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fit_params)
-    values = evaluation.evaluate_policy(mdp, fqi,
-                                        initial_states=None,
-                                        n_episodes=n_test_episodes)
+    values = evaluation.evaluate_policy(mdp, fqi, initial_states=None)
     print(values)
     iteration_values.append(values[0])
 
