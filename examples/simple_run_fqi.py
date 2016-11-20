@@ -19,7 +19,7 @@ Journal of Machine Learning Research 6.Apr (2005): 503-556.
 """
 
 mdp = envs.Acrobot()
-state_dim, action_dim = envs.get_space_info(mdp)
+state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 regressor_params = {'n_estimators': 50,
                     'criterion': 'mse',
                     'min_samples_split': 5,

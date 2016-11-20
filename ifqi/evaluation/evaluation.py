@@ -183,14 +183,15 @@ def collect_episode(mdp, policy=None):
             - reward
             - next state
             - a flag indicating whether the reached state is absorbing
-            - a flag indicating whether the episode is finished
+            - a flag indicating whether the episode is finished (absorbing state
+              is reached or the time horizon is met)
     """
     done = False
     t = 0
     data = list()
     horizon = mdp.horizon
     state = mdp.reset()
-    state_dim, action_dim = get_space_info(mdp)
+    # state_dim, action_dim, reward_dim = get_space_info(mdp)
 
     while t < horizon and not done:
         if policy is not None:
