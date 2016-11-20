@@ -26,12 +26,12 @@ regressor_params = {'n_estimators': 50,
                     'min_samples_leaf': 2}
 discrete_actions = mdp.action_space.values
 regressor = ExtraTreesRegressor()
-regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
+#regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
 #regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
 #                            decimals=5, **regressor_params)
 
-dataset = evaluation.collect_episodes(mdp, n_episodes=2000)
+dataset = evaluation.collect_episodes(mdp, n_episodes=1000)
 print('Dataset has %d samples' % dataset.shape[0])
 
 reward_idx = state_dim + action_dim
@@ -57,12 +57,15 @@ fitParams = {}
 #     "criterion": "mse"
 # }
 
-initial_states = np.zeros((41, 4))
-initial_states[:, 0] = np.linspace(-2, 2, 41)
+initial_states = np.zeros((21, 2))
+initial_states[:, 0] = np.linspace(-np.pi, np.pi, 21)
 
 fqi.partial_fit(sast, r, **fitParams)
 
-iterations = 100
+print("sast", sast[:10,:])
+print("r", r[:10])
+
+iterations = 300
 n_test_episodes = initial_states.shape[0]
 iteration_values = []
 
@@ -71,7 +74,7 @@ for i in range(iterations - 1):
 
     values = evaluation.evaluate_policy(mdp, fqi,
                                         initial_states=initial_states,
-                                        n_episodes=n_test_episodes)
+                                        n_episodes=21)
     iteration_values.append(values[0])
 
     print(values)

@@ -196,7 +196,12 @@ for repetition in range(actualRepetition, repetitions):
             elif exp.config["mdp"]["mdpName"] == "Acrobot":
                 initial_states = np.zeros((41, 4))
                 initial_states[:, 0] = np.linspace(-2, 2, 41)
-                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation,
+                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, 41*nEvaluation,
+                                                                          initial_states=initial_states)
+            elif exp.config["mdp"]["mdpName"] == "SwingPendulum":
+                initial_states = np.zeros((21, 2))
+                initial_states[:, 0] = np.linspace(-np.pi, np.pi, 21)
+                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, 21*nEvaluation,
                                                                           initial_states=initial_states)
             else:
                 score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation)

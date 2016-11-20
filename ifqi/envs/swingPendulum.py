@@ -36,7 +36,7 @@ class SwingPendulum(Environment):
         self.viewer = None
         high = np.array([np.inf, np.inf])
         self.observation_space = spaces.Box(low=-high, high=high)
-        self.action_space = fqispaces.DiscreteValued([-5, 0, 5], decimals=5)
+        self.action_space = fqispaces.DiscreteValued([-5, 5], decimals=5)
 
         # initialize state
         self.seed()
@@ -79,7 +79,7 @@ class SwingPendulum(Environment):
             theta = self.np_random.uniform(low=-np.pi, high=np.pi)
             self._state = np.array([theta, 0.])
         else:
-            self._state = np.array(state)
+            self._state = np.array(state).ravel()
 
         return self.get_state()
 
