@@ -104,6 +104,8 @@ print('Dataset has %d samples' % dataset.shape[0])
 # DESIRED NUMBER OF EVALUATION RUNS.
 initial_states = np.zeros((41, 4))
 initial_states[:, 0] = np.linspace(-2, 2, 41)
+######################################################################
+######################################################################
 
 results = list()
 # Run
