@@ -25,4 +25,6 @@ def get_space_info(env):
     else:
         raise NotImplementedError
 
-    return state_dim, action_dim
+    reward_dim = 1
+
+    return state_dim, action_dim, reward_dim
