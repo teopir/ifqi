@@ -19,7 +19,6 @@ class PBO:
             Q = Q * (1 - self._training_set[i, -2])  # absorbing states
             result += self.Q(s, a, self.f(rho)) - r - self.gamma * np.max(Q)
 
-        print(result ** 2 / n_samples)
         return result ** 2 / n_samples
 
     def Q(self, s, a, theta):
