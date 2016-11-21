@@ -27,4 +27,6 @@ while delta > epsilon:
     pbo.theta = pbo.f(rho)
     delta = np.sum(pbo.theta - old_theta) ** 2
 
+    print(delta)
+
 print(pbo.theta)
