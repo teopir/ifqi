@@ -13,10 +13,6 @@ class PBO:
         result = 0
         for i in range(n_samples):
             m = 0
-            s = self._training_set[i, 0]
-            a = self._training_set[i, 1]
-            r = self._training_set[i, 2]
-            ns = self._training_set[i, 3]
             s, a, r, ns = self._training_set[i, :4]
 
             Q = self.Q(ns, self._actions, self.theta)
