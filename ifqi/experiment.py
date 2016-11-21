@@ -116,7 +116,7 @@ class Experiment(object):
                       'min_samples_leaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'MLP':
             model = MLP
-            params = {'n_input': stateDim,
+            params = {'n_input': stateDim if not fitActions else stateDim + actionDim,
                       'n_output': 1,
                       'hidden_neurons': modelConfig['hidden_neurons'],
                       'optimizer': modelConfig['optimizer'],
