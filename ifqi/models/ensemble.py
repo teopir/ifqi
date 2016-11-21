@@ -98,7 +98,7 @@ class MLPEnsemble(Ensemble):
     def _generate_model(self, iteration):
         model = MLP(self.n_input,
                     self.n_output,
-                    self.hidden_neurons[iteration],
+                    self.hidden_neurons,
                     self.activation,
                     self.optimizer,
                     self.regularizer)
