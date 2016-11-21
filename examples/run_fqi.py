@@ -111,7 +111,7 @@ experiment_results = list()
 results = list()
 # Run
 if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
-    for e in config['experiment_setting']['evaluation']['n_experiments']:
+    for e in range(config['experiment_setting']['evaluation']['n_experiments']):
         for i in config['experiment_setting']['evaluation']['n_episodes']:
             episode_end_idxs = np.argwhere(dataset[:, -1] == 1).ravel()
             last_el = episode_end_idxs[i - 1]
@@ -130,7 +130,7 @@ elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
                      axis=1)
     r = dataset[:, reward_idx]
 
-    for e in config['experiment_setting']['evaluation']['n_experiments']:
+    for e in range(config['experiment_setting']['evaluation']['n_experiments']):
         fqi.partial_fit(sast, r, **fit_params)
 
         for i in range(2, fqi.horizon + 1):
