@@ -120,28 +120,7 @@ class Algorithm:
         return None
 
     def fit(self, sast, r, **kwargs):
-        """
-        Perform steps of FQI using input data sast and r.
-
-        Args:
-            sast (numpy.array): the input in the dataset
-            r (numpy.array): the output in the dataset
-            **kwargs: additional parameters to be provided to the fit function
-                      of the estimator
-
-        Returns:
-            sa, y: the preprocessed input and output
-        """
-        if self._verbose > 0:
-            print("Starting complete run...")
-
-        # reset iteration count
-        self.reset()
-
-        # main loop
-        self.partial_fit(sast, r, **kwargs)
-        for t in range(1, self.horizon):
-            self.partial_fit(sast=None, r=None, **kwargs)
+        return None
 
     def maxQA(self, states, absorbing, evaluation=False):
         """
