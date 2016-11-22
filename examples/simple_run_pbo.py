@@ -48,7 +48,7 @@ rho, score = pbo.fit(sast, r)
 while delta > epsilon:
     rho, score = pbo.fit()
     old_theta = pbo._estimator.theta
-    pbo.theta = pbo.f(rho)
+    pbo._estimator.theta = pbo.f(rho)
     delta = np.sum(pbo._estimator.theta - old_theta) ** 2
 
     print(delta)
