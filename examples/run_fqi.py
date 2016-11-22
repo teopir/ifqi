@@ -107,38 +107,42 @@ initial_states[:, 0] = np.linspace(-2, 2, 41)
 ######################################################################
 ######################################################################
 
+experiment_results = list()
 results = list()
 # Run
 if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
-    for i in config['experiment_setting']['evaluation']['n_episodes']:
-        episode_end_idxs = np.argwhere(dataset[:, -1] == 1).ravel()
-        last_el = episode_end_idxs[i - 1]
-        sast = np.append(dataset[:last_el + 1, :reward_idx],
-                         dataset[:last_el + 1, reward_idx + 1:-1],
-                         axis=1)
-        r = dataset[:last_el + 1, reward_idx]
+    for e in range(config['experiment_setting']['evaluation']['n_experiments']):
+        for i in config['experiment_setting']['evaluation']['n_episodes']:
+            episode_end_idxs = np.argwhere(dataset[:, -1] == 1).ravel()
+            last_el = episode_end_idxs[i - 1]
+            sast = np.append(dataset[:last_el + 1, :reward_idx],
+                             dataset[:last_el + 1, reward_idx + 1:-1],
+                             axis=1)
+            r = dataset[:last_el + 1, reward_idx]
 
-        fqi.fit(sast, r, **fit_params)
+            fqi.fit(sast, r, **fit_params)
 
-        results.append(
-            evaluate(mdp, fqi, initial_states, args))
+            experiment_results.append(evaluate(mdp, fqi, initial_states, args))
+        results.append(experiment_results)
 elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
     sast = np.append(dataset[:, :reward_idx],
                      dataset[:, reward_idx + 1:-1],
                      axis=1)
     r = dataset[:, reward_idx]
 
-    fqi.partial_fit(sast, r, **fit_params)
+    for e in range(config['experiment_setting']['evaluation']['n_experiments']):
+        fqi.partial_fit(sast, r, **fit_params)
 
-    for i in range(2, fqi.horizon + 1):
-        fqi.partial_fit(None, None, **fit_params)
+        for i in range(2, fqi.horizon + 1):
+            fqi.partial_fit(None, None, **fit_params)
 
-        if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
-            results.append(
-                evaluate(mdp, fqi, initial_states, args))
+            if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
+                experiment_results.append(
+                    evaluate(mdp, fqi, initial_states, args))
+        results.append(experiment_results)
 else:
     raise ValueError('unknown metric requested.')
 
-os.mkdir('results')
-np.save('results/' + config['experiment_setting']['save_path'],
-        np.array(results))
+if not os.path.exists('results'):
+    os.mkdir('results')
+np.save('results/' + config['experiment_setting']['save_path'], results)

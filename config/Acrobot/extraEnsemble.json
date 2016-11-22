@@ -4,15 +4,16 @@
         "date": "..."
     },
     "experiment_setting": {
-        "save_path": "acro/extra_tree",
+        "save_path": "acro/extra_tree_ensemble",
         "evaluation": {
             "metric": "n_episodes",
+            "n_experiments": 10,
             "n_episodes": [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000],
             "seed": "None"
         }
     },
     "model": {
-        "name": "ExtraTree",
+        "name": "ExtraTreesEnsemble",
         "fit_actions": 0,
         "params": {
             "n_estimators": 50,

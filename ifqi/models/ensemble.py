@@ -92,7 +92,6 @@ class MLPEnsemble(Ensemble):
         self.n_output = n_output
         self.activation = activation
         self.regularizer = regularizer
-        self.model = self.init_model()
         super(MLPEnsemble, self).__init__()
 
     def _generate_model(self, iteration):
