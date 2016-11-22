@@ -39,8 +39,6 @@ class PBO(Algorithm):
         result = np.sum(Q - self._r - self.gamma * maxQ) ** 2
         result /= n_samples
 
-        print(result)
-
         return result
 
     def _f(self, rho):
