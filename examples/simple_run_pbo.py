@@ -2,7 +2,7 @@ import numpy as np
 
 from ifqi import envs
 from ifqi.evaluation import evaluation
-from PBO import PBO
+from ifqi.algorithms.pbo.PBO import PBO
 from pybrain.optimization import ExactNES
 
 mdp = envs.LQG1D()
@@ -14,7 +14,12 @@ dataset = evaluation.collect_episodes(mdp, n_episodes=200)
 theta = np.array([1., 0.])
 rho = np.array([1., 0.])
 
-pbo = PBO(theta, actions, dataset)
+pbo = PBO(theta,
+          state_dim,
+          action_dim,
+          actions,
+          mdp.gamma,
+          mdp.horizon)
 
 epsilon = 1e-5
 delta = np.inf

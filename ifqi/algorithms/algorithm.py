@@ -116,12 +116,6 @@ class Algorithm:
 
         self._absorbing = absorbing
 
-    def partial_fit(self, sast=None, r=None, **kwargs):
-        return None
-
-    def fit(self, sast, r, **kwargs):
-        return None
-
     def maxQA(self, states, absorbing, evaluation=False):
         """
         Computes the maximum Q-function and the associated action

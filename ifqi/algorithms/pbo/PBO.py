@@ -1,12 +1,14 @@
 import numpy as np
+from ifqi.algorithms.algorithm import Algorithm
 
 
-class PBO:
-    def __init__(self, theta, actions, training_set, gamma=1):
-        self.theta = theta
-        self._actions = actions
-        self._training_set = training_set
-        self.gamma = gamma
+class PBO(Algorithm):
+    def __init__(self, estimator, state_dim, action_dim,
+                 discrete_actions, gamma, horizon,
+                 scaled=False, features=None, verbose=False):
+        super(PBO, self).__init__(estimator, state_dim, action_dim,
+                                  discrete_actions, gamma, horizon, scaled,
+                                  features, verbose)
 
     def fitness(self, rho):
         n_samples = self._training_set.shape[0]
