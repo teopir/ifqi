@@ -103,6 +103,8 @@ class Algorithm(object):
             # Scaling and feature of next states are computed in maxQA
             self._snext = snext
 
+            self._absorbing = absorbing
+
             if isinstance(self._estimator, ActionRegressor):
                 self._estimator._actions = np.unique(self._sa[:, -1])
 
@@ -113,8 +115,6 @@ class Algorithm(object):
                 r = self._r_scaler.fit_transform(r.reshape((-1, 1)))
 
             self._r = r.ravel()
-
-        self._absorbing = absorbing
 
     def maxQA(self, states, absorbing, evaluation=False):
         """
