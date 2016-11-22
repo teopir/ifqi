@@ -30,15 +30,10 @@ class PBO(Algorithm):
                 np.sum(self._estimator.theta - old_theta) ** 2)
 
     def _fitness(self, rho):
-        n_samples = self._sa.shape[0]
-
-        opt_pars = {'f_rho': self._f(rho)}
-        Q = self._estimator.predict(self._sa, **opt_pars)
+        Q = self._estimator.predict(self._sa, f_rho=self._f(rho))
         maxQ, _ = self.maxQA(self._snext, self._absorbing)
-        result = np.sum(Q - self._r - self.gamma * maxQ) ** 2
-        result /= n_samples
 
-        return result
+        return np.average((Q - self._r - self.gamma * maxQ) ** 2)
 
     def _f(self, rho):
         return rho * self._estimator.theta
