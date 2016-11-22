@@ -23,7 +23,8 @@ class PBO(Algorithm):
         rho, score = self.optimizer.learn()
         self._estimator.theta = self.f(rho)
 
-        return self._estimator.theta, (self._estimator.theta - old_theta) ** 2
+        return (self._estimator.theta,
+                np.sum(self._estimator.theta - old_theta) ** 2)
 
     def fitness(self, rho):
         n_samples = self._sa.shape[0]
