@@ -16,7 +16,7 @@ class MLP(object):
                  regularizer=None):
         assert isinstance(hidden_neurons, list), 'hidden_neurons should be \
             of type list specifying the number of hidden neurons for each \
-            hidden layer.'
+            hidden layer. The given type is: ' + str(type(hidden_neurons))
         self.hidden_neurons = hidden_neurons
         self.optimizer = optimizer
         self.n_input = n_input
