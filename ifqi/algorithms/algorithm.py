@@ -11,7 +11,7 @@ Interface for algorithm.
 """
 
 
-class Algorithm:
+class Algorithm(object):
     def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions, gamma, horizon,
                  scaled=False, features=None, verbose=False):

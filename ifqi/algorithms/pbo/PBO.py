@@ -1,4 +1,6 @@
 import numpy as np
+from pybrain.optimization import ExactNES
+
 from ifqi.algorithms.algorithm import Algorithm
 
 
@@ -6,26 +8,28 @@ class PBO(Algorithm):
     def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions, gamma, horizon,
                  scaled=False, features=None, verbose=False):
+        self.optimizer = ExactNES(self.fitness, np.zeros(2), minimize=True,
+                                  desiredEvaluation=1e-8)
         super(PBO, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, horizon, scaled,
                                   features, verbose)
 
+    def fit(self, sast=None, r=None):
+        if sast is not None or r is not None:
+            self._preprocess_data(sast, r)
+
+        self.optimizer.learn()
+
     def fitness(self, rho):
-        n_samples = self._training_set.shape[0]
-        result = 0
-        for i in range(n_samples):
-            m = 0
-            s, a, r, ns = self._training_set[i, :4]
+        n_samples = self._sa.shape[0]
 
-            Q = self.Q(ns, self._actions, self.theta)
-            Q = Q * (1 - self._training_set[i, -2])  # absorbing states
-            result += self.Q(s, a, self.f(rho)) - r - self.gamma * np.max(Q)
+        opt_pars = {'f_rho': self.f(rho)}
+        Q = self._estimator.predict(self._sa, **opt_pars)
+        maxQ, _ = self.maxQA(self._snext, self._absorbing)
+        result = np.sum(Q - self._r - self.gamma * maxQ) ** 2
+        result /= n_samples
 
-        return result ** 2 / n_samples
-
-    def Q(self, s, a, theta):
-        k, b = theta
-        return b - (a - k * s) ** 2
+        return result
 
     def f(self, rho):
-        return rho * self.theta
+        return rho * self._estimator.theta
