@@ -18,7 +18,7 @@ class PBO(Algorithm):
         if sast is not None or r is not None:
             self._preprocess_data(sast, r)
 
-        self.optimizer.learn()
+        return self.optimizer.learn()
 
     def fitness(self, rho):
         n_samples = self._sa.shape[0]
@@ -28,6 +28,8 @@ class PBO(Algorithm):
         maxQ, _ = self.maxQA(self._snext, self._absorbing)
         result = np.sum(Q - self._r - self.gamma * maxQ) ** 2
         result /= n_samples
+
+        print(result)
 
         return result
 
