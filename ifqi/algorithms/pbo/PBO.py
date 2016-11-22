@@ -18,7 +18,12 @@ class PBO(Algorithm):
         if sast is not None or r is not None:
             self._preprocess_data(sast, r)
 
-        return self.optimizer.learn()
+        old_theta = self._estimator.theta
+
+        rho, score = self.optimizer.learn()
+        self._estimator.theta = self.f(rho)
+
+        return self._estimator.theta, (self._estimator.theta - old_theta) ** 2
 
     def fitness(self, rho):
         n_samples = self._sa.shape[0]
