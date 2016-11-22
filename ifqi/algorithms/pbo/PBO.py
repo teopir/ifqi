@@ -51,8 +51,7 @@ class PBO(Algorithm):
         old_theta = self._estimator.theta
 
         opt_class = LoggingNES if self._verbose else ExactNES
-        self._optimizer = opt_class(self._fitness, self._rho, minimize=True,
-                                    desiredEvaluation=1e-8)
+        self._optimizer = opt_class(self._fitness, self._rho, minimize=True)
 
         self._rho, score = self._optimizer.learn()
         self._estimator.theta = self._f(self._rho)
@@ -64,7 +63,7 @@ class PBO(Algorithm):
         Q = self._estimator.predict(self._sa, f_rho=self._f(rho))
         maxQ, _ = self.maxQA(self._snext, self._absorbing)
 
-        return np.average((Q - self._r - self.gamma * maxQ) ** 2)
+        return np.mean((Q - self._r - self.gamma * maxQ) ** 2)
 
     def _f(self, rho):
         return rho * self._estimator.theta
