@@ -22,7 +22,8 @@ class PBO(Algorithm):
 
         old_theta = self._estimator.theta
 
-        self._optimizer.setEvaluator(self._fitness, self._rho)
+        self._optimizer = ExactNES(self._fitness, self._rho, minimize=True,
+                                   desiredEvaluation=1e-8)
 
         self._rho, score = self._optimizer.learn()
         self._estimator.theta = self._f()
