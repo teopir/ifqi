@@ -9,8 +9,6 @@ class PBO(Algorithm):
                  discrete_actions, gamma, horizon,
                  scaled=False, features=None, verbose=False):
         self._rho = np.zeros(2)
-        self._optimizer = ExactNES(self._fitness, self._rho, minimize=True,
-                                   desiredEvaluation=1e-8)
 
         super(PBO, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, horizon, scaled,
