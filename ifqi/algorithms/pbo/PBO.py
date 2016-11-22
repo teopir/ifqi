@@ -1,7 +1,37 @@
+from __future__ import print_function
+
 import numpy as np
+import warnings
+from builtins import super
 from pybrain.optimization import ExactNES
 
 from ifqi.algorithms.algorithm import Algorithm
+
+
+# pybrain is giving a lot of deprecation warnings
+warnings.filterwarnings('ignore', module='pybrain')
+
+
+class LoggingOptimizerMixin:
+    prevX = prevY = None
+
+    def _notify(self):
+        x, y = self.bestEvaluable, self.bestEvaluation
+        if np.array_equal(x, self.prevX) and y == self.prevY:
+            print('.', end='', flush=True)
+        else:
+            n = self.numLearningSteps
+            print('\n{:6} e({}) = {} '.format(n, x, y), end='')
+            self.prevX, self.prevY = x, y
+
+    def _bestFound(self):
+        print()
+        return super()._bestFound()
+
+
+class LoggingNES(LoggingOptimizerMixin, ExactNES):
+    pass
+
 
 
 class PBO(Algorithm):
@@ -20,8 +50,9 @@ class PBO(Algorithm):
 
         old_theta = self._estimator.theta
 
-        self._optimizer = ExactNES(self._fitness, self._rho, minimize=True,
-                                   desiredEvaluation=1e-8)
+        opt_class = LoggingNES if self._verbose else ExactNES
+        self._optimizer = opt_class(self._fitness, self._rho, minimize=True,
+                                    desiredEvaluation=1e-8)
 
         self._rho, score = self._optimizer.learn()
         self._estimator.theta = self._f(self._rho)
