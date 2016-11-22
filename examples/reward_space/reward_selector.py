@@ -1,6 +1,5 @@
 import numpy as np
 from numpy.polynomial.chebyshev import chebvander
-from numpy.polynomial.legendre import legvander
 from utils import MinMaxScaler
 
 def chebvanderNd(samples,n_dim,deg):

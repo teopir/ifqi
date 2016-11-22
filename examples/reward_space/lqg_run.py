@@ -2,7 +2,6 @@ from __future__ import print_function
 from ifqi.envs import LQG1D
 from ifqi.evaluation import evaluation
 import numpy as np
-import matplotlib.pyplot as plt
 import ifqi.envs as envs
 
 from policy import GaussianPolicy1D
@@ -26,8 +25,8 @@ policy1 = GaussianPolicy1D(K,0.1,action_bounds)
 policy2 = GaussianPolicy1D(K,0.01,action_bounds)
 
 #Collect samples
-dataset1 = evaluation.collect_episodes(mdp, policy=policy1, n_episodes=500)
-dataset2 = evaluation.collect_episodes(mdp, policy=policy2, n_episodes=500)
+dataset1 = evaluation.collect_episodes(mdp, policy=policy1, n_episodes=100)
+dataset2 = evaluation.collect_episodes(mdp, policy=policy2, n_episodes=100)
 
 print('Dataset1 (sigma %f) has %d samples' % (0.1, dataset1.shape[0]))
 print('Dataset2 (sigma %f) has %d samples' % (0.01, dataset2.shape[0]))
