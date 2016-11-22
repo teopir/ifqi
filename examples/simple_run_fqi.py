@@ -69,7 +69,7 @@ iterations = 100
 iteration_values = []
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fit_params)
-    values = evaluation.evaluate_policy(mdp, fqi, initial_states=None)
+    values = evaluation.evaluate_policy(mdp, fqi, initial_states=initial_states)
     print(values)
     iteration_values.append(values[0])
 
