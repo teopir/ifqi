@@ -11,26 +11,6 @@ from ifqi.algorithms.algorithm import Algorithm
 # pybrain is giving a lot of deprecation warnings
 warnings.filterwarnings('ignore', module='pybrain')
 
-
-class LoggingOptimizerMixin:
-    prevX = prevY = None
-
-    def _notify(self):
-        x, y = self.bestEvaluable, self.bestEvaluation
-        if np.array_equal(x, self.prevX) and y == self.prevY:
-            print('.', end='', flush=True)
-        else:
-            n = self.numLearningSteps
-            print('\n{:6} e({}) = {} '.format(n, x, y), end='')
-            self.prevX, self.prevY = x, y
-
-    def _bestFound(self):
-        print()
-        return super()._bestFound()
-
-
-class LoggingNES(LoggingOptimizerMixin, ExactNES):
-    pass
 """
 
 
