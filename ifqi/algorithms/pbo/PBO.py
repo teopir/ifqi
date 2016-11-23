@@ -45,7 +45,7 @@ class PBO(Algorithm):
                                   features, verbose)
 
     def fit(self, sast=None, r=None):
-        if sast is not None or r is not None:
+        if sast is not None:
             self._preprocess_data(sast, r)
 
         old_theta = self._estimator.theta
