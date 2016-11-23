@@ -7,7 +7,7 @@ from pybrain.optimization import ExactNES
 
 from ifqi.algorithms.algorithm import Algorithm
 
-
+"""
 # pybrain is giving a lot of deprecation warnings
 warnings.filterwarnings('ignore', module='pybrain')
 
@@ -31,7 +31,7 @@ class LoggingOptimizerMixin:
 
 class LoggingNES(LoggingOptimizerMixin, ExactNES):
     pass
-
+"""
 
 
 class PBO(Algorithm):
@@ -50,8 +50,7 @@ class PBO(Algorithm):
 
         old_theta = self._estimator.theta
 
-        opt_class = LoggingNES if self._verbose else ExactNES
-        self._optimizer = opt_class(self._fitness, self._rho, minimize=True)
+        self._optimizer = ExactNES(self._fitness, self._rho, minimize=True)
 
         self._rho, score = self._optimizer.learn()
         self._estimator.theta = self._f(self._rho)
