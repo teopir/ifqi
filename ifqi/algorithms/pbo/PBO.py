@@ -55,6 +55,8 @@ class PBO(Algorithm):
         self._rho, score = self._optimizer.learn()
         self._estimator.theta = self._f(self._rho)
 
+        self._iteration += 1
+
         return (self._estimator.theta,
                 np.sum(self._estimator.theta - old_theta) ** 2)
 
