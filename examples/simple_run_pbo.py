@@ -50,4 +50,6 @@ while delta > epsilon:
 
     print('Delta theta:', delta)
 
-print(pbo._estimator.theta)
+initial_states = 10.
+values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
+print(values)
