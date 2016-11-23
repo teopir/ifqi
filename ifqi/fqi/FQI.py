@@ -109,11 +109,6 @@ class FQI:
                 self._estimator._actions = np.unique(self._sa[:, -1])
 
         if r is not None:
-            if self._scaled:
-                # create scaler and fit it
-                self._r_scaler = preprocessing.StandardScaler()
-                r = self._r_scaler.fit_transform(r.reshape((-1, 1)))
-
             self._r = r.ravel()
 
     def partial_fit(self, sast=None, r=None, **kwargs):
@@ -132,7 +127,7 @@ class FQI:
             sa, y: the preprocessed input and output
         """
         # preprocess new data
-        if sast is not None or r is not None:
+        if sast is not None:
             self._preprocess_data(sast, r)
 
         if self._iteration == 0:
