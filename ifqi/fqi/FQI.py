@@ -7,11 +7,11 @@ from ifqi.preprocessors.features import select_features
 from ifqi.models.actionregressor import ActionRegressor
 
 """
-Interface for algorithm.
+This class implements the functions to run Fitted Q-Iteration algorithm.
 """
 
 
-class Algorithm(object):
+class FQI:
     def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions, gamma, horizon,
                  scaled=False, features=None, verbose=False):
@@ -51,7 +51,7 @@ class Algorithm(object):
             assert len(self._actions) > 1, \
                 'Error: at least two actions are required'
 
-        self.__name__ = None
+        self.__name__ = "FittedQIteration"
         self._iteration = 0
         self._scaled = scaled
         self._features = select_features(features)
@@ -110,6 +110,73 @@ class Algorithm(object):
 
         if r is not None:
             self._r = r.ravel()
+
+    def partial_fit(self, sast=None, r=None, **kwargs):
+        """
+        Perform a step of FQI using input data sast and r.
+        Note that if the dataset does not change between iterations, you can
+        provide None inputs after the first iteration.
+
+        Args:
+            sast (numpy.array, None): the input in the dataset
+            r (numpy.array, None): the output in the dataset
+            **kwargs: additional parameters to be provided to the fit function
+            of the estimator
+
+        Returns:
+            sa, y: the preprocessed input and output
+        """
+        # preprocess new data
+        if sast is not None:
+            self._preprocess_data(sast, r)
+
+        if self._iteration == 0:
+            if self._verbose > 0:
+                print('Iteration {}'.format(self._iteration + 1))
+
+            y = self._r
+        else:
+            maxq, maxa = self.maxQA(self._snext, self._absorbing)
+
+            if self._verbose > 0:
+                print('Iteration {}'.format(self._iteration + 1))
+
+            if hasattr(self._estimator, 'has_ensembles') \
+               and self._estimator.has_ensembles():
+                    # update estimator structure
+                    self._estimator.adapt(iteration=self._iteration)
+
+            y = self._r + self.gamma * maxq
+
+        self._estimator.fit(self._sa, y.ravel(), **kwargs)
+
+        self._iteration += 1
+
+        return self._sa, y
+
+    def fit(self, sast, r, **kwargs):
+        """
+        Perform steps of FQI using input data sast and r.
+
+        Args:
+            sast (numpy.array): the input in the dataset
+            r (numpy.array): the output in the dataset
+            **kwargs: additional parameters to be provided to the fit function
+                      of the estimator
+
+        Returns:
+            sa, y: the preprocessed input and output
+        """
+        if self._verbose > 0:
+            print("Starting complete FQI ...")
+
+        # reset iteration count
+        self.reset()
+
+        # main loop
+        self.partial_fit(sast, r, **kwargs)
+        for t in range(1, self.horizon):
+            self.partial_fit(sast=None, r=None, **kwargs)
 
     def maxQA(self, states, absorbing, evaluation=False):
         """
@@ -185,7 +252,7 @@ class Algorithm(object):
 
     def reset(self):
         """
-        Reset.
+        Reset FQI.
         """
         self._iteration = 0
         self._sa = None
