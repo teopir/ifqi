@@ -138,7 +138,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         return self.estimator._estimator_type
 
     def fit(self, X, y):
-        """Fit the RFE model and then the underlying estimator on the selected
+        """Fit the IFS model and then the underlying estimator on the selected
            features.
 
         Parameters
