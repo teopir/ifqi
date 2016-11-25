@@ -6,8 +6,9 @@ from ifqi import envs
 from ifqi.evaluation import evaluation
 import ifqi.algorithms
 from ifqi.models.actionregressor import ActionRegressor
+from ifqi.models.regressor import Regressor
 from ifqi.models.mlp import MLP
-from ifqi.models.ensemble import ExtraTreesEnsemble
+from ifqi.models.ensemble import Ensemble
 
 """
 Simple script to quickly run fqi. It solves the Acrobot environment according
@@ -25,13 +26,18 @@ reward_idx = state_dim + action_dim
 regressor_params = {'n_estimators': 50,
                     'criterion': 'mse',
                     'min_samples_split': 5,
-                    'min_samples_leaf': 2}
+                    'min_samples_leaf': 2,
+                    'input_scaled': False,
+                    'output_scaled': False}
 discrete_actions = mdp.action_space.values
-regressor = ExtraTreesRegressor
-# regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
-regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
-                            decimals=5, **regressor_params)
+# ExtraTrees
+regressor = Regressor(ExtraTreesRegressor, **regressor_params)
+
+# Action regressor of Ensemble of ExtraTreesEnsemble
+#regressor = Ensemble(ExtraTreesRegressor, **regressor_params)
+#regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
+#                            decimals=5, **regressor_params)
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=2000)
 print('Dataset has %d samples' % dataset.shape[0])
@@ -47,7 +53,6 @@ fqi = FQI(estimator=regressor,
           discrete_actions=discrete_actions,
           gamma=mdp.gamma,
           horizon=mdp.horizon,
-          scaled=False,
           features=None,
           verbose=True)
 

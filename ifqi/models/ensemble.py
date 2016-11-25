@@ -1,10 +1,6 @@
 import numpy as np
-from keras.models import Sequential
-from keras.layers import Dense
-from sklearn.ensemble import ExtraTreesRegressor
-from sklearn.linear_model import LinearRegression
 
-from ifqi.models.mlp import MLP
+from ifqi.models.regressor import Regressor
 
 """
 Ensemble regressor.
@@ -14,7 +10,9 @@ properly outside.
 
 
 class Ensemble(object):
-    def __init__(self):
+    def __init__(self, regressor_class=None, **kwargs):
+        self._regressor_class = regressor_class
+        self._regr_args = kwargs
         self._models = self._init_model()
 
     def fit(self, X, y, **kwargs):
@@ -53,53 +51,5 @@ class Ensemble(object):
 
         return [model]
 
-
-class ExtraTreesEnsemble(Ensemble):
-    def __init__(self,
-                 n_estimators,
-                 criterion,
-                 min_samples_split,
-                 min_samples_leaf):
-        self.n_estimators = n_estimators
-        self.criterion = criterion
-        self.min_samples_split = min_samples_split
-        self.min_samples_leaf = min_samples_leaf
-        super(ExtraTreesEnsemble, self).__init__()
-
     def _generate_model(self, iteration):
-        model = ExtraTreesRegressor(n_estimators=self.n_estimators,
-                                    criterion=self.criterion,
-                                    min_samples_split=self.min_samples_split,
-                                    min_samples_leaf=self.min_samples_leaf)
-
-        return model
-
-
-class MLPEnsemble(Ensemble):
-    def __init__(self,
-                 n_input,
-                 n_output,
-                 hidden_neurons,
-                 activation,
-                 optimizer,
-                 regularizer=None):
-        assert isinstance(hidden_neurons, list), 'hidden_neurons should be \
-            of type list specifying the number of hidden neurons for each \
-            hidden layer.'
-        self.hidden_neurons = hidden_neurons
-        self.optimizer = optimizer
-        self.n_input = n_input
-        self.n_output = n_output
-        self.activation = activation
-        self.regularizer = regularizer
-        super(MLPEnsemble, self).__init__()
-
-    def _generate_model(self, iteration):
-        model = MLP(self.n_input,
-                    self.n_output,
-                    self.hidden_neurons,
-                    self.activation,
-                    self.optimizer,
-                    self.regularizer)
-
-        return model
+        return Regressor(self._regressor_class, **self._regr_args)

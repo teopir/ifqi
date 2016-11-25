@@ -72,12 +72,14 @@ discrete_actions = mdp.action_space.values
 
 # Load model
 regressor_params = config['model']['params']
-regressor = get_model(config['model']['name'])
+regressor_class = get_model(config['model']['name'])
+if config['model']['ensemble']:
+    regressor = Ensemble(regressor_class, **regressor_params)
+else:
+    regressor = Regressor(regressor_class, **regressor_params)
 if not config['model']['fit_actions']:
     regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
                                 decimals=5, **regressor_params)
-else:
-    regressor = regressor(**regressor_params)
 
 # Load FQI
 fqi = FQI(estimator=regressor,
@@ -86,7 +88,6 @@ fqi = FQI(estimator=regressor,
           discrete_actions=discrete_actions,
           gamma=config['fqi']['gamma'],
           horizon=config['fqi']['horizon'],
-          scaled=config['fqi']['scaled'],
           features=config['fqi']['features'],
           verbose=config['fqi']['verbose'])
 fit_params = config['fit_params']

@@ -15,9 +15,9 @@ This class implements the functions to run Fitted Q-Iteration algorithm.
 class FQI(Algorithm):
     def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions, gamma, horizon,
-                 scaled=False, features=None, verbose=False):
+                 features=None, verbose=False):
         super(FQI, self).__init__(estimator, state_dim, action_dim,
-                                  discrete_actions, gamma, horizon, scaled,
+                                  discrete_actions, gamma, horizon,
                                   features, verbose)
 
     def partial_fit(self, sast=None, r=None, **kwargs):
