@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import ExtraTreesRegressor
 
 from ifqi import envs
+from ifqi.fqi import FQI
 from ifqi.evaluation import evaluation
 import ifqi.algorithms
 from ifqi.models.actionregressor import ActionRegressor
