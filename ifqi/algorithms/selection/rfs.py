@@ -56,6 +56,20 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         return self
 
     def _recursive_step(self, X, next_state, Y, old_support):
+        """
+        Recursively selects the features that explains the provided target
+        (initially Y must be the reward)
+        Args:
+            X (numpy.array): features [n_samples x (state_dim + action_dim)]
+            next_state (numpy.array): features of the next state [n_samples x state_dim]
+            Y (numpy.array): target to fit (intially reward, than the state)
+            old_support (numpy.array): selected features of X (ie. selected state and action).
+                Boolean array.
+
+        Returns:
+            support (numpy.array): updated support
+
+        """
         n_states = next_state.shape[1]
         # n_actions = X.shape[1] - n_states
 
@@ -82,4 +96,10 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         return new_s_support
 
     def _get_support_mask(self):
+        """
+        The selected features of state and action
+        Returns:
+            support (numpy.array): the selected features of
+                state and action
+        """
         return self.support_
