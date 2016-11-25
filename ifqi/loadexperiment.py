@@ -49,16 +49,10 @@ def get_model(name):
     """
     if name == 'ExtraTree':
         model = ExtraTreesRegressor
-    elif name == 'ExtraTreeEnsemble':
-        model = ExtraTreeEnsemble
     elif name == 'MLP':
         model = MLP
-    elif name == 'MLPEnsemble':
-        model = MLPEnsemble
     elif name == 'Linear':
         model = LinearRegression
-    elif name == 'LinearEnsemble':
-        model = LinearEnsemble
     else:
         raise ValueError('unknown estimator requested.')
 

@@ -14,7 +14,7 @@ This class implements the functions to run Fitted Q-Iteration algorithm.
 class FQI:
     def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions, gamma, horizon,
-                 scaled=False, features=None, verbose=False):
+                 features=None, verbose=False):
         """
         Constructor.
         Args:
@@ -53,7 +53,6 @@ class FQI:
 
         self.__name__ = "FittedQIteration"
         self._iteration = 0
-        self._scaled = scaled
         self._features = select_features(features)
         self._verbose = verbose
 
@@ -66,50 +65,6 @@ class FQI:
             The matrix containing the dataset reshaped in the proper way.
         """
         return X.reshape(-1, self.state_dim)
-
-    def _preprocess_data(self, sast, r):
-        """
-        Preprocessing of the dataset. Data are normalized and features are
-        computed.
-        If inputs are None, no operation is performed and the status of the
-        elements associated to
-        the dataset are not altered. This means that the instances of sast
-        and r stored in the internal state of the class are preserved.
-        Args:
-            sast (numpy.array): the input in the dataset (state, action,
-                                next_state, terminal_flag).
-                                Dimensions are (nsamples x nfeatures)
-            r (numpy.array): the output in the dataset. Dimensions
-                             are (nsamples x 1)
-        """
-        if sast is not None:
-            # get number of samples
-            n_samples = sast.shape[0]
-            nextstate_idx = self.state_dim + self.action_dim
-
-            sa = sast[:, :nextstate_idx]
-            snext = sast[:, nextstate_idx:-1]
-            absorbing = sast[:, -1]
-
-            if self._scaled:
-                # create scaler and fit it
-                self._sa_scaler = preprocessing.StandardScaler()
-                sa = self._sa_scaler.fit_transform(sa)
-
-            if self._features is not None:
-                sa = self._features(sa)
-
-            self._sa = sa
-            # Scaling and feature of next states are computed in maxQA
-            self._snext = snext
-
-            self._absorbing = absorbing
-
-            if isinstance(self._estimator, ActionRegressor):
-                self._estimator._actions = np.unique(self._sa[:, -1])
-
-        if r is not None:
-            self._r = r.ravel()
 
     def partial_fit(self, sast=None, r=None, **kwargs):
         """
@@ -126,9 +81,13 @@ class FQI:
         Returns:
             sa, y: the preprocessed input and output
         """
-        # preprocess new data
         if sast is not None:
-            self._preprocess_data(sast, r)
+            next_states_idx = self.state_dim + self.action_dim
+            self._sa = sast[:, :next_states_idx]
+            self._snext = sast[:, next_states_idx:-1]
+            self._absorbing = sast[:, -1]
+        if r is not None:
+            self._r = r
 
         if self._iteration == 0:
             if self._verbose > 0:
@@ -199,13 +158,8 @@ class FQI:
         for idx in range(n_actions):
             actions = np.matlib.repmat(self._actions[idx], n_states, 1)
 
-            # concatenate [new_state, action] and scalarize them
-            if self._scaled:
-                samples = self._sa_scaler.transform(np.concatenate((new_state,
-                                                                    actions),
-                                                                   axis=1))
-            else:
-                samples = np.concatenate((new_state, actions), axis=1)
+            # concatenate [new_state, action]
+            samples = np.concatenate((new_state, actions), axis=1)
 
             if self._features is not None:
                 samples = self._features.test_features(samples)
