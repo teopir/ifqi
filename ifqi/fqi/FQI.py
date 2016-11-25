@@ -24,7 +24,6 @@ class FQI:
             discrete_actions (list, array): list of discrete actions
             gamma (float): discount factor
             horizon (int): horizon
-            scaled (bool, False): true if the input/output are normalized
             features (object, None): kind of features to use
             verbose (int, False): verbosity level
 
