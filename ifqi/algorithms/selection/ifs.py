@@ -386,3 +386,9 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
     @if_delegate_has_method(delegate='estimator')
     def predict_log_proba(self, X):
         return self.estimator_.predict_log_proba(self.transform(X))
+
+    def set_feature_names(self, fs):
+        if fs is None:
+            self.features_names = None
+        else:
+            self.features_names = np.array(fs)

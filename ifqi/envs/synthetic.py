@@ -13,7 +13,7 @@ class SyntheticToyFS(Environment):
         # gym attributes
         self.viewer = None
         high = np.array([np.inf] * 3)
-        self.action_space = spaces.Box(low=-100, high=100, shape=(1,))
+        self.action_space = spaces.Box(low=-10, high=10, shape=(1,))
         self.observation_space = spaces.Box(low=-high, high=high)
 
         # initialize state
@@ -21,13 +21,14 @@ class SyntheticToyFS(Environment):
         self.reset()
 
     def step(self, action, render=False):
-        self.state[0] = self.state[0] * np.exp(0.6 * self.state[1]) + 1.0 / action
-        self.state[1] = self.state[1] ** 2 + np.random.rand(1)
-        self.state[2] = self.state[2] + np.random.rand(1) * 5.0
+        u = np.clip(action, -100, 100)
+        self.state[0] = self.state[0] + 0.1 * self.state[1]
+        self.state[1] = np.sqrt(self.state[1] + u)
+        self.state[2] = 99 + self.state[2] + np.random.randn() * 5.0
 
         cost = - self.state[0] ** 2 - action ** 2
 
-        return self.get_state(), -np.asscalar(cost), False, {}
+        return self.get_state(), cost, False, {}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -35,7 +36,7 @@ class SyntheticToyFS(Environment):
 
     def reset(self, state=None):
         if state is None:
-            self.state = np.array([0, 0, 0])
+            self.state = np.array([0., 0., 0.])
         else:
             assert len(state) == 3
             self.state = np.array(state)
@@ -43,4 +44,4 @@ class SyntheticToyFS(Environment):
         return self.get_state()
 
     def get_state(self):
-        return self.state
+        return np.array(self.state)
