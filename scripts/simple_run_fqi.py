@@ -28,25 +28,25 @@ regressor_params = {'n_estimators': 50,
 discrete_actions = mdp.action_space.values
 
 #ExtraTreeEnsemble
-regressor = Ensemble(ens_regressor_class=ExtraTreesRegressor, **regressor_params)
+#regressor = Ensemble(ens_regressor_class=ExtraTreesRegressor, **regressor_params)
 
 #ExtraTreeEnsemble con Regressor
-#regressor_params["input_scale"]=True
-#regressor_params["output_scale"]=False
+#regressor_params["input_scaled"]=True
+#regressor_params["output_scaled"]=False
 #regressor = Ensemble(ens_regressor_class=Regressor, regressor_class=ExtraTreesRegressor, **regressor_params)
 
 #ExtraTree con Regressor:
-#regressor_params["input_scale"]=True
-#regressor_params["output_scale"]=False
+#regressor_params["input_scaled"]=True
+#regressor_params["output_scaled"]=False
 #regressor = Regressor(regressor_class=ExtraTreesRegressor, **regressor_params)
 
 #ExtraTree senza regressor
 #regressor = ExtraTreesRegressor(**regressor_params)
 
 #Ensemble con action regressor , con regressor e ExtraTrees
-#regressor_params["input_scale"]=True
-#regressor_params["output_scale"]=False
-#regressor = ActionRegressor(model=Ensemble, discrete_actions=discrete_actions,decimals=5,ens_regressor_class=Regressor, regressor_class=ExtraTreesRegressor, **regressor_params)
+regressor_params["input_scaled"]=True
+regressor_params["output_scaled"]=False
+regressor = ActionRegressor(model=Ensemble, discrete_actions=discrete_actions,decimals=5,ens_regressor_class=Regressor, regressor_class=ExtraTreesRegressor, **regressor_params)
 
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=1000)
@@ -62,7 +62,6 @@ fqi = FQI(estimator=regressor,
           discrete_actions=discrete_actions,
           gamma=mdp.gamma,
           horizon=mdp.horizon,
-          scaled=False,
           features=None,
           verbose=True)
 
