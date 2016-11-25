@@ -13,8 +13,7 @@ This class implements the functions to run Fitted Q-Iteration algorithm.
 
 class FQI:
     def __init__(self, estimator, state_dim, action_dim,
-                 discrete_actions, gamma, horizon,
-                 scaled=False, features=None, verbose=False):
+                 discrete_actions, gamma, horizon, features=None, verbose=False):
         """
         Constructor.
         Args:
@@ -56,7 +55,6 @@ class FQI:
 
         self.__name__ = "FittedQIteration"
         self._iteration = 0
-        self._scaled = scaled
         self._features = select_features(features)
         self._verbose = verbose
 
@@ -94,11 +92,6 @@ class FQI:
             snext = sast[:, nextstate_idx:-1]
             absorbing = sast[:, -1]
 
-            if self._scaled:
-                # create scaler and fit it
-                self._sa_scaler = preprocessing.StandardScaler()
-                sa = self._sa_scaler.fit_transform(sa)
-
             if self._features is not None:
                 sa = self._features(sa)
 
@@ -110,11 +103,6 @@ class FQI:
                 self._estimator._actions = np.unique(self._sa[:, -1])
 
         if r is not None:
-            if self._scaled:
-                # create scaler and fit it
-                self._r_scaler = preprocessing.StandardScaler()
-                r = self._r_scaler.fit_transform(r.reshape((-1, 1)))
-
             self._r = r.ravel()
 
         self._absorbing = absorbing
@@ -207,13 +195,7 @@ class FQI:
         for idx in range(n_actions):
             actions = np.matlib.repmat(self._actions[idx], n_states, 1)
 
-            # concatenate [new_state, action] and scalarize them
-            if self._scaled:
-                samples = self._sa_scaler.transform(np.concatenate((new_state,
-                                                                    actions),
-                                                                   axis=1))
-            else:
-                samples = np.concatenate((new_state, actions), axis=1)
+            samples = np.concatenate((new_state, actions), axis=1)
 
             if self._features is not None:
                 samples = self._features.test_features(samples)

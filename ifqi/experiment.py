@@ -4,8 +4,9 @@ from gym import spaces
 from sklearn.ensemble import ExtraTreesRegressor
 from models.mlp import MLP
 from sklearn.linear_model import LinearRegression
-from models.ensemble import ExtraTreesEnsemble, MLPEnsemble#, LinearEnsemble
+from models.ensemble import Ensemble
 from models.actionregressor import ActionRegressor
+from models.regressor import Regressor
 from envs.carOnHill import CarOnHill
 from envs.invertedPendulum import InvPendulum
 from envs.acrobot import Acrobot
@@ -97,26 +98,28 @@ class Experiment(object):
         modelConfig = self.config['regressors'][index]
 
         fitActions = False
+        input_scaled=False
+        output_scaled=False
         if 'fitActions' in modelConfig:
             fitActions = modelConfig['fitActions']
 
         if modelConfig['modelName'] == 'ExtraTree':
-            model = ExtraTreesRegressor
-            params = {'n_estimators': modelConfig['nEstimators'],
+            model = Regressor#ExtraTreesRegressor
+            params = {'regressor_class':ExtraTreesRegressor, 'n_estimators': modelConfig['nEstimators'],
                       'criterion': self.config["regressors"][index]['supervisedAlgorithm']
                                               ['criterion'],
                       'min_samples_split': modelConfig['minSamplesSplit'],
                       'min_samples_leaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'ExtraTreeEnsemble':
-            model = ExtraTreesEnsemble
-            params = {'n_estimators': modelConfig['nEstimators'],
+            model = Ensemble
+            params = {'ens_regressor_class':Regressor,'regressor_class':ExtraTreesRegressor, 'n_estimators': modelConfig['nEstimators'],
                       'criterion': self.config["regressors"][index]['supervisedAlgorithm']
                                               ['criterion'],
                       'min_samples_split': modelConfig['minSamplesSplit'],
                       'min_samples_leaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'MLP':
-            model = MLP
-            params = {'n_input': stateDim if not fitActions else stateDim + actionDim,
+            model = Regressor
+            params = {'regressor_class':MLP, 'n_input': stateDim if not fitActions else stateDim + actionDim,
                       'n_output': 1,
                       'hidden_neurons': modelConfig['hidden_neurons'],
                       'optimizer': modelConfig['optimizer'],
@@ -124,8 +127,8 @@ class Experiment(object):
             if fitActions:
                 params["n_input"] = stateDim + actionDim
         elif modelConfig['modelName'] == 'MLPEnsemble':
-            model = MLPEnsemble
-            params = {'n_input': stateDim if not fitActions else stateDim + actionDim,
+            model = Ensemble
+            params = {'ens_regressor_class':Regressor,'regressor_class':MLP, 'n_input': stateDim if not fitActions else stateDim + actionDim,
                       'n_output': 1,
                       'hidden_neurons': modelConfig['hidden_neurons'],
                       'optimizer': modelConfig['optimizer'],
@@ -160,7 +163,7 @@ class Experiment(object):
         gamma = self.config['rlAlgorithm']['gamma']
         horizon = self.config['rlAlgorithm']['horizon']
         verbose = self.config['rlAlgorithm']['verbosity']
-        scaled = self.config['rlAlgorithm']['scaled']
+        #scaled = self.config['rlAlgorithm']['scaled']
         optimized=False
         if "optimized" in self.config["rlAlgorithm"]:
             optimized = self.config['rlAlgorithm']['optimized']
@@ -185,7 +188,6 @@ class Experiment(object):
           gamma=gamma,
           horizon=horizon,
           verbose=verbose,
-          features=features,
-          scaled=scaled)
+          features=features)
           
         return fqi 

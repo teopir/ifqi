@@ -7,7 +7,8 @@ from ifqi.evaluation import evaluation
 from ifqi.fqi.FQI import FQI
 from ifqi.models.actionregressor import ActionRegressor
 from ifqi.models.mlp import MLP
-from ifqi.models.ensemble import ExtraTreesEnsemble
+from ifqi.models.ensemble import Ensemble
+from ifqi.models.regressor import Regressor
 
 """
 Simple script to quickly run fqi. It solves the Acrobot environment according
@@ -25,11 +26,28 @@ regressor_params = {'n_estimators': 50,
                     'min_samples_split': 5,
                     'min_samples_leaf': 2}
 discrete_actions = mdp.action_space.values
-regressor = ExtraTreesRegressor()
-#regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
-#regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
-#                            decimals=5, **regressor_params)
+#ExtraTreeEnsemble
+regressor = Ensemble(ens_regressor_class=ExtraTreesRegressor, **regressor_params)
+
+#ExtraTreeEnsemble con Regressor
+#regressor_params["input_scale"]=True
+#regressor_params["output_scale"]=False
+#regressor = Ensemble(ens_regressor_class=Regressor, regressor_class=ExtraTreesRegressor, **regressor_params)
+
+#ExtraTree con Regressor:
+#regressor_params["input_scale"]=True
+#regressor_params["output_scale"]=False
+#regressor = Regressor(regressor_class=ExtraTreesRegressor, **regressor_params)
+
+#ExtraTree senza regressor
+#regressor = ExtraTreesRegressor(**regressor_params)
+
+#Ensemble con action regressor , con regressor e ExtraTrees
+#regressor_params["input_scale"]=True
+#regressor_params["output_scale"]=False
+#regressor = ActionRegressor(model=Ensemble, discrete_actions=discrete_actions,decimals=5,ens_regressor_class=Regressor, regressor_class=ExtraTreesRegressor, **regressor_params)
+
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=1000)
 print('Dataset has %d samples' % dataset.shape[0])
