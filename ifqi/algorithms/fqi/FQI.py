@@ -35,9 +35,13 @@ class FQI(Algorithm):
         Returns:
             sa, y: the preprocessed input and output
         """
-        # preprocess new data
-        if sast is not None or r is not None:
-            self._preprocess_data(sast, r)
+        if sast is not None:
+            next_states_idx = self.state_dim + self.action_dim
+            self._sa = sast[:, :next_states_idx]
+            self._snext = sast[:, next_states_idx:-1]
+            self._absorbing = sast[:, -1]
+        if r is not None:
+            self._r = r
 
         if self._iteration == 0:
             if self._verbose > 0:
