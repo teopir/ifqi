@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import ExtraTreesRegressor
 
 from ifqi import envs
-from ifqi.fqi import FQI
+from ifqi.fqi.FQI import FQI
 from ifqi.evaluation import evaluation
 import ifqi.algorithms
 from ifqi.models.actionregressor import ActionRegressor
@@ -28,8 +28,8 @@ regressor_params = {'n_estimators': 50,
                     'criterion': 'mse',
                     'min_samples_split': 5,
                     'min_samples_leaf': 2,
-                    'input_scaled': False,
-                    'output_scaled': False}
+                    'input_scaled': True,
+                    'output_scaled': True}
 discrete_actions = mdp.action_space.values
 
 # ExtraTrees
@@ -40,7 +40,7 @@ regressor = Regressor(ExtraTreesRegressor, **regressor_params)
 #regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
 #                            decimals=5, **regressor_params)
 
-dataset = evaluation.collect_episodes(mdp, n_episodes=2000)
+dataset = evaluation.collect_episodes(mdp, n_episodes=2)
 print('Dataset has %d samples' % dataset.shape[0])
 
 sast = np.append(dataset[:, :reward_idx],

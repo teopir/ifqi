@@ -14,7 +14,7 @@ class Regressor:
 
         if self._output_scaled:
             self._pre_y = preprocessing.StandardScaler()
-            y = self._pre_y.fit_transform(y).ravel()
+            y = self._pre_y.fit_transform(y.reshape(-1, 1)).ravel()
 
         return self._regressor.fit(X, y, **kwargs)
 
