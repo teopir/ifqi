@@ -50,28 +50,27 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
     def _fit(self, states, actions, next_states, reward):
         X = np.column_stack((states, actions))
-        n_states = 1 if len(states) == 1 else states.shape[1]
-        support = np.zeros(n_states, dtype=np.bool)
+        support = np.zeros(X.shape[1], dtype=np.bool)
         self.support_ = self._recursive_step(X, next_states, reward, support)
         return self
 
-    def _recursive_step(self, X, next_state, Y, old_support):
+    def _recursive_step(self, X, next_state, Y, curr_support):
         """
         Recursively selects the features that explains the provided target
         (initially Y must be the reward)
         Args:
-            X (numpy.array): features [n_samples x (state_dim + action_dim)]
-            next_state (numpy.array): features of the next state [n_samples x state_dim]
+            X (numpy.array): features. shape = [n_samples, (state_dim + action_dim)]
+            next_state (numpy.array): features of the next state [n_samples,  state_dim]
             Y (numpy.array): target to fit (intially reward, than the state)
-            old_support (numpy.array): selected features of X (ie. selected state and action).
-                Boolean array.
+            curr_support (numpy.array): selected features of X (ie. selected state and action).
+                Boolean array of shape [state_dim + action_dim, 1]
 
         Returns:
             support (numpy.array): updated support
 
         """
         n_states = next_state.shape[1]
-        # n_actions = X.shape[1] - n_states
+        n_actions = X.shape[1] - n_states
 
         fs = clone(self.feature_selector)
 
@@ -80,20 +79,20 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
         fs.fit(X, Y)
 
-        sa_support = fs.get_support()
-        new_s_support = sa_support[0:n_states]  # get only state features
-        new_s_support[old_support] = False  # remove features already selected
-        idxs = np.where(new_s_support)[0]  # get numerical index
+        sa_support = fs.get_support()  # get selected features of X
+        new_state_support = sa_support[:n_states]  # get only state features
+        new_state_support[curr_support[:n_states]] = False  # remove state features already selected
+        idxs = np.where(new_state_support)[0]  # get numerical index
 
         # update support with features already selected
         # new_support + old_support
-        new_s_support[old_support] = True
+        sa_support[curr_support] = True
 
         for idx in idxs:
             target = next_state[:, idx]
-            rfs_s_features = self._recursive_step(X, next_state, target, new_s_support)
-            new_s_support[rfs_s_features] = True
-        return new_s_support
+            rfs_s_features = self._recursive_step(X, next_state, target, sa_support)
+            sa_support[rfs_s_features] = True
+        return sa_support
 
     def _get_support_mask(self):
         """
