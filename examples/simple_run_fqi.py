@@ -28,8 +28,8 @@ regressor_params = {'n_estimators': 50,
                     'criterion': 'mse',
                     'min_samples_split': 5,
                     'min_samples_leaf': 2,
-                    'input_scaled': True,
-                    'output_scaled': True}
+                    'input_scaled': False,
+                    'output_scaled': False}
 discrete_actions = mdp.action_space.values
 
 # ExtraTrees
