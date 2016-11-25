@@ -11,6 +11,7 @@ import os.path
 from ifqi.experiment import Experiment
 import matplotlib.pyplot as plt
 from variableLoadSave import ExperimentVariables
+import argparse
 import json
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
@@ -27,6 +28,15 @@ mean:[2,3,1,4],
 std:[0.5,0.5,0.6,0.6]
 }}
 """
+parser = argparse.ArgumentParser(
+        description="""Welcome in plot.py.
+        """)
+parser.add_argument("folder", type=str, help="Provide the folder of the experiment")
+parser.add_argument("descr", type=str,nargs="?", help="Provide the description of the experiment (you could leave it empty if the json file has the same folder name)", default="")
+
+args = parser.parse_args()
+folder = args.folder
+descr = args.descr
 
 
 def multiOneDimPlot(data, xlabel, ylabel, title, path):
@@ -81,8 +91,10 @@ def ask(message, err_message, function):
     return ret
 
 
-experimentPath = ask("Prompt the folder of your experiment: ", "Please choose a right path", str)
-jsonFile = ask("JsonFile of your experiment: ", "Please choose a right path", str)
+experimentPath = folder
+if descr=="":
+    descr = folder + ".json"
+jsonFile = descr
 exp = Experiment(configFile=jsonFile)
 expVar = ExperimentVariables(experimentPath)
 
