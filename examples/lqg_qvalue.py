@@ -6,9 +6,7 @@ import sys
 sys.path.insert(0, os.path.abspath('../'))
 from context import *
 import ifqi.evaluation.evaluation as evaluate
-
 import numpy as np
-
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -16,7 +14,7 @@ import matplotlib.pyplot as plt
 from ifqi.envs.lqg1d import LQG1D
 
 mdp = LQG1D()
-initialState = 10
+initial_state = np.ones((1, 1)) * 10.
 K = mdp.computeOptimalK()
 print('Optimal K: {}'.format(K))
 S = 0  # covariance of the controller
@@ -29,7 +27,7 @@ class tmp_policy():
         if isinstance(S, (int, float)):
             self.S = np.array([S]).reshape(1, 1)
 
-    def drawAction(self, state):
+    def draw_action(self, state, done, evaluation):
         return np.dot(self.K, state) + np.random.multivariate_normal(
             np.zeros(self.S.shape[0]), self.S, 1)#, 0
 
@@ -38,12 +36,12 @@ def estimate_qvalue(mdp, x, u, policy, ep_length=100, n_rep=100):
     returns = np.zeros(n_rep)
     for j in range(n_rep):
         mdp.state = x
-        returns[j] = mdp._step(u)[1]
+        returns[j] = mdp.step(u)[1]
         df = mdp.gamma
         for i in range(ep_length):
-            s_t = mdp._getState()
-            u_t = policy.drawAction(s_t)
-            returns[j] += df * mdp._step(u_t)[1]
+            s_t = mdp.get_state()
+            u_t = policy.draw_action(s_t, False, True)
+            returns[j] += df * mdp.step(u_t)[1]
             df *= mdp.gamma
     return returns.mean(), 2 * returns.std() / np.sqrt(n_rep)
 
@@ -56,7 +54,7 @@ print("K", K)
 pol = tmp_policy(K, S)
 Jsample = []
 for i in range(n_rep):
-    Jsample.append(evaluate.evaluate_policy(mdp, pol, initialState=initialState)[0])
+    Jsample.append(evaluate.evaluate_policy(mdp, pol, initial_states=initial_state)[0])
 #Jsample /= n_rep
 print("J", J, np.mean(Jsample), np.std(Jsample) / np.sqrt(n_rep) * 1.96)
 

@@ -213,8 +213,8 @@ class LQG1D(Environment):
         P = self._computeP2(K)
         J = 0.0
         for i in range(n_random_x0):
-            self._reset()
-            x0 = self._getState()
+            self.reset()
+            x0 = self.get_state()
             J -= np.dot(x0.T, np.dot(P, x0)) \
                 + (1 / (1 - self.gamma)) * \
                 np.trace(np.dot(
@@ -296,7 +296,7 @@ class LQG1D(Environment):
         #         K = np.diag(k)
         #     P = self.computeP(K)
         #     for i in range(n_random_x0):
-        #         self._reset()
+        #         self.reset()
         #         x0 = self.state
         #         v = np.asscalar(x0.T * P * x0 + np.trace(
         #             np.dot(Sigma, (self.R + np.dot(self.gamma, np.dot(self.B.T, np.dot(P, self.B)))))) / (1.0 - self.gamma))

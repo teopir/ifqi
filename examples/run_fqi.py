@@ -9,7 +9,7 @@ from sklearn.ensemble import ExtraTreesRegressor
 from ifqi.loadexperiment import get_MDP, get_model
 from ifqi import envs
 from ifqi.evaluation import evaluation
-from ifqi.fqi.FQI import FQI
+from ifqi.algorithms.fqi.FQI import FQI
 from ifqi.models.actionregressor import ActionRegressor
 from ifqi.models.mlp import MLP
 from ifqi.models.ensemble import ExtraTreesEnsemble
