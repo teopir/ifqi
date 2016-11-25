@@ -1,5 +1,7 @@
-import numpy as np
 from builtins import range
+from copy import deepcopy
+
+import numpy as np
 
 from ifqi.models.ensemble import Ensemble
 
@@ -50,6 +52,7 @@ class ActionRegressor(object):
         # actions is a #action x #variables. Ie each row is an action
         if self._decimals == 0:
             self._actions = self._actions.astype('int')
+        self._actions = np.sort(self._actions.ravel())
 
         self._models = self._init_model(model, **params)
 
@@ -121,6 +124,6 @@ class ActionRegressor(object):
         """
         models = list()
         for i in range(self._actions.shape[0]):
-            models.append(model(**params))
+            models.append(deepcopy(model))
 
         return models

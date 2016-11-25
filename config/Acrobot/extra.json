@@ -1,0 +1,40 @@
+{
+    "experiment": {
+        "name": "exp1",
+        "date": "..."
+    },
+    "experiment_setting": {
+        "save_path": "acro/extra_tree",
+        "evaluation": {
+            "metric": "n_episodes",
+            "n_experiments": 10,
+            "n_episodes": [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000],
+            "seed": "None"
+        }
+    },
+    "model": {
+        "name": "ExtraTree",
+        "ensemble": 0,
+        "fit_actions": 0,
+        "params": {
+            "n_estimators": 50,
+            "criterion": "mse",
+            "min_samples_split": 5,
+            "min_samples_leaf": 2
+        }
+    },
+    "mdp": {
+        "name": "Acrobot"
+    },
+    "fqi": {
+        "horizon": 100,
+        "gamma": 0.95,
+        "verbose": 1,
+        "features": {
+            "name": ""
+        },
+        "scaled": 0
+    },
+    "fit_params": {
+    }
+}

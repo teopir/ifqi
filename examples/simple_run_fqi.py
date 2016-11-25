@@ -6,8 +6,9 @@ from ifqi import envs
 from ifqi.evaluation import evaluation
 from ifqi.fqi.FQI import FQI
 from ifqi.models.actionregressor import ActionRegressor
+from ifqi.models.regressor import Regressor
 from ifqi.models.mlp import MLP
-from ifqi.models.ensemble import ExtraTreesEnsemble
+from ifqi.models.ensemble import Ensemble
 
 """
 Simple script to quickly run fqi. It solves the Acrobot environment according
@@ -18,24 +19,32 @@ Ernst, Damien, Pierre Geurts, and Louis Wehenkel.
 Journal of Machine Learning Research 6.Apr (2005): 503-556.
 """
 
-mdp = envs.SwingPendulum()
-state_dim, action_dim = envs.get_space_info(mdp)
+mdp = envs.Acrobot()
+state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
+assert reward_dim == 1
+reward_idx = state_dim + action_dim
 regressor_params = {'n_estimators': 50,
                     'criterion': 'mse',
                     'min_samples_split': 5,
-                    'min_samples_leaf': 2}
+                    'min_samples_leaf': 2,
+                    'input_scaled': False,
+                    'output_scaled': False}
 discrete_actions = mdp.action_space.values
-regressor = ExtraTreesRegressor
-# regressor = MLP(3, 1, [15], 'relu', 'rmsprop')
 
-regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
-                            decimals=5, **regressor_params)
+# ExtraTrees
+regressor = Regressor(ExtraTreesRegressor, **regressor_params)
+
+# Action regressor of Ensemble of ExtraTreesEnsemble
+#regressor = Ensemble(ExtraTreesRegressor, **regressor_params)
+#regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
+#                            decimals=5, **regressor_params)
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=2000)
 print('Dataset has %d samples' % dataset.shape[0])
 
-reward_idx = state_dim + action_dim
-sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
+sast = np.append(dataset[:, :reward_idx],
+                 dataset[:, reward_idx + reward_dim:-1],
+                 axis=1)
 r = dataset[:, reward_idx]
 
 fqi = FQI(estimator=regressor,
@@ -44,15 +53,14 @@ fqi = FQI(estimator=regressor,
           discrete_actions=discrete_actions,
           gamma=mdp.gamma,
           horizon=mdp.horizon,
-          scaled=False,
           features=None,
           verbose=True)
 
-fitParams = {}
-# fitParams = {
-#     "nEpochs": 300,
-#     "batchSize": 50,
-#     "validationSplit": 0.1,
+fit_params = {}
+# fit_params = {
+#     "n_epochs": 300,
+#     "batch_size": 50,
+#     "validation_split": 0.1,
 #     "verbosity": False,
 #     "criterion": "mse"
 # }
@@ -60,16 +68,13 @@ fitParams = {}
 initial_states = np.zeros((41, 4))
 initial_states[:, 0] = np.linspace(-2, 2, 41)
 
-fqi.partial_fit(sast, r, **fitParams)
+fqi.partial_fit(sast, r, **fit_params)
 
 iterations = 100
-n_test_episodes = initial_states.shape[0]
 iteration_values = []
 for i in range(iterations - 1):
-    fqi.partial_fit(None, None, **fitParams)
-    values = evaluation.evaluate_policy(mdp, fqi,
-                                        initial_states=None,
-                                        n_episodes=n_test_episodes)
+    fqi.partial_fit(None, None, **fit_params)
+    values = evaluation.evaluate_policy(mdp, fqi, initial_states=initial_states)
     print(values)
     iteration_values.append(values[0])
 

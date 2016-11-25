@@ -2,11 +2,11 @@
 # import gym
 from gym import spaces
 from gym.utils import seeding
+from gym.spaces import prng
 import numpy as np
 
-from environment import Environment
+from .environment import Environment
 
-from gym.spaces import prng
 """
 Linear quadratic gaussian regulator task.
 
@@ -23,12 +23,13 @@ References
 """
 
 
-# #classic_control
-# register(
-#     id='LQG1D-v0',
-#     entry_point='gym.envs.classic_control:LQG1DEnv',
-#     timestep_limit=300,
-# )
+#classic_control
+from gym.envs.registration import register
+register(
+    id='LQG1D-v0',
+    entry_point='ifqi.envs.lqg1d:LQG1D',
+    timestep_limit=300,
+)
 
 
 class LQG1D(Environment):
@@ -73,9 +74,9 @@ class LQG1D(Environment):
         self.state = np.array(xn.ravel())
         if self.discrete_reward:
             if abs(self.state[0]) <= 2 and abs(u) <= 2:
-                return self._getState(), 0, False, {}
-            return self._getState(), -1, False, {}
-        return self._getState(), -np.asscalar(cost), False, {}
+                return self.get_state(), 0, False, {}
+            return self.get_state(), -1, False, {}
+        return self.get_state(), -np.asscalar(cost), False, {}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)

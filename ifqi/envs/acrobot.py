@@ -4,8 +4,8 @@ from gym import spaces
 from gym.utils import seeding
 from scipy.integrate import odeint
 
-import ifqi.utils.spaces as fqispaces
-from environment import Environment
+from ifqi.utils import spaces as fqispaces
+from .environment import Environment
 
 """
 The Acrobot environment as presented in:

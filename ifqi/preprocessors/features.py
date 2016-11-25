@@ -8,8 +8,7 @@ def select_features(f):
     elif f['name'] == 'poly':
         return PolyFeatures(f['degree'])
     else:
-        print('Unknown feature type. None will be applied')
-        return None
+        raise ValueError('unknown feature type.')
 
 
 class PolyFeatures(object):
