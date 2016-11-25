@@ -1,6 +1,5 @@
 from __future__ import print_function
 import numpy as np
-import sklearn.preprocessing as preprocessing
 from numpy.matlib import repmat
 
 from ifqi.preprocessors.features import select_features

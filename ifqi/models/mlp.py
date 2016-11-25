@@ -38,16 +38,19 @@ class MLP(object):
     def init_model(self):
         model = Sequential()
         model.add(Dense(self.hidden_neurons[0],
+                        init="glorot_uniform",
                         input_shape=(self.n_input,),
                         activation=self.activation,
                         W_regularizer=self.regularizer,
                         b_regularizer=self.regularizer))
         for i in range(1, len(self.hidden_neurons)):
             model.add(Dense(self.hidden_neurons[i],
+                            init="glorot_uniform",
                             activation=self.activation,
                             W_regularizer=self.regularizer,
                             b_regularizer=self.regularizer))
         model.add(Dense(self.n_output,
+                        init="glorot_uniform",
                         activation='linear',
                         W_regularizer=self.regularizer,
                         b_regularizer=self.regularizer))

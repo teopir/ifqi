@@ -98,8 +98,6 @@ class Experiment(object):
         modelConfig = self.config['regressors'][index]
 
         fitActions = False
-        input_scaled=False
-        output_scaled=False
         if 'fitActions' in modelConfig:
             fitActions = modelConfig['fitActions']
 
@@ -144,7 +142,10 @@ class Experiment(object):
         else:
             raise ValueError('Unknown estimator type.')
 
-
+        if "input_scaled" in modelConfig:
+            params["input_scaled"] = modelConfig["input_scaled"]
+        if "output_scaled" in modelConfig:
+            params["output_scaled"] = modelConfig["output_scaled"]
 
         if fitActions:
             return model(**params)
