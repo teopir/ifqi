@@ -92,7 +92,7 @@ class LQG1D(Environment):
         return self.get_state()
 
     def get_state(self):
-        return self.state
+        return np.array(self.state)
 
     def _render(self, mode='human', close=False):
         if close:
