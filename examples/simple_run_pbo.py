@@ -26,7 +26,7 @@ class LQG_Q():
             k, b = opt_pars['f_rho']
         else:
             k, b = self.theta
-        return b - (sa[:, 1] - k * sa[:, 0]) ** 2
+        return b * sa[:, 1] ** 2 - (sa[:, 1] - k * sa[:, 0]) ** 2
 
 theta = np.array([1., 0.])
 regressor = LQG_Q(theta)
