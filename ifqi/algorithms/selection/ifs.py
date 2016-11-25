@@ -328,6 +328,8 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 # last feature set proved to be not informative
                 # keep old support and delete the current one (it is no more necessary)
                 del tentative_support_
+                if self.verbose > 0:
+                    print('Last feature {} not added to the set'.format(features_names[step_features]))
 
         # Set final attributes
         self.estimator_ = clone(self.estimator)

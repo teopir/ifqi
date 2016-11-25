@@ -23,10 +23,11 @@ class SyntheticToyFS(Environment):
     def step(self, action, render=False):
         u = np.clip(action, -100, 100)
         self.state[0] = self.state[0] + 0.1 * self.state[1]
-        self.state[1] = np.sqrt(self.state[1] + u)
-        self.state[2] = 99 + self.state[2] + np.random.randn() * 5.0
+        x = self.state[1] + 0.5 * u
+        self.state[1] = np.power(x, 1.0 / 3.0) if x > 0 else -np.power(-x, 1.0 / 3.0)
+        self.state[2] = 99 + self.state[2] * (-1 + 2 * np.random.randn()) * 5.0
 
-        cost = - self.state[0] ** 2 - action ** 2
+        cost = - self.state[0] ** 2 - u
 
         return self.get_state(), cost, False, {}
 

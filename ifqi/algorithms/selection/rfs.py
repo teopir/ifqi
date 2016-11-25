@@ -68,18 +68,18 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
         sa_support = fs.get_support()
         new_s_support = sa_support[0:n_states]  # get only state features
-        new_s_support[old_support[0:n_states]] = False  # remove features already selected
+        new_s_support[old_support] = False  # remove features already selected
         idxs = np.where(new_s_support)[0]  # get numerical index
 
         # update support with features already selected
         # new_support + old_support
-        sa_support[old_support] = True
+        new_s_support[old_support] = True
 
         for idx in idxs:
             target = next_state[:, idx]
-            rfs_sa_features = self._recursive_step(X, next_state, target, sa_support)
-            sa_support[rfs_sa_features] = True
-        return sa_support
+            rfs_s_features = self._recursive_step(X, next_state, target, new_s_support)
+            new_s_support[rfs_s_features] = True
+        return new_s_support
 
     def _get_support_mask(self):
         return self.support_
