@@ -4,6 +4,7 @@ from sklearn.ensemble import ExtraTreesRegressor
 
 from ifqi import envs
 from ifqi.evaluation import evaluation
+from ifqi.evaluation.utils import check_dataset
 from ifqi.fqi.FQI import FQI
 from ifqi.models.actionregressor import ActionRegressor
 from ifqi.models.regressor import Regressor
@@ -40,6 +41,7 @@ regressor = Regressor(ExtraTreesRegressor, **regressor_params)
 #                            decimals=5, **regressor_params)
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=2000)
+check_dataset(dataset, state_dim, action_dim, reward_dim)
 print('Dataset has %d samples' % dataset.shape[0])
 
 sast = np.append(dataset[:, :reward_idx],
