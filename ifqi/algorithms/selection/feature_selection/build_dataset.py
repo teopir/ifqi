@@ -20,7 +20,7 @@ def episode(episode_id):
     frame_counter = 0
 
     state = env.reset()
-    state_id = str(episode_id) + '_' + str(frame_counter)
+    state_id = '%04d_%d' % (episode_id, frame_counter)
     state.save(logger.path + state_id + '.png')
 
     reward = 0
@@ -34,7 +34,7 @@ def episode(episode_id):
         action = random.randrange(0, action_space)
         # Execute the action, get next state and reward
         next_state, reward, done, info = env.step(action)
-        next_state_id = str(episode_id) + '_' + str(frame_counter)
+        next_state_id = '%04d_%d' % (episode_id, frame_counter)
         next_state.save(logger.path + next_state_id + '.png')
 
         if args.video:
