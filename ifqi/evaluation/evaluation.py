@@ -63,6 +63,7 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
         H = np.inf
     if metric == 'average':
         gamma = 1
+    n_initial_states=1
     if initial_states is not None:
         n_initial_states = initial_states.shape[0]
     for e in range(n_episodes):

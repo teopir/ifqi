@@ -21,12 +21,12 @@ class Regressor:
             y = np.reshape(y,(-1,1))
             y = self._pre_y.fit_transform(y).ravel()
 
-
         return self.regressor.fit(X,y, **kwargs)
 
     def predict(self, X, **kwargs):
 
         if self._input_scaled:
+            print ("X shape", X.shape)
             X = self._pre_X.transform(X)
 
         y = self.regressor.predict(X, **kwargs)
