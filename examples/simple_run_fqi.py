@@ -4,8 +4,8 @@ from sklearn.ensemble import ExtraTreesRegressor
 
 from ifqi import envs
 from ifqi.evaluation import evaluation
-from ifqi.evaluation.utils import check_dataset
-from ifqi.fqi.FQI import FQI
+from ifqi.evaluation.utils import check_dataset, split_data_for_fqi
+from ifqi.algorithms.fqi import FQI
 from ifqi.models.actionregressor import ActionRegressor
 from ifqi.models.regressor import Regressor
 from ifqi.models.mlp import MLP
@@ -23,7 +23,6 @@ Journal of Machine Learning Research 6.Apr (2005): 503-556.
 mdp = envs.Acrobot()
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 assert reward_dim == 1
-reward_idx = state_dim + action_dim
 regressor_params = {'n_estimators': 50,
                     'criterion': 'mse',
                     'min_samples_split': 5,
@@ -36,25 +35,29 @@ discrete_actions = mdp.action_space.values
 regressor = Regressor(ExtraTreesRegressor, **regressor_params)
 
 # Action regressor of Ensemble of ExtraTreesEnsemble
-#regressor = Ensemble(ExtraTreesRegressor, **regressor_params)
-#regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
+# regressor = Ensemble(ExtraTreesRegressor, **regressor_params)
+# regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
 #                            decimals=5, **regressor_params)
 
-dataset = evaluation.collect_episodes(mdp, n_episodes=2000)
-check_dataset(dataset, state_dim, action_dim, reward_dim)
+dataset = evaluation.collect_episodes(mdp, n_episodes=20)
+check_dataset(dataset, state_dim, action_dim, reward_dim) # this is just a
+# check, it can be removed in experiments
 print('Dataset has %d samples' % dataset.shape[0])
 
-sast = np.append(dataset[:, :reward_idx],
-                 dataset[:, reward_idx + reward_dim:-1],
-                 axis=1)
-r = dataset[:, reward_idx]
+# reward_idx = state_dim + action_dim
+# sast = np.append(dataset[:, :reward_idx],
+#                  dataset[:, reward_idx + reward_dim:-1],
+#                  axis=1)
+# r = dataset[:, reward_idx]
+sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
 
+fqi_iterations = mdp.horizon  # this is usually less than the horizon
 fqi = FQI(estimator=regressor,
           state_dim=state_dim,
           action_dim=action_dim,
           discrete_actions=discrete_actions,
           gamma=mdp.gamma,
-          horizon=mdp.horizon,
+          horizon=fqi_iterations,
           features=None,
           verbose=True)
 

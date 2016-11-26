@@ -29,3 +29,12 @@ def split_dataset(dataset, state_dim, action_dim, reward_dim):
     reward = dataset[:, reward_idx]
     next_states = dataset[:, nextstate_idx:nextstate_idx + state_dim]
     return state, actions, reward, next_states
+
+
+def split_data_for_fqi(dataset, state_dim, action_dim, reward_dim):
+    reward_idx = state_dim + action_dim
+    sast = np.append(dataset[:, :reward_idx],
+                     dataset[:, reward_idx + reward_dim:-1],
+                     axis=1)
+    r = dataset[:, reward_idx]
+    return sast, r
