@@ -2,5 +2,8 @@
 *.*~
 *.npy
 *.egg-info/*
+.idea/
+output/
+data/
 build/
 dist/

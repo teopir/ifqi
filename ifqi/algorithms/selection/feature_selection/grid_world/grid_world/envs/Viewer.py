@@ -55,8 +55,8 @@ class Viewer:
 
         # Init wall
         if self.wall:
-            x = random.randrange(1, self.width - 1) * self.cell_size # Wall can't overlap with goal
-            for y in range(random.randrange(2, self.height/2)): # Wall must be at least 2 cells long
+            x = self.width/2 * self.cell_size # Wall is in the middle
+            for y in range(self.height/2): # Wall must be at least 2 cells long
                 self.wall_pos.add((x, y * self.cell_size))
 
     def reset_agent(self):
