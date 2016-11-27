@@ -192,7 +192,9 @@ for repetition in range(actualRepetition, repetitions):
         if iteration % evaluationEveryNIteration == 0 or iteration==1:
             start_eval = time.time()
             if exp.config["mdp"]["mdpName"] == "LQG1D":
-                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation, initialState=10)
+                initial_states = np.zeros((1,1))
+                initial_states[0,0] = 10.
+                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation, initial_states=initial_states)
             elif exp.config["mdp"]["mdpName"] == "Acrobot":
                 initial_states = np.zeros((41, 4))
                 initial_states[:, 0] = np.linspace(-2, 2, 41)
