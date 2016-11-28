@@ -16,6 +16,7 @@ class FQI(Algorithm):
     def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions, gamma, horizon,
                  features=None, verbose=False):
+        self.__name__ = 'FQI'
         super(FQI, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, horizon,
                                   features, verbose)

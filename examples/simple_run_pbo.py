@@ -60,6 +60,8 @@ while delta > epsilon:
 
     print('Delta theta:', delta)
 
+print(theta)
+
 initial_states = np.ones((10., 1)) * 10
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
 print(values)

@@ -139,5 +139,7 @@ class Algorithm(object):
         self._iteration = 0
         self._sa = None
         self._r = None
+        self._snext = None
         self._absorbing = None
-        # TODO: reset something else?
+        self._features = None
+        self._verbose = None
