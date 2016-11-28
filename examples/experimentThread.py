@@ -94,7 +94,7 @@ if "experienceReplay" in exp.config['experimentSetting']:
 size = exp.config['experimentSetting']['sizes'][sizeN]
 
 environment = exp.getMDP()
-environment.set_seed(datasetN)
+environment.seed(datasetN)
 #Could be problematic
 regressorName = exp.getModelName(regressorN)
 
@@ -121,6 +121,9 @@ reward_idx = state_dim + action_dim
 dataset = evaluate.collect_episodes(environment,policy=None,n_episodes=size)
 sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
 sastFirst, rFirst = sast, dataset[:, reward_idx]
+
+print(sast[:10])
+print(rFirst[:10])
 
 # ------------------------------------------------------------------------------
 # FQI Loading
@@ -218,7 +221,7 @@ for repetition in range(actualRepetition, repetitions):
             # ---------------------------------------------------------------------------
             # Q-Value
             # ---------------------------------------------------------------------------
-            if exp.config["mdp"]["mdpName"] == "LQG1D" and datasetN==0:
+            """if exp.config["mdp"]["mdpName"] == "LQG1D" and datasetN==0:
                 xs = np.linspace(-environment.max_pos, environment.max_pos, 60)
                 us = np.linspace(-environment.max_action, environment.max_action, 50)
 
@@ -229,7 +232,7 @@ for repetition in range(actualRepetition, repetitions):
                         l.append([x, u, v])
                 tabular_Q = np.array(l)
 
-                varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "Q", tabular_Q)
+                varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "Q", tabular_Q)"""
 
         # ----------------------------------------------------------------------
         # SAVE FQI STATUS
