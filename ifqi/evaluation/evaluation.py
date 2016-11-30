@@ -142,8 +142,7 @@ def evaluate_policy(mdp, policy, metric='discounted', initial_states=None,
     """
     assert metric in ['discounted', 'average'], "unsupported metric"
     if render:
-        return _eval_and_render(mdp, policy, metric,
-                                initial_states, n_episodes, True)
+        return _eval_and_render(mdp, policy, metric, initial_states, True)
     else:
         return _parallel_eval(mdp, policy, metric, initial_states,
                               n_episodes, n_jobs, n_episodes_per_job)
