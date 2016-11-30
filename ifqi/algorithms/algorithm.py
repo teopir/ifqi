@@ -142,4 +142,4 @@ class Algorithm(object):
         self._snext = None
         self._absorbing = None
         self._features = None
-        self._verbose = None
+        self._verbose = False
