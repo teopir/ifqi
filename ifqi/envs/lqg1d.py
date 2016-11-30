@@ -1,4 +1,6 @@
 """classic Linear Quadratic Gaussian Regulator task"""
+from numbers import Number
+
 # import gym
 from gym import spaces
 from gym.utils import seeding
@@ -205,9 +207,9 @@ class LQG1D(Environment):
             J (float): The discounted reward
 
         """
-        if isinstance(K, (int, long, float, complex)):
+        if isinstance(K, Number):
             K = np.array([K]).reshape(1, 1)
-        if isinstance(Sigma, (int, long, float, complex)):
+        if isinstance(Sigma, Number):
             Sigma = np.array([Sigma]).reshape(1, 1)
 
         P = self._computeP2(K)
@@ -241,13 +243,13 @@ class LQG1D(Environment):
             controller
 
         """
-        if isinstance(x, (int, long, float, complex)):
+        if isinstance(x, Number):
             x = np.array([x])
-        if isinstance(u, (int, long, float, complex)):
+        if isinstance(u, Number):
             u = np.array([u])
-        if isinstance(K, (int, long, float, complex)):
+        if isinstance(K, Number):
             K = np.array([K]).reshape(1, 1)
-        if isinstance(Sigma, (int, long, float, complex)):
+        if isinstance(Sigma, Number):
             Sigma = np.array([Sigma]).reshape(1, 1)
 
         P = self._computeP2(K)
