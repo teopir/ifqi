@@ -21,7 +21,7 @@ class PBO(Algorithm):
                  discrete_actions, gamma, horizon,
                  features=None, verbose=False):
         self._regressor_rho = Sequential()
-        self._regressor_rho.add(Dense(3, input_shape=(2,), activation='relu'))
+        self._regressor_rho.add(Dense(30, input_shape=(2,), activation='relu'))
         self._regressor_rho.add(Dense(2, activation='linear'))
         self._regressor_rho.compile(optimizer='rmsprop', loss='mse')
 

@@ -54,7 +54,7 @@ pbo = PBO(estimator=regressor,
 epsilon = 1e-5
 delta = np.inf
 
-rho, score = pbo.fit(sast, r)
+theta, _ = pbo.fit(sast, r)
 while delta > epsilon:
     theta, delta = pbo.fit()
 
