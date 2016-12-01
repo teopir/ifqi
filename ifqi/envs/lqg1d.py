@@ -22,7 +22,7 @@ References
 
 """
 
-
+'''
 #classic_control
 from gym.envs.registration import register
 register(
@@ -30,7 +30,7 @@ register(
     entry_point='ifqi.envs.lqg1d:LQG1D',
     timestep_limit=300,
 )
-
+'''
 
 class LQG1D(Environment):
     metadata = {

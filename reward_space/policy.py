@@ -87,3 +87,67 @@ class GaussianPolicy(SimplePolicy):
         action = np.array(action, ndmin=1)
         return np.array(state.dot(action - np.dot(self.K,state)).dot(np.linalg.inv(self.cov)), ndmin=1)
     '''
+    
+    
+    
+class AdvertisingPolicy(SimplePolicy):
+    
+    policy = np.array([[1, 0, 0, 0, 0],
+                       [0, 0, 1, 0, 0],
+                       [0, 0, 0, 0, 1]])
+    
+    def __init__(self):
+        self.seed()
+    
+    def draw_action(self, state, done):
+        action = self.np_random.choice(5, p=self.policy[np.asscalar(state)])
+        return action
+        
+    def get_distribution(self):
+        return self.policy
+        
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+
+
+def energy(state,action,K):
+    return (state == 0)*K[0] + (state == 1)*K[1]
+    
+def epsilon_sigmoid(state, action, eps, K):
+    return eps + (1-2*eps)/(1+np.exp(-energy(state,action,K)))
+
+def gradient_epsilon_sigmoid(state, action, eps, K):
+    _energy = energy(state,action,K)
+    return (1-2*eps)*np.exp(-_energy)/((np.exp(-_energy)+1)**2*((1-2*eps)/(np.exp(-_energy)+1)+eps))
+
+def gradient_1_epsilon_sigmoid(state, action, eps, K):
+    _energy = energy(state,action,K)
+    return -(1-2*eps)*np.exp(-_energy)/((np.exp(-_energy)+1)**2*(-(1-2*eps)/(np.exp(-_energy)+1)+1-eps))         
+        
+class AdvertisingSigmoidPolicy(SimplePolicy):
+    
+    def __init__(self, K, eps):
+        self.seed()
+        self.K = np.array(K, ndmin=1)
+        self.eps = eps
+        self._build_policy()
+    
+    def _build_policy(self):
+        self.policy = np.array([[epsilon_sigmoid(0,0,self.eps,self.K), 1-epsilon_sigmoid(0,1,self.eps,self.K), 0, 0, 0],
+                                [0, 0, epsilon_sigmoid(1,2,self.eps,self.K), 1-epsilon_sigmoid(1,3,self.eps,self.K), 0],
+                                [0, 0, 0, 0, 1]])
+        
+    def draw_action(self, state, done):
+        action = self.np_random.choice(5, p=self.policy[np.asscalar(state)])
+        return action
+        
+    def get_distribution(self):
+        return self.policy
+        
+    def gradient_log_pdf(self):
+        return np.array([[gradient_epsilon_sigmoid(0, 0, self.eps, self.K), gradient_1_epsilon_sigmoid(0, 1, self.eps, self.K), 0, 0, 0],
+                         [0, 0, gradient_epsilon_sigmoid(1, 2, self.eps, self.K), gradient_1_epsilon_sigmoid(1, 3, self.eps, self.K), 0]])
+    
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        
