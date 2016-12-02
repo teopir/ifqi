@@ -1,21 +1,23 @@
 from __future__ import print_function
 import numpy as np
-import sklearn.preprocessing as preprocessing
+from sklearn import preprocessing
 from numpy.matlib import repmat
 
 from ifqi.algorithms.algorithm import Algorithm
 from ifqi.preprocessors.features import select_features
 from ifqi.models.actionregressor import ActionRegressor
 
-"""
-This class implements the functions to run Fitted Q-Iteration algorithm.
-"""
 
 
 class FQI(Algorithm):
+    """
+    This class implements the functions to run Fitted Q-Iteration algorithm.
+    """
+
     def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions, gamma, horizon,
                  features=None, verbose=False):
+        self.__name__ = 'FQI'
         super(FQI, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, horizon,
                                   features, verbose)
