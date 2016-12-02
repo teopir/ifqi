@@ -5,3 +5,4 @@ scipy>=0.18
 gym>=0.3
 joblib
 pybrain>=0.3
+keras>=1.1.0
