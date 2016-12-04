@@ -1,19 +1,12 @@
 from __future__ import print_function
 
 import numpy as np
-import warnings
 from builtins import super
 from pybrain.optimization import ExactNES
 
 from ifqi.algorithms.algorithm import Algorithm
 from keras.models import Sequential
 from keras.layers import Dense
-
-"""
-# pybrain is giving a lot of deprecation warnings
-warnings.filterwarnings('ignore', module='pybrain')
-
-"""
 
 
 class PBO(Algorithm):
@@ -41,8 +34,8 @@ class PBO(Algorithm):
         old_theta = self._estimator._regressor.theta
 
         self._optimizer = ExactNES(self._fitness, self._get_rho(),
-                                   minimize=True, batchSize=100)
-
+                                   minimize=True, batchSize=100,
+                                   maxLearningSteps=0)
         rho, score = self._optimizer.learn()
         self._estimator._regressor.theta = self._f(rho)
 

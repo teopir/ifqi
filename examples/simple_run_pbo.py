@@ -1,16 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.ensemble import ExtraTreesRegressor
 
 from ifqi import envs
-from ifqi.algorithms.fqi import FQI
 from ifqi.evaluation import evaluation
 from ifqi.evaluation.utils import check_dataset
-import ifqi.algorithms
-from ifqi.models.actionregressor import ActionRegressor
 from ifqi.models.regressor import Regressor
-from ifqi.models.mlp import MLP
-from ifqi.models.ensemble import Ensemble
 from ifqi.algorithms.pbo.PBO import PBO
 
 mdp = envs.LQG1D()
