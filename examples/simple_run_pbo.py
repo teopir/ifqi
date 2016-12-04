@@ -29,7 +29,7 @@ class LQG_Q():
             k, b = opt_pars['f_rho']
         else:
             k, b = self.theta
-        return b * sa[:, 1] ** 2 - (sa[:, 1] - k * sa[:, 0]) ** 2
+        return - b * b * sa[:, 0] * sa[:, 1] - 0.5 * k * sa[:, 1] ** 2 - 0.4 * k * sa[:, 0] ** 2
 
 theta = np.array([1., 0.])
 regressor_params = {'theta': theta}
@@ -51,9 +51,9 @@ theta, _ = pbo.fit(sast, r)
 while delta > epsilon:
     theta, delta = pbo.fit()
 
-    print('Delta theta:', delta)
+    print('Theta: ', theta, 'Delta theta: ', delta)
 
-print(theta)
+print('Best theta: ', theta)
 
 initial_states = np.ones((10., 1)) * 10
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)

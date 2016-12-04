@@ -35,7 +35,7 @@ class PBO(Algorithm):
 
         self._optimizer = ExactNES(self._fitness, self._get_rho(),
                                    minimize=True, batchSize=100,
-                                   maxLearningSteps=0)
+                                   learningRate=1e-3, maxLearningSteps=0)
         rho, score = self._optimizer.learn()
         self._estimator._regressor.theta = self._f(rho)
 
