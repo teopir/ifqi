@@ -35,14 +35,17 @@ class PBO(Algorithm):
 
         self._optimizer = ExactNES(self._fitness, self._get_rho(),
                                    minimize=True, batchSize=100,
-                                   learningRate=1e-3, maxLearningSteps=0)
+                                   learningRate=1e-3, maxLearningSteps=0,
+                                   maxEvaluations=None)
 
-        for i in range(self._learning_steps):
+        while self._iteration < self._learning_steps:
             self._optimizer.numLearningSteps = 0
             rho, score = self._optimizer.learn()
             self._estimator._regressor.theta = self._f(rho)
             self._thetas.append(self._estimator._regressor.theta)
-            print('Iteration: ', i)
+            print('Iteration: ', self._iteration)
+
+            self._iteration += 1
 
         return self._thetas
 
