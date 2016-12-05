@@ -11,15 +11,17 @@ from keras.layers import Dense
 
 class PBO(Algorithm):
     def __init__(self, estimator, state_dim, action_dim,
-                 discrete_actions, gamma, horizon,
+                 discrete_actions, gamma, learning_steps,
                  features=None, verbose=False):
         self._regressor_rho = Sequential()
-        self._regressor_rho.add(Dense(30, input_shape=(2,), activation='relu'))
+        self._regressor_rho.add(Dense(5, input_shape=(2,), activation='relu'))
         self._regressor_rho.add(Dense(2, activation='linear'))
         self._regressor_rho.compile(optimizer='rmsprop', loss='mse')
 
+        self._learning_steps = learning_steps
+        self._thetas = list()
         super(PBO, self).__init__(estimator, state_dim, action_dim,
-                                  discrete_actions, gamma, horizon,
+                                  discrete_actions, gamma, None,
                                   features, verbose)
 
     def fit(self, sast=None, r=None):
@@ -31,18 +33,18 @@ class PBO(Algorithm):
         if r is not None:
             self._r = r
 
-        old_theta = self._estimator._regressor.theta
-
         self._optimizer = ExactNES(self._fitness, self._get_rho(),
                                    minimize=True, batchSize=100,
                                    learningRate=1e-3, maxLearningSteps=0)
-        rho, score = self._optimizer.learn()
-        self._estimator._regressor.theta = self._f(rho)
 
-        self._iteration += 1
+        for i in range(self._learning_steps):
+            self._optimizer.numLearningSteps = 0
+            rho, score = self._optimizer.learn()
+            self._estimator._regressor.theta = self._f(rho)
+            self._thetas.append(self._estimator._regressor.theta)
+            print('Iteration: ', i)
 
-        return (self._estimator._regressor.theta,
-                np.sum(self._estimator._regressor.theta - old_theta) ** 2)
+        return self._thetas
 
     def _fitness(self, rho):
         Q = self._estimator.predict(self._sa, f_rho=self._f(rho))
