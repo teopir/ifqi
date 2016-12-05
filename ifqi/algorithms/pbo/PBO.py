@@ -33,21 +33,25 @@ class PBO(Algorithm):
         if r is not None:
             self._r = r
 
-        self._optimizer = ExactNES(self._fitness, self._get_rho(),
-                                   minimize=True, batchSize=100,
-                                   learningRate=1e-3, maxLearningSteps=0,
-                                   maxEvaluations=None)
+        self._thetas = list()
 
-        while self._iteration < self._learning_steps:
-            self._optimizer.numLearningSteps = 0
-            rho, score = self._optimizer.learn()
-            self._estimator._regressor.theta = self._f(rho)
-            self._thetas.append(self._estimator._regressor.theta)
-            print('Iteration: ', self._iteration)
+        optimizer = ExactNES(self._fitness, self._get_rho(),
+                             minimize=True, batchSize=100, learningRate=1e-3,
+                             maxLearningSteps=self._learning_steps,
+                             importanceMixing=False,
+                             maxEvaluations=None)
+        optimizer.listener = self.my_listener
+        optimizer.learn()
+        self._thetas.append(self._estimator.regressor.theta)
 
-            self._iteration += 1
+        self._iteration = 1
 
         return self._thetas
+
+    def my_listener(self, bestEvaluable, bestEvaluation):
+        self._thetas.append(self._estimator._regressor.theta)
+        new_theta = self._f(bestEvaluable)
+        self._estimator._regressor.theta = new_theta
 
     def _fitness(self, rho):
         Q = self._estimator.predict(self._sa, f_rho=self._f(rho))
