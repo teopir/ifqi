@@ -31,7 +31,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument("configFile", type=str, help="Provide the name of the configuration file")
 parser.add_argument("nPop", type=int, help="Provide the size of the population")
 parser.add_argument("nCore", type=int, help="Provides the number of core to use")
-parser.add_argument("outFile", type=int, help="Provides the number of core to use")
+parser.add_argument("outFile", type=str, help="Provides the number of core to use")
 
 args = parser.parse_args()
 
