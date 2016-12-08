@@ -31,13 +31,14 @@ parser = argparse.ArgumentParser(
 parser.add_argument("configFile", type=str, help="Provide the name of the configuration file")
 parser.add_argument("nPop", type=int, help="Provide the size of the population")
 parser.add_argument("nCore", type=int, help="Provides the number of core to use")
+parser.add_argument("outFile", type=int, help="Provides the number of core to use")
 
 args = parser.parse_args()
 
 configFile = args.configFile
 nCore = args.nCore
 nPop = args.nPop
-
+outFile = args.outFile
 #----------------------------------------------------------------------------------------------
 # Genetic core
 #----------------------------------------------------------------------------------------------
@@ -79,7 +80,7 @@ population = None
 evaluation = [-np.inf]
 
 def newPopulation():
-    global population, evaluation
+    global population, evaluation, outFile
     nPop = len(population)
 
     indxs = [i[0] for i in sorted(enumerate(evaluation), key=lambda x: x[1])]
@@ -91,6 +92,9 @@ def newPopulation():
     popeval = zip(population, evaluation)
     print("-"*20)
     print("BestOne:", popeval[0])
+    x = open(outFile,"a")
+    x.write(str(popeval[0]) +"\n")
+    x.close()
     print("WorstOne:", popeval[-1])
     print("-"*20)
 
