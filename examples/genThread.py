@@ -30,6 +30,9 @@ parser.add_argument("activation", type=int, help="Provides the number of core to
 parser.add_argument("batch_size", type=int, help="Provides the number of core to use")
 parser.add_argument("n_neurons", type=int, help="Provides the number of core to use")
 parser.add_argument("n_layers", type=int, help="Provides the number of core to use")
+#parser.add_argument("input_scaled", type=int, help="Provides the number of core to use")
+#parser.add_argument("output_scaled", type=int, help="Provides the number of core to use")
+
 
 
 args = parser.parse_args()
@@ -40,11 +43,13 @@ activation = args.activation
 batchSize = args.batch_size
 nNeurons = args.n_neurons
 nLayers = args.n_layers
+input_scaled = True #args.input_scaled
+output_scaled = True #args.output_scaled
 
-act = "sigm"
+act = "sigmoid"
 if activation==1:
     act="tanh"
-else:
+elif activation==2:
     act="relu"
 
 """Easy function
@@ -59,14 +64,18 @@ sizeDS = None
 if env_name=="SwingPendulum":
     sizeDS = 2000
     mdp = envs.SwingPendulum()
-    discrete_actions = mdp.action_space.values
-elif env_name=="Arobot":
+    discrete_actions = [-5.,5.]
+elif env_name=="Acrobot":
     sizeDS = 2000
     mdp = envs.Acrobot()
     discrete_actions = mdp.action_space.values
 elif env_name=="LQG1D":
     sizeDS = 5
     mdp = envs.LQG1D()
+    discrete_actions = [-5.,-2.5,-1.,-0.5, 0., 0.5, 1., 2.5, 5]
+elif env_name=="LQG1DD":
+    sizeDS = 5
+    mdp = envs.LQG1D(discrete_reward=True)
     discrete_actions = [-5.,-2.5,-1.,-0.5, 0., 0.5, 1., 2.5, 5]
 
 mdp.seed(0)
@@ -90,8 +99,8 @@ regressor_params = {"n_input": state_dim+action_dim,
 #regressor = Ensemble(ens_regressor_class=Regressor, regressor_class=ExtraTreesRegressor, **regressor_params)
 
 #ExtraTree con Regressor:
-regressor_params["input_scaled"]=True
-regressor_params["output_scaled"]=False
+regressor_params["input_scaled"]= input_scaled==1
+regressor_params["output_scaled"]= output_scaled==1
 regressor = Regressor(regressor_class=MLP, **regressor_params)
 
 #ExtraTree senza regressor
@@ -131,7 +140,7 @@ iterations = 3
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
 
-if env_name == "LQG1D":
+if env_name == "LQG1D" or env_name=="LQG1DD":
     initial_states = np.zeros((5, 1))
     initial_states[:, 0] = np.linspace(-10,10,5)
     score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1,

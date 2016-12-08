@@ -47,13 +47,16 @@ ranges = {
     "activation": (0,3),
     "batch_size": (100,1000),
     "n_neurons": (5,100),
-    "n_layers": (1,3)
+    "n_layers": (1,3),
+    "input_scaled":(0,2),
+    "output_scaled":(0,2)
 }
 
-ranges = [(20,300),(0,3),(100,1000),(5,100),(1,3)]
+ranges = [(20,300),(0,3),(100,1000),(5,100),(1,3)]#,(0,2), (0,2)]
 
+mutations = [0.1, 0.3, 0.1, 0.1, 0.3]#, 0.4, 0.4]
 
-p_mut = 0.3
+p_mut = 0.8
 
 def generates():
     global  ranges
@@ -62,9 +65,8 @@ def generates():
 def mutate(dna):
     global ranges, p_mut
     if np.random.rand() < p_mut:
-        indx = np.random.randint(len(ranges))
-        range = ranges[indx]
-        dna[indx] = np.random.randint(*ranges[indx])
+        muting_dna = zip(dna, mutations, ranges)
+        dna = map(lambda(x): x[0] if np.random.rand() < x[1] else np.random.randint(*x[2]), muting_dna )
     return dna
 
 def combine(dna1, dna2):
