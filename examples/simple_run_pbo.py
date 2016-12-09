@@ -40,20 +40,12 @@ pbo = PBO(estimator=regressor,
           action_dim=action_dim,
           discrete_actions=discrete_actions,
           gamma=mdp.gamma,
-          horizon=mdp.horizon,
+          learning_steps=200,
           features=None,
           verbose=True)
 
-epsilon = 1e-5
-delta = np.inf
-
-theta, _ = pbo.fit(sast, r)
-while delta > epsilon:
-    theta, delta = pbo.fit()
-
-    print('Theta: ', theta, 'Delta theta: ', delta)
-
-print('Best theta: ', theta)
+thetas = pbo.fit(sast, r)
+print('Best theta: ', thetas[-1])
 
 initial_states = np.ones((10., 1)) * 10
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
