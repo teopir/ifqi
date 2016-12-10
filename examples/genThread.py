@@ -148,12 +148,12 @@ if env_name == "LQG1D" or env_name=="LQG1DD":
 elif env_name == "Acrobot":
     initial_states = np.zeros((5, 4))
     initial_states[:, 0] = np.linspace(-2, 2, 5)
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 41,
+    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5,
                                                               initial_states=initial_states)
 elif env_name == "SwingPendulum":
     initial_states = np.zeros((5, 2))
     initial_states[:, 0] = np.linspace(-np.pi, np.pi, 5)
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 21,
+    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5,
                                                               initial_states=initial_states)
 
 print(score)
