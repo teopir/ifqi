@@ -14,8 +14,10 @@ logger = Logger(args.debug)
 AE = Autoencoder((1, 90, 160), logger=logger)
 batches = batch_iterator(args.dataset_path, batch_size=args.batch_size, nb_epochs=args.nb_epochs)
 
-for batch in batches:
-    AE.train(batch)
+for idx, batch in enumerate(batches):
+    loss, accuracy = AE.train(batch)
+    print 'Autoencoder batch %d: loss %f - acc %f' % (idx, loss, accuracy)
+
 
 AE.save()
 

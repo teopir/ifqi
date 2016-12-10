@@ -17,21 +17,29 @@ class Autoencoder:
         self.inputs = Input(shape=input_shape)
 
         # Encoding layers
-        self.encoded = Convolution2D(32, 3, 3, subsample=(2,2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
-        self.encoded = Convolution2D(64, 3, 3, subsample=(2,2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
-        self.encoded = Convolution2D(128, 3, 3, subsample=(3,3), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = Convolution2D(32, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
+        self.encoded = AveragePooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = Convolution2D(64, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = AveragePooling2D(pool_size=(3, 2), dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = Convolution2D(128, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = AveragePooling2D(pool_size=(3, 2), dim_ordering=self.dim_ordering)(self.encoded)
 
         self.encoded = Flatten()(self.encoded)
         self.encoded = Dense(6, activation='relu')(self.encoded)
 
         # Decoding layers
-        self.decoded = Reshape((1, 2, 3))(self.encoded)
-        self.decoded = Deconvolution2D(128, 3, 3, output_shape=(None, 64, 21, 39), subsample=(3,3), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = Deconvolution2D(64, 3, 3, output_shape=(None, 32, 44, 79), subsample=(2,2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
-        self.outputs = Deconvolution2D(32, 3, 3, output_shape=(None, 1, 90, 160), subsample=(2,2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = Dense(100, activation='relu')(self.encoded)
+        self.decoded = Reshape((1, 5, 20))(self.decoded)
+        self.decoded = Convolution2D(128, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = UpSampling2D(size=(3, 2), dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = Convolution2D(64, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = UpSampling2D(size=(3, 2), dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = Convolution2D(32, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = Convolution2D(1, 1, 1, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
 
         # Models
-        self.autoencoder = Model(input=self.inputs, output=self.outputs)
+        self.autoencoder = Model(input=self.inputs, output=self.decoded)
         self.encoder = Model(input=self.inputs, output=self.encoded)
 
         # Optimization algorithm
