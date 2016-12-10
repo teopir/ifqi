@@ -6,8 +6,7 @@ import keras.backend.tensorflow_backend as b
 
 
 class Autoencoder:
-    def __init__(self, input_shape, learning_rate=None, load_path=None,
-                 logger=None):
+    def __init__(self, input_shape, load_path=None, logger=None):
         b.clear_session()
 
         self.dim_ordering = 'th' # (samples, filters, rows, cols)
