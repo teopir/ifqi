@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import numpy as np
-import warnings
 from builtins import super
 from pybrain.optimization import ExactNES
 
@@ -9,24 +8,20 @@ from ifqi.algorithms.algorithm import Algorithm
 from keras.models import Sequential
 from keras.layers import Dense
 
-"""
-# pybrain is giving a lot of deprecation warnings
-warnings.filterwarnings('ignore', module='pybrain')
-
-"""
-
 
 class PBO(Algorithm):
     def __init__(self, estimator, state_dim, action_dim,
-                 discrete_actions, gamma, horizon,
+                 discrete_actions, gamma, learning_steps,
                  features=None, verbose=False):
         self._regressor_rho = Sequential()
-        self._regressor_rho.add(Dense(30, input_shape=(2,), activation='relu'))
+        self._regressor_rho.add(Dense(5, input_shape=(2,), activation='relu'))
         self._regressor_rho.add(Dense(2, activation='linear'))
         self._regressor_rho.compile(optimizer='rmsprop', loss='mse')
 
+        self._learning_steps = learning_steps
+        self._thetas = list()
         super(PBO, self).__init__(estimator, state_dim, action_dim,
-                                  discrete_actions, gamma, horizon,
+                                  discrete_actions, gamma, None,
                                   features, verbose)
 
     def fit(self, sast=None, r=None):
@@ -38,18 +33,25 @@ class PBO(Algorithm):
         if r is not None:
             self._r = r
 
-        old_theta = self._estimator._regressor.theta
+        self._thetas = list()
 
-        self._optimizer = ExactNES(self._fitness, self._get_rho(),
-                                   minimize=True, batchSize=100)
+        optimizer = ExactNES(self._fitness, self._get_rho(),
+                             minimize=True, batchSize=100, learningRate=1e-3,
+                             maxLearningSteps=self._learning_steps,
+                             importanceMixing=False,
+                             maxEvaluations=None)
+        optimizer.listener = self.my_listener
+        optimizer.learn()
+        self._thetas.append(self._estimator.regressor.theta)
 
-        rho, score = self._optimizer.learn()
-        self._estimator._regressor.theta = self._f(rho)
+        self._iteration = 1
 
-        self._iteration += 1
+        return self._thetas
 
-        return (self._estimator._regressor.theta,
-                np.sum(self._estimator._regressor.theta - old_theta) ** 2)
+    def my_listener(self, bestEvaluable, bestEvaluation):
+        self._thetas.append(self._estimator._regressor.theta)
+        new_theta = self._f(bestEvaluable)
+        self._estimator._regressor.theta = new_theta
 
     def _fitness(self, rho):
         Q = self._estimator.predict(self._sa, f_rho=self._f(rho))

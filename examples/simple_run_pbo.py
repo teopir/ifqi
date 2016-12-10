@@ -1,16 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.ensemble import ExtraTreesRegressor
 
 from ifqi import envs
-from ifqi.algorithms.fqi import FQI
 from ifqi.evaluation import evaluation
 from ifqi.evaluation.utils import check_dataset
-import ifqi.algorithms
-from ifqi.models.actionregressor import ActionRegressor
 from ifqi.models.regressor import Regressor
-from ifqi.models.mlp import MLP
-from ifqi.models.ensemble import Ensemble
 from ifqi.algorithms.pbo.PBO import PBO
 
 mdp = envs.LQG1D()
@@ -36,7 +29,7 @@ class LQG_Q():
             k, b = opt_pars['f_rho']
         else:
             k, b = self.theta
-        return b * sa[:, 1] ** 2 - (sa[:, 1] - k * sa[:, 0]) ** 2
+        return - b * b * sa[:, 0] * sa[:, 1] - 0.5 * k * sa[:, 1] ** 2 - 0.4 * k * sa[:, 0] ** 2
 
 theta = np.array([1., 0.])
 regressor_params = {'theta': theta}
@@ -47,20 +40,12 @@ pbo = PBO(estimator=regressor,
           action_dim=action_dim,
           discrete_actions=discrete_actions,
           gamma=mdp.gamma,
-          horizon=mdp.horizon,
+          learning_steps=200,
           features=None,
           verbose=True)
 
-epsilon = 1e-5
-delta = np.inf
-
-theta, _ = pbo.fit(sast, r)
-while delta > epsilon:
-    theta, delta = pbo.fit()
-
-    print('Delta theta:', delta)
-
-print(theta)
+thetas = pbo.fit(sast, r)
+print('Best theta: ', thetas[-1])
 
 initial_states = np.ones((10., 1)) * 10
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
