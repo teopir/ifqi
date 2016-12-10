@@ -10,7 +10,7 @@ class Logger:
 		run_folder = 'run%Y%m%d-%H%M%S' if custom_run_name is None else custom_run_name
 		if not os.path.exists(output_folder):
 			os.makedirs(output_folder)
-		self.path = ''.join([os.path.abspath(output_folder), time.strftime(run_folder)])
+		self.path = '/'.join([os.path.abspath(output_folder), time.strftime(run_folder)])
 		if append is not None:
 			self.path += '_' + str(append)
 		self.path += '/'
