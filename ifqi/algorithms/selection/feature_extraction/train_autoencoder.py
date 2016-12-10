@@ -11,7 +11,7 @@ parser.add_argument('--nb-epochs', type=int, default=2, help='')
 args = parser.parse_args()
 logger = Logger(args.debug)
 
-AE = Autoencoder((90, 160), logger=logger)
+AE = Autoencoder((1, 90, 160), logger=logger)
 batches = batch_iterator(args.dataset_path, batch_size=args.batch_size, nb_epochs=args.nb_epochs)
 
 for batch in batches:

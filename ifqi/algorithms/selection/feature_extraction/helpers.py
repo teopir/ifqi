@@ -27,7 +27,7 @@ def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
             batch_data = data[batch_idx * batch_size: min((batch_idx + 1) * batch_size, data_size)]
             for _id in batch_data:
                 image = Image.open(dataset_folder + _id).convert('L')
-                images.append(np.asarray(image))
+                images.append(np.expand_dims(np.asarray(image), axis=0))
             yield images
 
 def flat2gen(alist):
