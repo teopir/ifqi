@@ -15,3 +15,8 @@ s = np.array([1,2,3]).reshape(-1,1)
 a = np.array([0,3,4]).reshape(-1,1)
 q = gpbo.qf(s,a, theta)
 print(q)
+
+actions = np.matlib.repmat(np.array([1,2,3]).reshape(1,-1), s.shape[0], 1)
+print(actions)
+vv = gpbo.qf(s, actions, theta)
+print(vv)
