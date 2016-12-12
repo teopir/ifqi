@@ -1,4 +1,4 @@
-import gym, random, argparse
+import gym, random, argparse, numpy as np
 from Logger import Logger
 from joblib import Parallel, delayed
 from Autoencoder import Autoencoder
@@ -25,7 +25,8 @@ def episode():
     frame_counter = 0
 
     state = env.reset()
-    encoded_state = AE.encode(state)
+    preprocessed_state = np.expand_dims(np.asarray(state), axis=0)
+    encoded_state = AE.encode(preprocessed_state)
 
     reward = 0
     done = False
@@ -38,7 +39,8 @@ def episode():
         action = random.randrange(0, action_space)
         # Execute the action, get next state and reward
         next_state, reward, done, info = env.step(action)
-        encoded_next_state = AE.encode(next_state)
+        preprocessed_next_state = np.expand_dims(np.asarray(next_state), axis=0)
+        encoded_next_state = AE.encode(preprocessed_next_state)
 
         if args.video:
             raw_input()
@@ -48,6 +50,7 @@ def episode():
 
         # Update state
         state = next_state
+        preprocessed_state = preprocessed_next_state
         encoded_state = encoded_next_state
 
 
