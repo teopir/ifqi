@@ -36,7 +36,8 @@ class GradPBO(object):
         err = 0.5 * T.sum(v ** 2)
         return err
 
-    def __init__(self):
+    def __init__(self, gamma):
+        self.gamma = gamma
         self.actions = np.array([1, 2, 3])
         s = T.dmatrix()
         a = T.dmatrix()
@@ -52,7 +53,7 @@ class GradPBO(object):
         self.qf = theano.function([s, a, theta], q)
         self.bopf = theano.function([rho, theta], bop)
 
-        self.berr = self.bellman_error(s, a, snext, r, rho, theta, 0.9, all_actions)
+        self.berr = self.bellman_error(s, a, snext, r, rho, theta, self.gamma, all_actions)
         self.grad_berr = T.grad(T.sum(self.berr), rho)
         self.berrf = theano.function([s, a, snext, r, rho, theta, all_actions], self.berr, on_unused_input='ignore')
         self.grad_berrf = theano.function([s, a, snext, r, rho, theta, all_actions], self.grad_berr, on_unused_input='ignore')
