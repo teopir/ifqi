@@ -16,7 +16,7 @@ logger = Logger(debug=args.debug)
 output_csv = 'dataset.csv'
 logger.to_csv(output_csv, 'S0,S1,S2,S3,S4,S5,A0,A1,A2,A3,R,SS0,SS1,SS2,SS3,SS4,SS5')
 
-AE = Autoencoder((90, 160), load_path=args.path)
+AE = Autoencoder((1, 90, 160), load_path=args.path)
 
 def episode():
     env = gym.make('GridWorld-v0')
@@ -25,7 +25,7 @@ def episode():
     frame_counter = 0
 
     state = env.reset()
-    preprocessed_state = np.expand_dims(np.asarray(state), axis=0)
+    preprocessed_state = np.expand_dims(np.expand_dims(np.asarray(state), axis=0), axis=0)
     encoded_state = AE.encode(preprocessed_state)
 
     reward = 0
@@ -39,14 +39,14 @@ def episode():
         action = random.randrange(0, action_space)
         # Execute the action, get next state and reward
         next_state, reward, done, info = env.step(action)
-        preprocessed_next_state = np.expand_dims(np.asarray(next_state), axis=0)
+        preprocessed_next_state = np.expand_dims(np.expand_dims(np.asarray(next_state), axis=0), axis=0)
         encoded_next_state = AE.encode(preprocessed_next_state)
 
         if args.video:
             raw_input()
             env.render()
 
-        logger.to_csv(output_csv, flat2gen([encoded_state, action, reward, encoded_next_state]))
+        logger.to_csv(output_csv, [i for i in flat2gen([encoded_state, action, reward, encoded_next_state])])
 
         # Update state
         state = next_state
@@ -58,5 +58,5 @@ def episode():
     # End episode
 
 # Run episodes in parallel
-n_jobs = 1 if args.debug else -1
+n_jobs = 1
 Parallel(n_jobs=n_jobs)(delayed(episode)() for eid in xrange(args.episodes))
