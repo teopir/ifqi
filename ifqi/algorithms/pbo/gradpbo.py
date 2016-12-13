@@ -29,16 +29,16 @@ class GradPBO(object):
         v = qbpo - r - gamma * qmat
         # compute error
         err = 0.5 * T.sum(v ** 2)
-        return err
+        return v
 
     def __init__(self, bellman_model, q_model, gamma):
         self.gamma = gamma
         self.actions = np.array([1, 2, 3])
-        s = T.matrix()
-        a = T.matrix()
-        snext = T.matrix()
+        s = T.dmatrix()
+        a = T.dmatrix()
+        snext = T.dmatrix()
         r = T.dvector()
-        all_actions = T.matrix()
+        all_actions = T.dmatrix()
         self.bellman_model = bellman_model
         self.q_model = q_model
 
@@ -56,11 +56,11 @@ class GradPBO(object):
         self.qf = theano.function([s, a, theta], q)
 
 
-        params = self.bellman_model._collected_trainable_weights
+        params = self.bellman_model.trainable_weights
 
         self.berr = self.bellman_error(s, a, snext, r, theta, self.gamma, all_actions)
-        self.grad_berr = T.grad(T.sum(self.berr), params)
+        #self.grad_berr = T.grad(T.sum(self.berr), params)
         self.berrf = theano.function([s, a, snext, r, theta, all_actions], self.berr, on_unused_input='ignore')
-        self.grad_berrf = theano.function([s, a, snext, r, theta, all_actions], self.grad_berr, on_unused_input='ignore')
+        #self.grad_berrf = theano.function([s, a, snext, r, theta, all_actions], self.grad_berr, on_unused_input='ignore')
 
 
