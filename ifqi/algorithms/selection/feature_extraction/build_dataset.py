@@ -1,9 +1,9 @@
-import gym, random, argparse, numpy as np
+import random, argparse, numpy as np
 from Logger import Logger
 from joblib import Parallel, delayed
 from Autoencoder import Autoencoder
 from helpers import flat2gen
-from grid_world.grid_world.envs.gridworld_env import GridWorldEnv
+from ifqi.envs.gridworld import GridWorldEnv
 
 parser = argparse.ArgumentParser()
 parser.add_argument('path', type=str, default='model.h5', help='path to the autoencoder weights file')
@@ -19,7 +19,7 @@ logger.to_csv(output_csv, 'S0,S1,S2,S3,S4,S5,A0,A1,A2,A3,R,SS0,SS1,SS2,SS3,SS4,S
 AE = Autoencoder((1, 90, 160), load_path=args.path)
 
 def episode():
-    env = gym.make('GridWorld-v0')
+    env = GridWorldEnv()
     env.set_grid_size(16, 9) # Optional
     action_space = env.action_space.n
     frame_counter = 0
@@ -57,6 +57,6 @@ def episode():
     print 'Episode lasted', frame_counter, 'frames'
     # End episode
 
-# Run episodes in parallel
-n_jobs = 1
+# Run episodes
+n_jobs = 1 # Can be -1 if running autoencoder on CPU only
 Parallel(n_jobs=n_jobs)(delayed(episode)() for eid in xrange(args.episodes))
