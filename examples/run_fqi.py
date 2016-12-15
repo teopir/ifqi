@@ -102,9 +102,11 @@ print('Dataset has %d samples' % dataset.shape[0])
 # INITIAL STATE, USE AN ARRAY WITH THE SAME INITIAL STATE REPEATED FOR THE
 # DESIRED NUMBER OF EVALUATION RUNS.
 initial_states = np.zeros((289, 2))
+cont = 0
 for i in range(-8, 9):
     for j in range(-8, 9):
-        initial_states[i, j] = 0.125 * i + 0.375 * j
+        initial_states[cont, :] = 0.125 * i + 0.375 * j
+        cont += 1
 ######################################################################
 ######################################################################
 
