@@ -10,6 +10,7 @@ from ifqi import envs
 from ifqi.evaluation import evaluation
 from ifqi.algorithms.fqi.FQI import FQI
 from ifqi.models.regressor import Regressor
+from ifqi.models.ensemble import Ensemble
 from ifqi.models.actionregressor import ActionRegressor
 
 """
