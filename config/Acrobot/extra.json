@@ -4,7 +4,7 @@
         "date": "..."
     },
     "experiment_setting": {
-        "save_path": "acro/extra_tree",
+        "save_path": "acro_extra",
         "evaluation": {
             "metric": "n_episodes",
             "n_experiments": 10,

@@ -4,7 +4,7 @@
         "date": "..."
     },
     "experiment_setting": {
-        "save_path": "coh/extra_tree",
+        "save_path": "coh_extra",
         "evaluation": {
             "metric": "n_episodes",
             "n_experiments": 10,
