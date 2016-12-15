@@ -77,17 +77,6 @@ if not config['model']['fit_actions']:
     regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
                                 decimals=5, **regressor_params)
 
-# Load FQI
-fqi = FQI(estimator=regressor,
-          state_dim=state_dim,
-          action_dim=action_dim,
-          discrete_actions=discrete_actions,
-          gamma=config['fqi']['gamma'],
-          horizon=config['fqi']['horizon'],
-          features=config['fqi']['features'],
-          verbose=config['fqi']['verbose'])
-fit_params = config['fit_params']
-
 # Load dataset
 dataset = evaluation.collect_episodes(
     mdp, n_episodes=np.sort(config['experiment_setting']['evaluation']
@@ -103,7 +92,7 @@ initial_states = np.zeros((289, 2))
 cont = 0
 for i in range(-8, 9):
     for j in range(-8, 9):
-        initial_states[cont, :] = 0.125 * i + 0.375 * j
+        initial_states[cont, :] = [0.125 * i, 0.375 * j]
         cont += 1
 ######################################################################
 ######################################################################
@@ -115,6 +104,17 @@ if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
         experiment_results = list()
         for e in range(
                 config['experiment_setting']['evaluation']['n_experiments']):
+            # Load FQI
+            fqi = FQI(estimator=regressor,
+                      state_dim=state_dim,
+                      action_dim=action_dim,
+                      discrete_actions=discrete_actions,
+                      gamma=config['fqi']['gamma'],
+                      horizon=config['fqi']['horizon'],
+                      features=config['fqi']['features'],
+                      verbose=config['fqi']['verbose'])
+            fit_params = config['fit_params']
+
             episode_end_idxs = np.argwhere(dataset[:, -1] == 1).ravel()
             last_el = episode_end_idxs[i - 1]
             sast = np.append(dataset[:last_el + 1, :reward_idx],
@@ -129,25 +129,38 @@ if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
         print('J: %f' % mean_results[0])
         results.append(mean_results)
 elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
-    sast = np.append(dataset[:, :reward_idx],
-                     dataset[:, reward_idx + 1:-1],
-                     axis=1)
-    r = dataset[:, reward_idx]
+    for e in range(
+            config['experiment_setting']['evaluation']['n_experiments']):
+        print('Experiment: %d' % (e + 1))
 
-    fqi.partial_fit(sast, r, **fit_params)
+        # Load FQI
+        fqi = FQI(estimator=regressor,
+                  state_dim=state_dim,
+                  action_dim=action_dim,
+                  discrete_actions=discrete_actions,
+                  gamma=config['fqi']['gamma'],
+                  horizon=config['fqi']['horizon'],
+                  features=config['fqi']['features'],
+                  verbose=config['fqi']['verbose'])
+        fit_params = config['fit_params']
 
-    for i in range(2, fqi.horizon + 1):
-        fqi.partial_fit(None, None, **fit_params)
+        sast = np.append(dataset[:, :reward_idx],
+                         dataset[:, reward_idx + 1:-1],
+                         axis=1)
+        r = dataset[:, reward_idx]
 
-        if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
-            experiment_results = list()
-            for e in range(config['experiment_setting']['evaluation'][
-                               'n_experiments']):
-                experiment_results.append(
-                    evaluate(mdp, fqi, initial_states, args))
-            mean_results = np.mean(experiment_results, axis=0)
-            print('J: %f' % mean_results[0])
-            results.append(mean_results)
+        fqi.partial_fit(sast, r, **fit_params)
+
+        experiment_results = list()
+        for i in range(2, fqi.horizon + 1):
+            fqi.partial_fit(None, None, **fit_params)
+
+            if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
+                values = evaluate(mdp, fqi, initial_states, args)
+                experiment_results.append(values)
+                print('Steps: %d     J: %f' % (i, values[0]))
+        results.append(experiment_results)
+    results = np.mean(results, axis=0)
 else:
     raise ValueError('unknown metric requested.')
 
