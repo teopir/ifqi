@@ -1,0 +1,40 @@
+{
+    "experiment": {
+        "name": "exp1",
+        "date": "..."
+    },
+    "experiment_setting": {
+        "save_path": "coh/extra_tree",
+        "evaluation": {
+            "metric": "n_episodes",
+            "n_experiments": 10,
+            "n_episodes": [100, 200, 400, 600, 8000, 1000],
+            "seed": "None"
+        }
+    },
+    "model": {
+        "name": "ExtraTree",
+        "ensemble": 0,
+        "fit_actions": 0,
+        "params": {
+            "n_estimators": 50,
+            "criterion": "mse",
+            "min_samples_split": 5,
+            "min_samples_leaf": 2
+        }
+    },
+    "mdp": {
+        "name": "CarOnHill"
+    },
+    "fqi": {
+        "horizon": 20,
+        "gamma": 0.95,
+        "verbose": 1,
+        "features": {
+            "name": "None"
+        },
+        "scaled": 0
+    },
+    "fit_params": {
+    }
+}
