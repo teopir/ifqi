@@ -4,15 +4,13 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.ensemble import ExtraTreesRegressor
 
 from ifqi.loadexperiment import get_MDP, get_model
 from ifqi import envs
 from ifqi.evaluation import evaluation
 from ifqi.algorithms.fqi.FQI import FQI
+from ifqi.models.regressor import Regressor
 from ifqi.models.actionregressor import ActionRegressor
-from ifqi.models.mlp import MLP
-from ifqi.models.ensemble import ExtraTreesEnsemble
 
 """
 Script to run fqi. It reads a configuration .json file and perform evaluation
@@ -103,8 +101,10 @@ print('Dataset has %d samples' % dataset.shape[0])
 # IF MULTIPLE EXPERIMENTS ARE TO BE PERFORMED STARTING FROM THE SAME
 # INITIAL STATE, USE AN ARRAY WITH THE SAME INITIAL STATE REPEATED FOR THE
 # DESIRED NUMBER OF EVALUATION RUNS.
-initial_states = np.zeros((41, 4))
-initial_states[:, 0] = np.linspace(-2, 2, 41)
+initial_states = np.zeros((289, 2))
+for i in range(-8, 9):
+    for j in range(-8, 9):
+        initial_states[i, j] = 0.125 * i + 0.375 * j
 ######################################################################
 ######################################################################
 
