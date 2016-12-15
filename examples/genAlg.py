@@ -32,6 +32,7 @@ parser.add_argument("configFile", type=str, help="Provide the name of the config
 parser.add_argument("nPop", type=int, help="Provide the size of the population")
 parser.add_argument("nCore", type=int, help="Provides the number of core to use")
 parser.add_argument("outFile", type=str, help="Provides the number of core to use")
+parser.add_argument("nDataset", type=int, help="Provides the number dataset to use",nargs="?", default=1)
 
 args = parser.parse_args()
 
@@ -39,6 +40,7 @@ configFile = args.configFile
 nCore = args.nCore
 nPop = args.nPop
 outFile = args.outFile
+nDataset = args.nDataset
 #----------------------------------------------------------------------------------------------
 # Genetic core
 #----------------------------------------------------------------------------------------------
@@ -116,13 +118,16 @@ def evaluate():
     population_process = []
     # command should be a list
     try:
+
         for individual in population:
-            p = subprocess.Popen(["python", myPath, configFile] + [str(x) for x in individual], stdout=PIPE)
-            population_process.append(p)
-            processes.add(p)
-            while len(processes) >= nCore:
-                time.sleep(0.5)
-                processes.difference_update([p for p in processes if p.poll() is not None])
+            population_process.append([])
+            for ds in range(nDataset):
+                p = subprocess.Popen(["python", myPath, configFile] + [str(x) for x in individual] + [str(ds)], stdout=PIPE)
+                population_process[-1].append(p)
+                processes.add(p)
+                while len(processes) >= nCore:
+                    time.sleep(0.5)
+                    processes.difference_update([p for p in processes if p.poll() is not None])
 
         for p in processes:
             if p.poll() is None:
@@ -134,8 +139,8 @@ def evaluate():
             p.kill()
             exit()
 
-    evaluation = [p.communicate()[0] for p in population_process]
-    evaluation = map(lambda(x): float(str(x).split()[-1]) ,evaluation)
+    clean = lambda(x): float(str(x.communicate()[0]).split()[-1])
+    evaluation = [np.mean(map(clean,p)) for p in population_process]
 
 
 population = map(lambda(x): generates(), [None]*nPop)

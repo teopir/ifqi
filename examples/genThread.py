@@ -30,6 +30,7 @@ parser.add_argument("activation", type=int, help="Provides the number of core to
 parser.add_argument("batch_size", type=int, help="Provides the number of core to use")
 parser.add_argument("n_neurons", type=int, help="Provides the number of core to use")
 parser.add_argument("n_layers", type=int, help="Provides the number of core to use")
+parser.add_argument("seed", type=int, help="Provides the seed of randomness")
 #parser.add_argument("input_scaled", type=int, help="Provides the number of core to use")
 #parser.add_argument("output_scaled", type=int, help="Provides the number of core to use")
 
@@ -45,6 +46,7 @@ nNeurons = args.n_neurons
 nLayers = args.n_layers
 input_scaled = True #args.input_scaled
 output_scaled = True #args.output_scaled
+seed = args.seed
 
 act = "sigmoid"
 if activation==1:
@@ -56,9 +58,9 @@ elif activation==2:
 print -((-nEpochs + 520)**2 + 1) * ((- nNeurons + 21)**2 + 1)
 """
 
-prng.seed(0)
-np.random.seed(0)
-random.seed(0)
+prng.seed(seed)
+np.random.seed(seed)
+random.seed(seed)
 
 sizeDS = None
 if env_name=="SwingPendulum":
@@ -140,7 +142,7 @@ iterations = 3
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
 
-if env_name == "LQG1D" or env_name=="LQG1DD":
+if env_name == "LQG1D" or env_name == "LQG1DD":
     initial_states = np.zeros((5, 1))
     initial_states[:, 0] = np.linspace(-10,10,5)
     score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1,
