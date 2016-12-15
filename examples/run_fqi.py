@@ -23,10 +23,7 @@ def evaluate(mdp, fqi, initial_states, args):
     values = evaluation.evaluate_policy(mdp, fqi,
                                         initial_states=initial_states)
     iteration_values = list()
-    results = list()
-    print('J: %f' % values[0])
     iteration_values.append(values[0])
-    results.append(values)
 
     if args.plot:
         if i == 1:
@@ -44,7 +41,7 @@ def evaluate(mdp, fqi, initial_states, args):
             plt.xlim(0, i + 1)
             plt.show()
 
-    return results
+    return values
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--config', type=str, default=None,
@@ -93,8 +90,8 @@ fit_params = config['fit_params']
 
 # Load dataset
 dataset = evaluation.collect_episodes(
-    mdp, n_episodes=config['experiment_setting']['evaluation']
-                          ['n_episodes'][-1])
+    mdp, n_episodes=np.sort(config['experiment_setting']['evaluation']
+                                  ['n_episodes'])[-1])
 print('Dataset has %d samples' % dataset.shape[0])
 
 # Load initial state to start evaluation episodes. This is the only setting
@@ -111,12 +108,13 @@ for i in range(-8, 9):
 ######################################################################
 ######################################################################
 
-experiment_results = list()
 results = list()
 # Run
 if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
-    for e in range(config['experiment_setting']['evaluation']['n_experiments']):
-        for i in config['experiment_setting']['evaluation']['n_episodes']:
+    for i in config['experiment_setting']['evaluation']['n_episodes']:
+        experiment_results = list()
+        for e in range(
+                config['experiment_setting']['evaluation']['n_experiments']):
             episode_end_idxs = np.argwhere(dataset[:, -1] == 1).ravel()
             last_el = episode_end_idxs[i - 1]
             sast = np.append(dataset[:last_el + 1, :reward_idx],
@@ -127,23 +125,29 @@ if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
             fqi.fit(sast, r, **fit_params)
 
             experiment_results.append(evaluate(mdp, fqi, initial_states, args))
-        results.append(experiment_results)
+        mean_results = np.mean(experiment_results, axis=0)
+        print('J: %f' % mean_results[0])
+        results.append(mean_results)
 elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
     sast = np.append(dataset[:, :reward_idx],
                      dataset[:, reward_idx + 1:-1],
                      axis=1)
     r = dataset[:, reward_idx]
 
-    for e in range(config['experiment_setting']['evaluation']['n_experiments']):
-        fqi.partial_fit(sast, r, **fit_params)
+    fqi.partial_fit(sast, r, **fit_params)
 
-        for i in range(2, fqi.horizon + 1):
-            fqi.partial_fit(None, None, **fit_params)
+    for i in range(2, fqi.horizon + 1):
+        fqi.partial_fit(None, None, **fit_params)
 
-            if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
+        if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
+            experiment_results = list()
+            for e in range(config['experiment_setting']['evaluation'][
+                               'n_experiments']):
                 experiment_results.append(
                     evaluate(mdp, fqi, initial_states, args))
-        results.append(experiment_results)
+            mean_results = np.mean(experiment_results, axis=0)
+            print('J: %f' % mean_results[0])
+            results.append(mean_results)
 else:
     raise ValueError('unknown metric requested.')
 
