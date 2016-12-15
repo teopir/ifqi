@@ -6,7 +6,7 @@ from helpers import flat2gen, onehot_encode
 from ifqi.envs.gridworld import GridWorldEnv
 
 parser = argparse.ArgumentParser()
-parser.add_argument('path', type=str, default='model.h5', help='path to the autoencoder weights file')
+parser.add_argument('--path', type=str, default='data/model.h5', help='path to the autoencoder weights file')
 parser.add_argument('-v', '--video', action='store_true', help='display video output')
 parser.add_argument('-e', '--encode', action='store_true', help='save a SARS dataset with the encoded state features')
 parser.add_argument('-i', '--images', action='store_true', help='save images of states with a SARS csv')
