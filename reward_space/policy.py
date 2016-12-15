@@ -55,7 +55,7 @@ class GaussianPolicy1D(SimplePolicy):
         self.np_random, seed = seeding.np_random(seed)
         
     def gradient_log_pdf(self, state, action):
-        return np.array(np.array(state/self.sigma*(action - np.dot(self.K,state))).ravel(), ndmin=1)
+        return np.array(np.array(state/np.power(self.sigma,2)*(action - np.dot(self.K,state))).ravel(), ndmin=1)
         
         
 class GaussianPolicy(SimplePolicy):
@@ -150,4 +150,37 @@ class AdvertisingSigmoidPolicy(SimplePolicy):
     
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
+
+def bounded_gaussian(eps, theta):
+    return eps + (1-2*eps) * np.exp(-np.power(theta,2)) 
+
+def gradient_log_bounded_gaussian(eps, theta):
+    return -2 * theta * (1-2*eps) * np.exp(-np.power(theta,2)) / bounded_gaussian(eps, theta)
         
+class AdvertisingGaussianPolicy(SimplePolicy):
+    
+    def __init__(self, eps, theta1, theta2):
+        self.seed()
+        self.theta1 = theta1
+        self.theta2 = theta2
+        self.eps = eps
+        self._build_policy()
+    
+    def _build_policy(self):
+        self.policy = np.array([[bounded_gaussian(self.eps, self.theta1), 1-bounded_gaussian(self.eps, self.theta1), 0, 0, 0],
+                                [0, 0, bounded_gaussian(self.eps, self.theta2), 1-bounded_gaussian(self.eps, self.theta2), 0],
+                                [0, 0, 0, 0, 1]])
+        
+    def draw_action(self, state, done):
+        action = self.np_random.choice(5, p=self.policy[np.asscalar(state)])
+        return action
+        
+    def get_distribution(self):
+        return self.policy
+        
+    def gradient_log_pdf(self):
+        return np.array([[gradient_log_bounded_gaussian(self.eps, self.theta1), -gradient_log_bounded_gaussian(self.eps, self.theta1), 0, 0, 0],
+                         [0, 0, gradient_log_bounded_gaussian(self.eps, self.theta2), -gradient_log_bounded_gaussian(self.eps, self.theta2), 0]])
+    
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)

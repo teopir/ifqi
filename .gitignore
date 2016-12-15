@@ -4,3 +4,4 @@
 ifqi.egg-info/*
 build/
 dist/
+.idea/

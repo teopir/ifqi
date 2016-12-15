@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.polynomial.chebyshev import chebvander, chebval
+from numpy.polynomial.legendre import legval
 
 def chebvanderNd(samples,n_dim,deg):
     '''
@@ -33,6 +34,20 @@ def chebvanderNd(samples,n_dim,deg):
 def chebvalNd(x,deg):
     '''
     Computes the n dimentional chebichev polynomial where each factor i
+    has degree deg[i]
+    '''
+    max_deg = np.array(deg).max() + 1
+    c = np.zeros(max_deg)
+    prod = 1
+    for i,d in enumerate(deg):
+        c[d] = 1
+        prod *= legval(x[i],c)
+        c[d] = 0
+    return prod
+
+def legvalNd(x,deg):
+    '''
+    Computes the n dimentional legendre polynomial where each factor i
     has degree deg[i]
     '''
     max_deg = np.array(deg).max() + 1
