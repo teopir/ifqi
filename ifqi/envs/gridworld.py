@@ -5,6 +5,7 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
+
 class GridWorldEnv(gym.Env):
     metadata = {
         'render.modes': ['human']
@@ -56,14 +57,14 @@ class GridWorldEnv(gym.Env):
 
 
 class Viewer:
-
-    def __init__(self, width=16, height=9, cell_size=10, wall=True):
+    def __init__(self, width=16, height=9, cell_size=10, wall=True, wall_random=True):
         pg.init()
         # Game parameters
         self.width = width
         self.height = height
         self.cell_size = cell_size
         self.wall = wall
+        self.wall_random = wall_random
         self.screen_size = (self.width * self.cell_size, self.height * self.cell_size)
 
         # Position data
@@ -108,8 +109,11 @@ class Viewer:
 
         # Init wall
         if self.wall:
-            x = self.width/2 * self.cell_size # Wall is in the middle
-            for y in range(self.height/2): # Wall must be at least 2 cells long
+            if self.wall_random:
+                x = random.randrange(0, self.width - 1) * self.cell_size # Wall is randomly placed
+            else:
+                x = self.width / 2 * self.cell_size  # Wall is in the middle
+            for y in range(self.height/2):
                 self.wall_pos.add((x, y * self.cell_size))
 
     def reset_agent(self):

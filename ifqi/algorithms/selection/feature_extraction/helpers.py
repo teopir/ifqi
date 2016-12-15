@@ -39,3 +39,8 @@ def flat2gen(alist):
 			for subitem in item: yield subitem
 		else:
 			yield item
+
+def onehot_encode(value, nb_categories):
+    out = [0] * nb_categories
+    out[value] = 1
+    return out
