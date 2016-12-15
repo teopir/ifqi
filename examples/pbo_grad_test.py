@@ -5,12 +5,12 @@ from scipy import optimize
 import theano
 import theano.tensor as T
 
-np.random.seed(14151)
+# np.random.seed(14151)
 
 
 def lqr_reg(s, a, theta):
-    w1 = theta[0,0]
-    w2 = theta[0,1]
+    w1 = theta[0, 0]
+    w2 = theta[0, 1]
     v = - w1 ** 2 * s * a - 0.5 * w2 * (a ** 2) - 0.4 * w2 * (s ** 2)
     return v.ravel()
 
@@ -24,8 +24,8 @@ def grad_lqr_reg(s, a, theta):
 
 
 def bellmanop(rho, theta):
-    rho_s = np.reshape(rho, (-1, theta.shape[0]))
-    return np.dot(rho_s, theta)
+    rho_s = np.reshape(rho, (theta.shape[1], -1))
+    return np.dot(theta, rho_s)
 
 
 def bellmanop_grad(rho, theta):
@@ -59,10 +59,10 @@ class LBPO(object):
             self.eval_f = theano.function(self.inputs, self.outputs[0])
         return self.eval_f(theta)
 
-class LQRRegressor(object):
 
+class LQRRegressor(object):
     def model(self, s, a, omega):
-        q = - omega[:,0] ** 2 * s * a - 0.5 * omega[:,1] * a * a - 0.4 * omega[:,1] * s * s
+        q = - omega[:, 0] ** 2 * s * a - 0.5 * omega[:, 1] * a * a - 0.4 * omega[:, 1] * s * s
         return q.ravel()
 
 
@@ -70,17 +70,17 @@ gamma = 0.99
 rho = np.array([1., 2., 0., 3.]).reshape(2, 2)
 theta = np.array([2., 0.2], dtype='float32').reshape(1, -1)
 
-lbpo = LBPO(rho)
-print(lbpo.evaluate(theta))
-print(lbpo.evaluate(theta).shape)
-
-lqr_model = LQRRegressor()
+lbpo = LBPO(rho)  # bellman operator (apx)
+q_model = LQRRegressor()  # q-function
 
 s = np.array([1., 2., 3.]).reshape(-1, 1)
 a = np.array([0., 3., 4.]).reshape(-1, 1)
 nexts = s + 1
 r = np.array([-1., -5., 0.])
+actions = np.array([1, 2, 3]).reshape(-1, 1)  # discretization of the actions
+# to be used for maximum estimate
 
+# it is also possible to use keras model
 from keras.models import Sequential
 from keras.layers import Dense
 
@@ -89,24 +89,19 @@ model.add(Dense(4, input_dim=2, init='uniform', activation='relu'))
 model.add(Dense(2, init='uniform', activation='linear'))
 model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 
-gpbo = GradPBO(bellman_model=lbpo, q_model=lqr_model, gamma=gamma)
-# assert np.allclose(bellmanop(rho, theta), gpbo.bopf(theta)), \
-#     '{}, {}'.format(bellmanop(rho, theta), gpbo.bopf(theta))
-# assert np.allclose(lqr_reg(s, a, theta), gpbo.qf(s, a, theta))
-
-
-actions = np.array([1, 2, 3]).reshape(-1, 1)
+# =================================================================
+gpbo = GradPBO(bellman_model=lbpo, q_model=q_model, gamma=gamma)
+assert np.allclose(bellmanop(rho, theta), gpbo.bopf(theta)), \
+    '{}, {}'.format(bellmanop(rho, theta), gpbo.bopf(theta))
+assert np.allclose(lqr_reg(s, a, theta), gpbo.qf(s, a, theta))
 
 berr = gpbo.berrf(s, a, nexts, r, theta, actions)
 tv = empirical_bop(s, a, r, nexts, actions, gamma, rho, theta)
-#assert np.allclose(berr, tv), '{}, {}'.format(berr, tv)
+assert np.allclose(berr, tv), '{}, {}'.format(berr, tv)
 
-print(berr)
 
-exit(8)
 berr_grad = gpbo.grad_berrf(s, a, nexts, r, theta, actions)
 eps = np.sqrt(np.finfo(float).eps)
 f = lambda x: empirical_bop(s, a, r, nexts, actions, gamma, x, theta)
 approx_grad = optimize.approx_fprime(rho.ravel(), f, eps).reshape(berr_grad[0].shape)
-#assert np.allclose(berr_grad, approx_grad), '{}, {}'.format(berr_grad, approx_grad)
-
+assert np.allclose(berr_grad, approx_grad), '{}, {}'.format(berr_grad, approx_grad)
