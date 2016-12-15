@@ -1,7 +1,6 @@
 import random, argparse, numpy as np, progressbar
 from Logger import Logger
 from joblib import Parallel, delayed
-from Autoencoder import Autoencoder
 from helpers import flat2gen, onehot_encode
 from ifqi.envs.gridworld import GridWorldEnv
 
@@ -21,6 +20,7 @@ logger = Logger(debug=args.debug)
 output_csv = 'dataset.csv'
 
 if args.encode:
+    from Autoencoder import Autoencoder
     logger.to_csv(output_csv, 'S0,S1,S2,S3,S4,S5,A0,A1,A2,A3,R,SS0,SS1,SS2,SS3,SS4,SS5')
     AE = Autoencoder((1, 90, 160), load_path=args.path)
 else:
@@ -85,6 +85,7 @@ def episode(episode_id):
     # End episode
 
 # Run episodes
+print '\nRunning episodes...'
 n_jobs = args.njobs
-pb = progressbar.ProgressBar()
+pb = progressbar.ProgressBar(term_width=50)
 Parallel(n_jobs=n_jobs)(delayed(episode)(eid) for eid in pb(xrange(args.episodes)))
