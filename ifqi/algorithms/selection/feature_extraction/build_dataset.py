@@ -102,6 +102,6 @@ Parallel(n_jobs=n_jobs)(delayed(episode)(eid) for eid in pb(xrange(args.episodes
 
 # Save heatmap
 if args.heatmap:
-    sns_plot = sns.heatmap(pd.read_csv(heatmap_csv))
+    sns_plot = sns.heatmap(pd.read_csv(logger.path + heatmap_csv))
     sns_plot.get_figure().savefig(logger.path + 'heatmap.png')
 
