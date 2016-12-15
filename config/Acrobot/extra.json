@@ -20,7 +20,9 @@
             "n_estimators": 50,
             "criterion": "mse",
             "min_samples_split": 5,
-            "min_samples_leaf": 2
+            "min_samples_leaf": 2,
+            "input_scaled": 0,
+            "output_scaled": 0
         }
     },
     "mdp": {
