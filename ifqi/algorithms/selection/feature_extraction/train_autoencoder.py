@@ -1,4 +1,4 @@
-import argparse
+import argparse, progressbar
 from Autoencoder import Autoencoder
 from helpers import *
 from Logger import Logger
