@@ -1,10 +1,6 @@
 from __future__ import print_function
 import numpy as np
-import sklearn.preprocessing as preprocessing
 from numpy.matlib import repmat
-
-from ifqi.preprocessors.features import select_features
-from ifqi.models.actionregressor import ActionRegressor
 
 """
 Interface for algorithm.
@@ -13,8 +9,7 @@ Interface for algorithm.
 
 class Algorithm(object):
     def __init__(self, estimator, state_dim, action_dim,
-                 discrete_actions, gamma, horizon,
-                 features, verbose=False):
+                 discrete_actions, gamma, horizon, verbose=False):
         """
         Constructor.
         Args:
@@ -24,7 +19,6 @@ class Algorithm(object):
             discrete_actions (list, array): list of discrete actions
             gamma (float): discount factor
             horizon (int): horizon
-            features (object, None): kind of features to use
             verbose (int, False): verbosity level
 
         """
@@ -117,6 +111,8 @@ class Algorithm(object):
                                   Dimensions: (nsamples x state_dim)
             absorbing (bool): true if the current state is absorbing.
                               Dimensions: (nsamples x 1)
+            evaluation (bool): true if this function is called during
+                               policy evaluation
         Returns:
             the argmax and the max Q value
         """
