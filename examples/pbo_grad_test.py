@@ -4,8 +4,10 @@ import numpy as np
 from scipy import optimize
 import theano
 import theano.tensor as T
+from itertools import chain, combinations
 
 # np.random.seed(14151)
+from sklearn.preprocessing import PolynomialFeatures
 
 
 def lqr_reg(s, a, theta):
@@ -48,7 +50,7 @@ def empirical_bop(s, a, r, snext, all_a, gamma, rho, theta):
 class LBPO(object):
     def __init__(self, init_rho):
         self.rho = theano.shared(value=np.array(init_rho, dtype=theano.config.floatX),
-                                 borrow=True, name='by')
+                                 borrow=True, name='rho')
         self.theta = T.matrix()
         self.outputs = [T.dot(self.theta, self.rho)]
         self.inputs = [self.theta]
@@ -65,6 +67,52 @@ class LQRRegressor(object):
         q = - omega[:, 0] ** 2 * s * a - 0.5 * omega[:, 1] * a * a - 0.4 * omega[:, 1] * s * s
         return q.ravel()
 
+
+class LQG_PBO(object):
+    def __init__(self):
+        self.theta = T.matrix()
+        # define output for b
+        combinations = PolynomialFeatures._combinations(2, 3, False, False)
+        n_output_features_ = sum(1 for _ in combinations) + 1
+        self.A_b = theano.shared(value=np.ones((n_output_features_,), dtype=theano.config.floatX),
+                                 borrow=True, name='A_b')
+        self.b_b = theano.shared(value=1.,
+                                 borrow=True, name='b_b')
+
+        combinations = PolynomialFeatures._combinations(2, 3, False, False)
+        L = [(self.theta[:, 0] ** 0).reshape([-1, 1])]
+        for i, c in enumerate(combinations):
+            L.append(self.theta[:, c].prod(1).reshape([-1, 1]))
+        self.XF3 = T.concatenate(L, axis=1)
+        b = (T.dot(self.XF3, self.A_b) + self.b_b).reshape([-1, 1])
+
+        # define output for k
+        combinations = PolynomialFeatures._combinations(2, 2, False, False)
+        n_output_features_ = sum(1 for _ in combinations) + 1
+        self.rho_k = theano.shared(value=np.ones((n_output_features_,), dtype=theano.config.floatX),
+                                   borrow=True, name='rho_k')
+
+        combinations = PolynomialFeatures._combinations(2, 2, False, False)
+        L = [(self.theta[:, 0] ** 0).reshape([-1, 1])]
+        for i, c in enumerate(combinations):
+            L.append(self.theta[:, c].prod(1).reshape([-1, 1]))
+        self.XF2 = T.concatenate(L, axis=1)
+        k = T.dot(self.XF2, self.rho_k).reshape([-1, 1])
+
+        self.outputs = [T.concatenate([b, k], axis=1)]
+        self.inputs = [self.theta]
+        self.trainable_weights = [self.A_b, self.b_b, self.rho_k]
+
+    def evaluate(self, theta):
+        if not hasattr(self, "eval_f"):
+            self.eval_f = theano.function(self.inputs, self.outputs[0])
+        return self.eval_f(theta)
+
+
+F = np.array([[1, 2], [3, 4]])
+print(PolynomialFeatures(3).fit_transform(F))
+lqgpbo = LQG_PBO()
+print(lqgpbo.evaluate(F))
 
 gamma = 0.99
 rho = np.array([1., 2., 0., 3.]).reshape(2, 2)
@@ -98,7 +146,6 @@ assert np.allclose(lqr_reg(s, a, theta), gpbo.qf(s, a, theta))
 berr = gpbo.berrf(s, a, nexts, r, theta, actions)
 tv = empirical_bop(s, a, r, nexts, actions, gamma, rho, theta)
 assert np.allclose(berr, tv), '{}, {}'.format(berr, tv)
-
 
 berr_grad = gpbo.grad_berrf(s, a, nexts, r, theta, actions)
 eps = np.sqrt(np.finfo(float).eps)
