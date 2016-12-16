@@ -1,7 +1,7 @@
 import sklearn.preprocessing as preprocessing
 
 
-class Regressor:
+class Regressor(object):
     def __init__(self, regressor_class=None, **kwargs):
         self._input_scaled = kwargs.pop('input_scaled', None)
         self._output_scaled = kwargs.pop('output_scaled', None)
@@ -27,3 +27,16 @@ class Regressor:
             y = self._pre_y.inverse_transform(y).ravel()
 
         return y
+
+    def get_weights(self):
+        return self._regressor.get_weights()
+
+    def set_weights(self, w):
+        return self._regressor.set_weights(w)
+
+    @property
+    def layers(self):
+        if hasattr(self._regressor, 'layers'):
+            return self._regressor.layers
+        else:
+            None

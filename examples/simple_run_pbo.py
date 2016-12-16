@@ -1,11 +1,10 @@
 import numpy as np
-from keras.models import Sequential
-from keras.layers import Dense
 
 from ifqi import envs
 from ifqi.evaluation import evaluation
 from ifqi.evaluation.utils import check_dataset
 from ifqi.models.regressor import Regressor
+from ifqi.models.mlp import MLP
 from ifqi.algorithms.pbo.PBO import PBO
 
 """
@@ -24,16 +23,13 @@ sast = np.append(dataset[:, :reward_idx],
                  axis=1)
 r = dataset[:, reward_idx]
 
-
+# Q regressor
 class LQG_Q():
-    def __init__(self, w):
-        self.w = w
+    def __init__(self):
+        self.w = np.array([1., 0.])
 
-    def predict(self, sa, **opt_pars):
-        if 'f_rho' in opt_pars:
-            k, b = opt_pars['f_rho']
-        else:
-            k, b = self.w
+    def predict(self, sa):
+        k, b = self.w
         return - b * b * sa[:, 0] * sa[:, 1] - 0.5 * k * sa[:, 1] ** 2 - 0.4 * k * sa[:, 0] ** 2
 
     def get_weights(self):
@@ -42,17 +38,24 @@ class LQG_Q():
     def set_weights(self, w):
         self.w = np.array(w)
 
-initial_weights = np.array([1., 0.])
-regressor_params = {'w': initial_weights}
-regressor = Regressor(LQG_Q, **regressor_params)
+    def count_params(self):
+        return self.w.size
 
-regressor_rho = Sequential()
-regressor_rho.add(Dense(5, input_shape=(2,), activation='sigmoid'))
-regressor_rho.add(Dense(2, activation='linear'))
-regressor_rho.compile(optimizer='rmsprop', loss='mse')
+q_regressor_params = dict()
+q_regressor = Regressor(LQG_Q, **q_regressor_params)
 
-pbo = PBO(estimator=regressor,
-          estimator_rho=regressor_rho,
+# f_rho regressor
+n_q_regressors_weights = q_regressor._regressor.count_params()
+rho_regressor_params = {'n_input': n_q_regressors_weights,
+                        'n_output': n_q_regressors_weights,
+                        'hidden_neurons': [15],
+                        'activation': 'sigmoid',
+                        'optimizer': 'rmsprop'}
+rho_regressor = Regressor(MLP, **rho_regressor_params)
+
+# PBO
+pbo = PBO(estimator=q_regressor,
+          estimator_rho=rho_regressor,
           state_dim=state_dim,
           action_dim=action_dim,
           discrete_actions=discrete_actions,

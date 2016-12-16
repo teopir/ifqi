@@ -100,7 +100,11 @@ class PBO(Algorithm):
             the Q function computed using the provided individual and the best
             one found at the previous step
         """
-        q = self._estimator.predict(self._sa, f_rho=self._f(rho))
+        old_q_weights = self._get_q_weights()
+        self._set_q_weights(self._f(rho))
+        q = self._estimator.predict(self._sa)
+        self._set_q_weights(old_q_weights)
+
         max_q, _ = self.maxQA(self._snext, self._absorbing)
 
         return np.mean((q - self._r - self.gamma * max_q) ** 2)
@@ -119,8 +123,7 @@ class PBO(Algorithm):
         """
         self._set_rho(rho)
         output = self._regressor_rho.predict(
-            self._get_q_weights(),
-            batch_size=1).ravel()
+            self._get_q_weights().reshape(1, -1), batch_size=1).ravel()
 
         return output
 
@@ -139,7 +142,7 @@ class PBO(Algorithm):
         for i in w:
             r += i.ravel().tolist()
 
-        return np.array(r).reshape(1, -1)
+        return np.array(r)
 
     def _list_weights(self, w, layers):
         """
@@ -148,15 +151,15 @@ class PBO(Algorithm):
 
         Args:
             w (np.array): the array of weights to put in a list
-            layers (int): the number of layers of the MLP. If the regressor is
+            layers (list): the number of layers of the MLP. If the regressor is
                           not a MLP, the function does not use this value
                           and returns a one-dimensional list of weights
 
         Returns:
             the list of weights
         """
-        w = w.tolist()
         if layers is not None:
+            w = w.tolist()
             weights = list()
             for l in layers:
                 W = l.get_weights()[0]
@@ -167,8 +170,7 @@ class PBO(Algorithm):
                 del w[:b.size]
 
             return weights
-        else:
-            return w
+        return w
 
     def _get_rho(self):
         """
@@ -182,10 +184,7 @@ class PBO(Algorithm):
         Args:
              rho (np.array): the array of parameters to be set in regressor_rho
         """
-        if hasattr(self._regressor_rho, 'layers'):
-            layers = self._regressor_rho.layers
-        else:
-            layers = None
+        layers = self._regressor_rho.layers
         self._regressor_rho.set_weights(self._list_weights(rho, layers))
 
     def _get_q_weights(self):
@@ -200,8 +199,5 @@ class PBO(Algorithm):
         Args:
              w (np.array): the array of weights to be set in q regressor
         """
-        if hasattr(self._estimator._regressor, 'layers'):
-            layers = self._estimator._regressor.layers
-        else:
-            layers = None
+        layers = self._estimator.layers
         self._estimator._regressor.set_weights(self._list_weights(w, layers))
