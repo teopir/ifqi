@@ -1,10 +1,17 @@
 import numpy as np
+from keras.models import Sequential
+from keras.layers import Dense
 
 from ifqi import envs
 from ifqi.evaluation import evaluation
 from ifqi.evaluation.utils import check_dataset
 from ifqi.models.regressor import Regressor
 from ifqi.algorithms.pbo.PBO import PBO
+
+"""
+Simple script to quickly run pbo. It solves the LQG environment.
+
+"""
 
 mdp = envs.LQG1D()
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
@@ -19,21 +26,33 @@ r = dataset[:, reward_idx]
 
 
 class LQG_Q():
-    def __init__(self, theta):
-        self.theta = theta
+    def __init__(self, w):
+        self.w = w
 
     def predict(self, sa, **opt_pars):
         if 'f_rho' in opt_pars:
             k, b = opt_pars['f_rho']
         else:
-            k, b = self.theta
+            k, b = self.w
         return - b * b * sa[:, 0] * sa[:, 1] - 0.5 * k * sa[:, 1] ** 2 - 0.4 * k * sa[:, 0] ** 2
 
-theta = np.array([1., 0.])
-regressor_params = {'theta': theta}
+    def get_weights(self):
+        return self.w
+
+    def set_weights(self, w):
+        self.w = np.array(w)
+
+initial_weights = np.array([1., 0.])
+regressor_params = {'w': initial_weights}
 regressor = Regressor(LQG_Q, **regressor_params)
 
+regressor_rho = Sequential()
+regressor_rho.add(Dense(5, input_shape=(2,), activation='sigmoid'))
+regressor_rho.add(Dense(2, activation='linear'))
+regressor_rho.compile(optimizer='rmsprop', loss='mse')
+
 pbo = PBO(estimator=regressor,
+          estimator_rho=regressor_rho,
           state_dim=state_dim,
           action_dim=action_dim,
           discrete_actions=discrete_actions,
@@ -44,8 +63,8 @@ pbo = PBO(estimator=regressor,
           features={'name': 'None'},
           verbose=True)
 
-thetas = pbo.fit(sast, r)
-print('Best theta: ', thetas[-1])
+weights = pbo.fit(sast, r)
+print('Best weights: ', weights[-1])
 
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
