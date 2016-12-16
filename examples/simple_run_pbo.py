@@ -9,10 +9,8 @@ from ifqi.algorithms.pbo.PBO import PBO
 mdp = envs.LQG1D()
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 reward_idx = state_dim + action_dim
-discrete_actions = np.array([-8, -7, -6, -5, -4, -3, -2.5, -2, -1.5, -1, -.75,
-                             -.5, -.25, 0, .25, .5, .75, 1, 1.5, 2, 2.5, 3, 4,
-                             5, 6, 7, 8])
-dataset = evaluation.collect_episodes(mdp, n_episodes=1000)
+discrete_actions = np.linspace(-8, 8, 20)
+dataset = evaluation.collect_episodes(mdp, n_episodes=100)
 check_dataset(dataset, state_dim, action_dim, reward_dim)
 sast = np.append(dataset[:, :reward_idx],
                  dataset[:, reward_idx + reward_dim:-1],
@@ -40,13 +38,15 @@ pbo = PBO(estimator=regressor,
           action_dim=action_dim,
           discrete_actions=discrete_actions,
           gamma=mdp.gamma,
-          learning_steps=200,
-          features=None,
+          learning_steps=50,
+          batch_size=10,
+          learning_rate=1e-1,
+          features={'name': 'None'},
           verbose=True)
 
 thetas = pbo.fit(sast, r)
 print('Best theta: ', thetas[-1])
 
-initial_states = np.ones((10., 1)) * 10
+initial_states = np.array([[1, 2, 5, 7, 10]]).T
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
 print(values)

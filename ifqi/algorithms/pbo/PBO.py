@@ -12,13 +12,16 @@ from keras.layers import Dense
 class PBO(Algorithm):
     def __init__(self, estimator, state_dim, action_dim,
                  discrete_actions, gamma, learning_steps,
+                 batch_size, learning_rate,
                  features=None, verbose=False):
         self._regressor_rho = Sequential()
-        self._regressor_rho.add(Dense(5, input_shape=(2,), activation='relu'))
+        self._regressor_rho.add(Dense(5, input_shape=(2,), activation='sigmoid'))
         self._regressor_rho.add(Dense(2, activation='linear'))
         self._regressor_rho.compile(optimizer='rmsprop', loss='mse')
 
         self._learning_steps = learning_steps
+        self._batch_size = batch_size
+        self._learning_rate = learning_rate
         self._thetas = list()
         super(PBO, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, None,
@@ -36,19 +39,20 @@ class PBO(Algorithm):
         self._thetas = list()
 
         optimizer = ExactNES(self._fitness, self._get_rho(),
-                             minimize=True, batchSize=100, learningRate=1e-3,
-                             maxLearningSteps=self._learning_steps,
+                             minimize=True, batchSize=self._batch_size,
+                             learningRate=self._learning_rate,
+                             maxLearningSteps=self._learning_steps - 1,
                              importanceMixing=False,
                              maxEvaluations=None)
         optimizer.listener = self.my_listener
         optimizer.learn()
-        self._thetas.append(self._estimator.regressor.theta)
-
-        self._iteration = 1
+        self._thetas.append(self._estimator._regressor.theta)
 
         return self._thetas
 
     def my_listener(self, bestEvaluable, bestEvaluation):
+        self._iteration += 1
+        print('Iteration: %d' % self._iteration)
         self._thetas.append(self._estimator._regressor.theta)
         new_theta = self._f(bestEvaluable)
         self._estimator._regressor.theta = new_theta
