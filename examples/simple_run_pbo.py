@@ -5,6 +5,7 @@ from ifqi.evaluation import evaluation
 from ifqi.evaluation.utils import check_dataset
 from ifqi.models.regressor import Regressor
 from ifqi.models.mlp import MLP
+from ifqi.models.linear import Ridge
 from ifqi.algorithms.pbo.PBO import PBO
 
 """
@@ -23,7 +24,7 @@ sast = np.append(dataset[:, :reward_idx],
                  axis=1)
 r = dataset[:, reward_idx]
 
-# Q regressor
+### Q REGRESSOR ##########################
 class LQG_Q():
     def __init__(self):
         self.w = np.array([1., 0.])
@@ -41,10 +42,15 @@ class LQG_Q():
     def count_params(self):
         return self.w.size
 
-q_regressor_params = dict()
-q_regressor = Regressor(LQG_Q, **q_regressor_params)
+#q_regressor_params = dict()
+#q_regressor = Regressor(LQG_Q, **q_regressor_params)
+phi = dict(name='poly', degree=3)
+q_regressor_params = dict(features=phi)
+q_regressor = Regressor(Ridge, **q_regressor_params)
+q_regressor.fit(sast[:, :state_dim + action_dim], r)  # necessary to init Ridge
+##########################################
 
-# f_rho regressor
+### F_RHO REGRESSOR ######################
 n_q_regressors_weights = q_regressor._regressor.count_params()
 rho_regressor_params = {'n_input': n_q_regressors_weights,
                         'n_output': n_q_regressors_weights,
@@ -52,8 +58,9 @@ rho_regressor_params = {'n_input': n_q_regressors_weights,
                         'activation': 'sigmoid',
                         'optimizer': 'rmsprop'}
 rho_regressor = Regressor(MLP, **rho_regressor_params)
+##########################################
 
-# PBO
+### PBO ##################################
 pbo = PBO(estimator=q_regressor,
           estimator_rho=rho_regressor,
           state_dim=state_dim,
@@ -66,11 +73,11 @@ pbo = PBO(estimator=q_regressor,
           verbose=True)
 
 weights = pbo.fit(sast, r)
-print('Best weights: ', weights[-1])
+##########################################
 
-from matplotlib import pyplot as plt
-plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
-plt.show()
+#from matplotlib import pyplot as plt
+#plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
+#plt.show()
 
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)

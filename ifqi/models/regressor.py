@@ -43,6 +43,9 @@ class Regressor(object):
     def set_weights(self, w):
         return self._regressor.set_weights(w)
 
+    def count_params(self):
+        return self._regressor.count_params()
+
     @property
     def layers(self):
         if hasattr(self._regressor, 'layers'):
