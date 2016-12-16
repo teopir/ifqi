@@ -3,9 +3,7 @@ from sklearn.preprocessing import PolynomialFeatures
 
 
 def select_features(f):
-    if f['name'] == 'None':
-        return None
-    elif f['name'] == 'poly':
+    if f['name'] == 'poly':
         return PolyFeatures(f['degree'])
     else:
         raise ValueError('unknown feature type.')

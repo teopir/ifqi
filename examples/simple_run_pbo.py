@@ -63,11 +63,14 @@ pbo = PBO(estimator=q_regressor,
           learning_steps=50,
           batch_size=10,
           learning_rate=1e-1,
-          features={'name': 'None'},
           verbose=True)
 
 weights = pbo.fit(sast, r)
 print('Best weights: ', weights[-1])
+
+from matplotlib import pyplot as plt
+plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
+plt.show()
 
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)

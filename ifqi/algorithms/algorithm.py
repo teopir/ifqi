@@ -52,7 +52,6 @@ class Algorithm(object):
 
         self.__name__ = None
         self._iteration = 0
-        self._features = select_features(features)
         self._verbose = verbose
 
     def _check_states(self, X):
@@ -88,9 +87,6 @@ class Algorithm(object):
 
             # concatenate [new_state, action] and scalarize them
             samples = np.concatenate((new_state, actions), axis=1)
-
-            if self._features is not None:
-                samples = self._features.test_features(samples)
 
             # predict Q-function
             if not evaluation and hasattr(self._estimator, 'has_ensembles') \
@@ -141,5 +137,4 @@ class Algorithm(object):
         self._r = None
         self._snext = None
         self._absorbing = None
-        self._features = None
         self._verbose = False

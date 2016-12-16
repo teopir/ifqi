@@ -14,8 +14,7 @@ class PBO(Algorithm):
     """
     def __init__(self, estimator, estimator_rho, state_dim, action_dim,
                  discrete_actions, gamma, learning_steps,
-                 batch_size, learning_rate,
-                 features=None, verbose=False):
+                 batch_size, learning_rate, verbose=False):
         """
         Constructor.
         Args:
@@ -35,7 +34,7 @@ class PBO(Algorithm):
         self._q_weights_list = list()
         super(PBO, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, None,
-                                  features, verbose)
+                                  verbose)
 
     def fit(self, sast=None, r=None):
         """

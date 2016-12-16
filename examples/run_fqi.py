@@ -111,7 +111,6 @@ if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
                       discrete_actions=discrete_actions,
                       gamma=config['fqi']['gamma'],
                       horizon=config['fqi']['horizon'],
-                      features=config['fqi']['features'],
                       verbose=config['fqi']['verbose'])
             fit_params = config['fit_params']
 
@@ -140,7 +139,6 @@ elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
                   discrete_actions=discrete_actions,
                   gamma=config['fqi']['gamma'],
                   horizon=config['fqi']['horizon'],
-                  features=config['fqi']['features'],
                   verbose=config['fqi']['verbose'])
         fit_params = config['fit_params']
 
