@@ -54,7 +54,7 @@ q_regressor.fit(sast[:, :state_dim + action_dim], r)  # necessary to init Ridge
 n_q_regressors_weights = q_regressor._regressor.count_params()
 rho_regressor_params = {'n_input': n_q_regressors_weights,
                         'n_output': n_q_regressors_weights,
-                        'hidden_neurons': [15],
+                        'hidden_neurons': [20],
                         'activation': 'sigmoid',
                         'optimizer': 'rmsprop'}
 rho_regressor = Regressor(MLP, **rho_regressor_params)
@@ -75,9 +75,10 @@ pbo = PBO(estimator=q_regressor,
 weights = pbo.fit(sast, r)
 ##########################################
 
-#from matplotlib import pyplot as plt
-#plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
-#plt.show()
+from matplotlib import pyplot as plt
+weights = np.array(weights)
+plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
+plt.show()
 
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
