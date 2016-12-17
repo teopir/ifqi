@@ -8,13 +8,10 @@ class Regressor(object):
         self._features = select_features(kwargs.pop('features', None))
         self._input_scaled = kwargs.pop('input_scaled', None)
         self._output_scaled = kwargs.pop('output_scaled', None)
-        self._fit_actions = kwargs.pop('fit_actions', True)
 
         self._regressor = regressor_class(**kwargs)
 
     def fit(self, X, y, **kwargs):
-        X = X[:, :-1] if not self._fit_actions else X
-
         if self._features:
             X = self._features(X)
 
@@ -29,8 +26,6 @@ class Regressor(object):
         return self._regressor.fit(X, y, **kwargs)
 
     def predict(self, X, **kwargs):
-        X = X[:, :-1] if not self._fit_actions else X
-
         if self._features:
             X = self._features.test_features(X)
 

@@ -6,17 +6,18 @@
     "experiment_setting": {
         "save_path": "coh_extra",
         "evaluation": {
-            "metric": "n_episodes",
-            "n_experiments": 10,
-            "n_episodes": [100, 200, 400, 600, 800, 1000],
+            "metric": "fqi_iteration",
+            "n_experiments": 1,
+            "n_episodes": [1000],
+            "n_steps_to_evaluate": 3,
             "seed": "None"
         }
     },
     "model": {
         "name": "ExtraTree",
         "ensemble": 0,
+        "fit_actions": 0,
         "params": {
-            "fit_actions": 0,
             "n_estimators": 50,
             "criterion": "mse",
             "min_samples_split": 5,

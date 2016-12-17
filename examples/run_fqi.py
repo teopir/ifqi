@@ -73,7 +73,7 @@ if config['model']['ensemble']:
     regressor = Ensemble(regressor_class, **regressor_params)
 else:
     regressor = Regressor(regressor_class, **regressor_params)
-if not regressor_params['fit_actions']:
+if not config['model']['fit_actions']:
     regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
                                 decimals=5, **regressor_params)
 

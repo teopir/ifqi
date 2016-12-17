@@ -15,8 +15,8 @@
     "model": {
         "name": "ExtraTree",
         "ensemble": 0,
+        "fit_actions": 1,
         "params": {
-            "fit_actions": 1,
             "n_estimators": 50,
             "criterion": "mse",
             "min_samples_split": 5,
