@@ -15,8 +15,8 @@
     "model": {
         "name": "ExtraTree",
         "ensemble": 0,
-        "fit_actions": 0,
         "params": {
+            "fit_actions": 1,
             "n_estimators": 50,
             "criterion": "mse",
             "min_samples_split": 5,
@@ -31,11 +31,7 @@
     "fqi": {
         "horizon": 100,
         "gamma": 0.95,
-        "verbose": 1,
-        "features": {
-            "name": ""
-        },
-        "scaled": 0
+        "verbose": 1
     },
     "fit_params": {
     }
