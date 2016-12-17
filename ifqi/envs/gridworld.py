@@ -11,7 +11,7 @@ class GridWorldEnv(gym.Env):
         'render.modes': ['human']
     }
 
-    def __init__(self):
+    def __init__(self, wall_random=True):
         self.width = 16
         self.height = 9
         self._cell_size = 10
@@ -19,7 +19,8 @@ class GridWorldEnv(gym.Env):
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Box(self.height * self._cell_size, self.width * self._cell_size, 1)
 
-        self.viewer = Viewer(width=self.width, height=self.height, cell_size=self._cell_size)
+        self.wall_random = wall_random
+        self.viewer = Viewer(width=self.width, height=self.height, cell_size=self._cell_size, wall_random=self.wall_random)
 
         self._seed()
         self.reset()
@@ -52,7 +53,7 @@ class GridWorldEnv(gym.Env):
     def set_grid_size(self, width, height):
         self.width = width
         self.height = height
-        self.viewer = Viewer(height=self.height, width=self.width, cell_size=self._cell_size)
+        self.viewer = Viewer(height=self.height, width=self.width, cell_size=self._cell_size, wall_random=self.wall_random)
         self.reset()
 
 
@@ -86,9 +87,9 @@ class Viewer:
         self.character = pg.Surface((self.cell_size, self.cell_size))  # Agent surface
         self.character.fill((255, 255, 255))
         self.goal = pg.Surface((self.cell_size, self.cell_size)) # Goal surface
-        self.goal.fill((0, 255, 255))
+        self.goal.fill((255, 255, 255))
         self.wall = pg.Surface((self.cell_size, self.cell_size)) # Wall surface
-        self.wall.fill((0, 0, 255))
+        self.wall.fill((255, 255, 255))
 
         # Screen
         self.screen = None
