@@ -156,7 +156,7 @@ elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
             if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
                 values = evaluate(mdp, fqi, initial_states, args)
                 experiment_results.append(values)
-                print('J: %f' % (i, values[0]))
+                print('J: %f' % values[0])
         results.append(experiment_results)
     results = np.mean(results, axis=0)
 else:
