@@ -2,6 +2,9 @@ from __future__ import print_function
 import numpy as np
 from numpy.matlib import repmat
 
+from ifqi.models.actionregressor import ActionRegressor
+from ifqi.models.ensemble import Ensemble
+
 """
 Interface for algorithm.
 """
@@ -76,21 +79,22 @@ class Algorithm(object):
         n_actions = self._actions.shape[0]
 
         Q = np.zeros((n_states, n_actions))
-        for idx in range(n_actions):
-            actions = np.matlib.repmat(self._actions[idx], n_states, 1)
+        for action_idx in range(n_actions):
+            actions = np.matlib.repmat(self._actions[action_idx], n_states, 1)
 
             # concatenate [new_state, action] and scalarize them
             samples = np.concatenate((new_state, actions), axis=1)
 
             # predict Q-function
-            if not evaluation and hasattr(self._estimator, 'has_ensembles') \
+            if not evaluation \
+               and isinstance(self._estimator, ActionRegressor) \
                and self._estimator.has_ensembles():
-                opt_pars = {'n_actions': n_actions, 'idx': idx}
+                opt_pars = {'n_actions': n_actions, 'action_idx': action_idx}
             else:
                 opt_pars = dict()
             predictions = self._estimator.predict(samples, **opt_pars)
 
-            Q[:, idx] = predictions * (1 - absorbing)
+            Q[:, action_idx] = predictions * (1 - absorbing)
 
         # compute the maximal action
         amax = np.argmax(Q, axis=1)
