@@ -5,7 +5,7 @@ def select_features(f):
     if f is None:
         return None
     elif f['name'] == 'poly':
-        return PolyFeatures(f['degree'])
+        return PolyFeatures(f['params']['degree'])
     else:
         raise ValueError('unknown feature type.')
 
