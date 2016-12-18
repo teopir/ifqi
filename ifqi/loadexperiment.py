@@ -1,5 +1,5 @@
 from sklearn.ensemble import ExtraTreesRegressor
-from sklearn.linear_model import LinearRegression
+from ifqi.models.linear import Ridge
 
 import envs
 from models.mlp import MLP
@@ -44,8 +44,8 @@ def get_model(name):
         model = ExtraTreesRegressor
     elif name == 'MLP':
         model = MLP
-    elif name == 'Linear':
-        model = LinearRegression
+    elif name == 'Ridge':
+        model = Ridge
     else:
         raise ValueError('unknown estimator requested.')
 
