@@ -30,7 +30,10 @@ class Regressor(object):
             X = self._features.test_features(X)
 
         if self._input_scaled:
-            X = self._pre_X.transform(X)
+            if hasattr(self, '_pre_X'):
+                X = self._pre_X.transform(X)
+            else:
+                X = preprocessing.StandardScaler().fit_transform(X)
 
         y = self._regressor.predict(X, **kwargs)
         if self._output_scaled:

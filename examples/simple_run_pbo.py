@@ -44,11 +44,19 @@ class LQG_Q():
 
 #q_regressor_params = dict()
 #q_regressor = Regressor(LQG_Q, **q_regressor_params)
-phi = dict(name='poly', degree=3)
-q_regressor_params = dict(features=phi)
-q_regressor = Regressor(Ridge, **q_regressor_params)
-q_regressor.fit(sast[:, :state_dim + action_dim], r)  # necessary to init Ridge
+#phi = dict(name='poly', params=dict(degree=3))
+#q_regressor_params = dict(features=phi)
+#q_regressor = Regressor(Ridge, **q_regressor_params)
+#q_regressor.fit(sast[:, :state_dim + action_dim], r)  # necessary to init Ridge
 ##########################################
+
+q_regressor_params = {'n_input': 2,
+                      'n_output': 1,
+                      'hidden_neurons': [20, 20],
+                      'activation': 'sigmoid',
+                      'optimizer': 'rmsprop',
+                      'input_scaled': 1}
+q_regressor = Regressor(MLP, **q_regressor_params)
 
 ### F_RHO REGRESSOR ######################
 n_q_regressors_weights = q_regressor._regressor.count_params()
@@ -56,7 +64,8 @@ rho_regressor_params = {'n_input': n_q_regressors_weights,
                         'n_output': n_q_regressors_weights,
                         'hidden_neurons': [20],
                         'activation': 'sigmoid',
-                        'optimizer': 'rmsprop'}
+                        'optimizer': 'rmsprop',
+                        'input_scaled': 1}
 rho_regressor = Regressor(MLP, **rho_regressor_params)
 ##########################################
 
@@ -75,10 +84,12 @@ pbo = PBO(estimator=q_regressor,
 weights = pbo.fit(sast, r)
 ##########################################
 
+'''
 from matplotlib import pyplot as plt
 weights = np.array(weights)
 plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
 plt.show()
+'''
 
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
