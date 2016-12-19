@@ -27,8 +27,8 @@ class Autoencoder:
         self.encoded = AveragePooling2D(pool_size=(3, 2), dim_ordering=self.dim_ordering)(self.encoded)
 
         self.encoded = Flatten()(self.encoded)
-        self.encoded = Dense(6, activation='sigmoid')(self.encoded)
-	self.encoded = LeakyReLU(alpha=0.001)(self.encoded)
+        self.encoded = Dense(6)(self.encoded)
+        self.encoded = LeakyReLU(alpha=0.001)(self.encoded)
 
         # Decoding layers
         self.decoded = Dense(100, activation='relu')(self.encoded)
