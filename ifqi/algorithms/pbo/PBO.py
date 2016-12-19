@@ -122,7 +122,7 @@ class PBO(Algorithm):
         """
         self._set_rho(rho)
         output = self._regressor_rho.predict(
-            self._get_q_weights().reshape(1, -1), batch_size=1).ravel()
+            self._get_q_weights().reshape(1, -1)).ravel()
 
         return output
 
