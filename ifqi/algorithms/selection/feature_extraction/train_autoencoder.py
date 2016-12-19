@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_path', type=str, default='data/', help='')
 parser.add_argument('-d', '--debug', action='store_true', help='run in debug mode (no output files)')
 parser.add_argument('--batch-size', type=int, default=64, help='')
-parser.add_argument('--nb-epochs', type=int, default=5, help='')
+parser.add_argument('--nb-epochs', type=int, default=3, help='')
 args = parser.parse_args()
 logger = Logger(args.debug)
 
