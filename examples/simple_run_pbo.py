@@ -31,6 +31,7 @@ class LQG_Q():
 
     def predict(self, sa):
         k, b = self.w
+        #print(k,b)
         return - b * b * sa[:, 0] * sa[:, 1] - 0.5 * k * sa[:, 1] ** 2 - 0.4 * k * sa[:, 0] ** 2
 
     def get_weights(self):
@@ -42,21 +43,21 @@ class LQG_Q():
     def count_params(self):
         return self.w.size
 
-#q_regressor_params = dict()
-#q_regressor = Regressor(LQG_Q, **q_regressor_params)
+q_regressor_params = dict()
+q_regressor = Regressor(LQG_Q, **q_regressor_params)
 #phi = dict(name='poly', params=dict(degree=3))
 #q_regressor_params = dict(features=phi)
 #q_regressor = Regressor(Ridge, **q_regressor_params)
 #q_regressor.fit(sast[:, :state_dim + action_dim], r)  # necessary to init Ridge
 ##########################################
 
-q_regressor_params = {'n_input': 2,
-                      'n_output': 1,
-                      'hidden_neurons': [20, 20],
-                      'activation': 'sigmoid',
-                      'optimizer': 'rmsprop',
-                      'input_scaled': 1}
-q_regressor = Regressor(MLP, **q_regressor_params)
+# q_regressor_params = {'n_input': 2,
+#                       'n_output': 1,
+#                       'hidden_neurons': [20, 20],
+#                       'activation': 'sigmoid',
+#                       'optimizer': 'rmsprop',
+#                       'input_scaled': 1}
+# q_regressor = Regressor(MLP, **q_regressor_params)
 
 ### F_RHO REGRESSOR ######################
 n_q_regressors_weights = q_regressor._regressor.count_params()
@@ -84,13 +85,29 @@ pbo = PBO(estimator=q_regressor,
 weights = pbo.fit(sast, r)
 ##########################################
 
-'''
-from matplotlib import pyplot as plt
-weights = np.array(weights)
-plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
-plt.show()
-'''
+print(weights)
 
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
 print(values)
+
+from matplotlib import pyplot as plt
+weights = np.array(weights)
+plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
+
+
+
+best_rhos = pbo._rho_values[-1]
+q_w = np.array([4,0])
+L = [q_w]
+for _ in range(10):
+    q_w = pbo._f2(best_rhos, q_w)
+    print(-q_w[1]**2/q_w[0])
+    L.append(q_w)
+L = np.array(L)
+plt.figure()
+plt.scatter(L[:, 0], L[:, 1], s=50, c=np.arange(L.shape[0]), cmap='inferno')
+plt.show()
+
+
+

@@ -35,6 +35,7 @@ class PBO(Algorithm):
         super(PBO, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, None,
                                   verbose)
+        self._rho_values = []
 
     def fit(self, sast=None, r=None):
         """
@@ -51,6 +52,7 @@ class PBO(Algorithm):
         Returns:
             the history of the parameters used to update the q regressor
         """
+        self.iteration_best_rho_value = np.inf
         if sast is not None:
             next_states_idx = self.state_dim + self.action_dim
             self._sa = sast[:, :next_states_idx]
@@ -71,7 +73,7 @@ class PBO(Algorithm):
 
         return self._q_weights_list
 
-    def my_listener(self, bestEvaluable, _):
+    def my_listener(self, bestEvaluable, qq):
         """
         Customized NES listener. It is used to update the parameters of the
         q regressor with the last best one found.
@@ -83,8 +85,14 @@ class PBO(Algorithm):
         self._iteration += 1
         print('Iteration: %d' % self._iteration)
         self._q_weights_list.append(self._get_q_weights())
+        #print(bestEvaluable)
+        # new_q_weights = self._f(self.iteration_best_rho)
         new_q_weights = self._f(bestEvaluable)
+        #print(self._get_q_weights(), new_q_weights, -new_q_weights[1]**2 / new_q_weights[0])
         self._set_q_weights(new_q_weights)
+        self.iteration_best_rho_value = np.inf
+        self._rho_values.append(bestEvaluable)
+
 
     def _fitness(self, rho):
         """
@@ -106,7 +114,13 @@ class PBO(Algorithm):
 
         max_q, _ = self.maxQA(self._snext, self._absorbing)
 
-        return np.mean((q - self._r - self.gamma * max_q) ** 2)
+        value = np.mean((q - self._r - self.gamma * max_q) ** 2)
+
+        if value < self.iteration_best_rho_value:
+            self.iteration_best_rho_value = value
+            self.iteration_best_rho = rho
+
+        return value
 
     def _f(self, rho):
         """
@@ -123,6 +137,23 @@ class PBO(Algorithm):
         self._set_rho(rho)
         output = self._regressor_rho.predict(
             self._get_q_weights().reshape(1, -1)).ravel()
+
+        return output
+
+    def _f2(self, rho, theta):
+        """
+        The function computing new q regressor parameters using provided
+        individual.
+
+        Args:
+            rho (np.array): the individual to consider to computer the new
+                            q regressor parameters
+
+        Returns:
+            the new q regressor parameters
+        """
+        self._set_rho(rho)
+        output = self._regressor_rho.predict(theta.reshape(1, -1)).ravel()
 
         return output
 
