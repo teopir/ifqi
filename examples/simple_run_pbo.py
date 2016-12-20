@@ -95,19 +95,29 @@ from matplotlib import pyplot as plt
 weights = np.array(weights)
 plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
 
-
-
 best_rhos = pbo._rho_values[-1]
-q_w = np.array([4,0])
+q_w = np.array([4, 8])
 L = [q_w]
 for _ in range(10):
     q_w = pbo._f2(best_rhos, q_w)
-    print(-q_w[1]**2/q_w[0])
+    print(-q_w[1] ** 2 / q_w[0])
     L.append(q_w)
 L = np.array(L)
 plt.figure()
 plt.scatter(L[:, 0], L[:, 1], s=50, c=np.arange(L.shape[0]), cmap='inferno')
+
+B_i, K_i = np.meshgrid(np.linspace(-10, 11, 20), np.linspace(-10, 11, 20))
+B_f = np.zeros(B_i.shape)
+K_f = np.zeros(K_i.shape)
+for i in range(B_i.shape[0]):
+    for j in range(K_i.shape[0]):
+        B_f[i, j], K_f[i, j] = pbo._f2(best_rhos, np.array([B_i[i, j], K_i[i, j]]))
+
+fig = plt.figure(figsize=(15, 10))
+Q = plt.quiver(B_i, K_i, B_f - B_i, K_f - K_i, angles='xy')
+plt.axis([-10, 10, -10, 10])
+plt.xlabel('b')
+plt.ylabel('k')
+plt.title('Theta vector field')
+
 plt.show()
-
-
-
