@@ -1,12 +1,11 @@
-import numpy as np
 from sklearn.preprocessing import PolynomialFeatures
 
 
 def select_features(f):
-    if f['name'] == 'None':
+    if f is None:
         return None
     elif f['name'] == 'poly':
-        return PolyFeatures(f['degree'])
+        return PolyFeatures(f['params']['degree'])
     else:
         raise ValueError('unknown feature type.')
 
@@ -17,11 +16,7 @@ class PolyFeatures(object):
         self.poly = PolynomialFeatures(self.degree)
 
     def __call__(self, X):
-        return np.concatenate((self.poly.fit_transform(X[:, :-1]),
-                               X[:, -1].reshape(-1, 1)),
-                              axis=1)
+        return self.poly.fit_transform(X)
 
     def test_features(self, x):
-        return np.concatenate((self.poly.transform(x[:, :-1]),
-                               x[:, -1].reshape(-1, 1)),
-                              axis=1)
+        return self.poly.transform(x)

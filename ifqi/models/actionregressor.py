@@ -103,7 +103,7 @@ class ActionRegressor(object):
         return predictions
 
     def adapt(self, iteration):
-        if self.has_ensembles:
+        if hasattr(self._models[0], 'adapt'):
             for model in self._models:
                 model.adapt(iteration)
 

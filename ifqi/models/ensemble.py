@@ -23,16 +23,16 @@ class Ensemble(object):
         self._target_sum += self._models[-1].predict(X).ravel()
 
     def predict(self, x, **kwargs):
-        if 'idx' in kwargs:
-            idx = kwargs['idx']
+        if 'action_idx' in kwargs:
+            action_idx = kwargs['action_idx']
             n_actions = kwargs['n_actions']
             if not hasattr(self, '_predict_sum'):
                 self._predict_sum = np.zeros((x.shape[0], n_actions))
 
             predictions = self._models[-1].predict(x).ravel()
-            self._predict_sum[:, idx] += predictions
+            self._predict_sum[:, action_idx] += predictions
 
-            return self._predict_sum[:, idx]
+            return self._predict_sum[:, action_idx]
 
         prediction = np.zeros(x.shape[0])
         for model in self._models:
@@ -42,9 +42,6 @@ class Ensemble(object):
 
     def adapt(self, iteration):
         self._models.append(self._generate_model(iteration))
-
-    def has_ensembles(self):
-        return True
 
     def _init_model(self):
         model = self._generate_model(0)

@@ -55,3 +55,16 @@ class MLP(object):
         model.compile(loss='mse', optimizer=self.optimizer)
 
         return model
+
+    def count_params(self):
+        return self.model.count_params()
+
+    def get_weights(self):
+        return self.model.get_weights()
+
+    def set_weights(self, w):
+        return self.model.set_weights(w)
+
+    @property
+    def layers(self):
+        return self.model.layers

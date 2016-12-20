@@ -1,12 +1,6 @@
 from __future__ import print_function
-import numpy as np
-from sklearn import preprocessing
-from numpy.matlib import repmat
 
 from ifqi.algorithms.algorithm import Algorithm
-from ifqi.preprocessors.features import select_features
-from ifqi.models.actionregressor import ActionRegressor
-
 
 
 class FQI(Algorithm):
@@ -15,12 +9,11 @@ class FQI(Algorithm):
     """
 
     def __init__(self, estimator, state_dim, action_dim,
-                 discrete_actions, gamma, horizon,
-                 features, verbose=False):
+                 discrete_actions, gamma, horizon, verbose=False):
         self.__name__ = 'FQI'
         super(FQI, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, horizon,
-                                  features, verbose)
+                                  verbose)
 
     def partial_fit(self, sast=None, r=None, **kwargs):
         """
@@ -56,10 +49,9 @@ class FQI(Algorithm):
             if self._verbose > 0:
                 print('Iteration {}'.format(self._iteration + 1))
 
-            if hasattr(self._estimator, 'has_ensembles') \
-               and self._estimator.has_ensembles():
-                    # update estimator structure
-                    self._estimator.adapt(iteration=self._iteration)
+            if hasattr(self._estimator, 'adapt'):
+                # update estimator structure
+                self._estimator.adapt(iteration=self._iteration)
 
             y = self._r + self.gamma * maxq
 

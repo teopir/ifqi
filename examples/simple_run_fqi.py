@@ -58,7 +58,6 @@ fqi = FQI(estimator=regressor,
           discrete_actions=discrete_actions,
           gamma=mdp.gamma,
           horizon=fqi_iterations,
-          features=None,
           verbose=True)
 
 fit_params = {}

@@ -111,7 +111,6 @@ if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
                       discrete_actions=discrete_actions,
                       gamma=config['fqi']['gamma'],
                       horizon=config['fqi']['horizon'],
-                      features=config['fqi']['features'],
                       verbose=config['fqi']['verbose'])
             fit_params = config['fit_params']
 
@@ -140,7 +139,6 @@ elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
                   discrete_actions=discrete_actions,
                   gamma=config['fqi']['gamma'],
                   horizon=config['fqi']['horizon'],
-                  features=config['fqi']['features'],
                   verbose=config['fqi']['verbose'])
         fit_params = config['fit_params']
 
@@ -158,7 +156,7 @@ elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
             if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
                 values = evaluate(mdp, fqi, initial_states, args)
                 experiment_results.append(values)
-                print('Steps: %d     J: %f' % (i, values[0]))
+                print('J: %f' % values[0])
         results.append(experiment_results)
     results = np.mean(results, axis=0)
 else:
