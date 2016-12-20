@@ -33,6 +33,12 @@ parser.add_argument("nPop", type=int, help="Provide the size of the population")
 parser.add_argument("nCore", type=int, help="Provides the number of core to use")
 parser.add_argument("outFile", type=str, help="Provides the number of core to use")
 parser.add_argument("nDataset", type=int, help="Provides the number dataset to use",nargs="?", default=1)
+parser.add_argument("-cont", action='store_const',
+                    const=True, default=False,
+                    help='Loads the epoch file if it exists')
+parser.add_argument("-extra", action='store_const',
+                    const=True, default=False,
+                    help='Loads the epoch file if it exists')
 
 args = parser.parse_args()
 
@@ -41,23 +47,40 @@ nCore = args.nCore
 nPop = args.nPop
 outFile = args.outFile
 nDataset = args.nDataset
+cont = args.cont
+extraTree = args.extra
+
 #----------------------------------------------------------------------------------------------
 # Genetic core
 #----------------------------------------------------------------------------------------------
 
-ranges = {
-    "n_epochs": (20,2000),
-    "activation": (0,3),
-    "batch_size": (100,1000),
-    "n_neurons": (5,100),
-    "n_layers": (1,3),
-    "input_scaled":(0,2),
-    "output_scaled":(0,2)
-}
+if not extraTree:
+    ranges = {
+        "n_epochs": (20,2000),
+        "activation": (0,3),
+        "batch_size": (100,1000),
+        "n_neurons": (5,100),
+        "n_layers": (1,3),
+        "input_scaled":(0,2),
+        "output_scaled":(0,2)
+    }
 
-ranges = [(20,300),(0,3),(100,1000),(5,100),(1,3)]#,(0,2), (0,2)]
+    ranges = [(20,300),(0,3),(100,1000),(5,100),(1,3)]#,(0,2), (0,2)]
 
-mutations = [0.1, 0.3, 0.1, 0.1, 0.3]#, 0.4, 0.4]
+    mutations = [0.1, 0.3, 0.1, 0.1, 0.3]#, 0.4, 0.4]
+else:
+    ranges = {
+        "n_estimators": (1,50),
+        "min_sample_split": (1,10),
+        "min_sample_leaf": (1,10),
+        "min_weight_fraction_leaf": (1,1000),
+        "bootstrap": (0, 2),
+        "max_depth": (-200, 1000),
+    }
+
+    ranges = [(1, 50), (1, 10), (1, 10), (0, 1000), (0, 2), (-200,1000)]
+
+    mutations = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
 
 p_mut = 0.8
 
@@ -94,7 +117,7 @@ def newPopulation():
     popeval = zip(population, evaluation)
     print("-"*20)
     print("BestOne:", popeval[0])
-    x = open(outFile,"a")
+    x = open(outFile+".txt","a")
     x.write(str(popeval[0]) +"\n")
     x.close()
     print("WorstOne:", popeval[-1])
@@ -112,7 +135,10 @@ def evaluate():
 
     myPath = os.path.realpath(__file__)
     myPath = os.path.dirname(myPath)
-    myPath += "/genThread.py"
+    if extraTree:
+        myPath += "/genExtraThread.py"
+    else:
+        myPath += "/genThread.py"
 
     processes = set()
     population_process = []
@@ -144,7 +170,22 @@ def evaluate():
 
 
 population = map(lambda(x): generates(), [None]*nPop)
+
+if os.path.isfile(outFile + ".epoch"):
+    if cont:
+        with open(outFile + ".epoch","r") as data_file:
+            data = json.load(data_file)
+        loadedPop = data["population"]
+        if len(population) < len(loadedPop):
+            loadedPop = loadedPop[:len(population)]
+        for (individual,i) in zip(loadedPop, range(len(loadedPop))):
+            population[i] = individual
+
+
 print(population)
 while True:
     evaluate()
     newPopulation()
+    with open(outFile + ".epoch","w") as data_file:
+        print (population)
+        json.dump( {"population":population},data_file)
