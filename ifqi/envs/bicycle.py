@@ -135,13 +135,13 @@ class Bicycle(Environment):
 
         # initialize state
         self._seed()
-        self._reset()
+        self.reset()
 
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def _reset(self, state=None):
+    def reset(self, state=None):
         self._absorbing = False
 
         psi = 0.
