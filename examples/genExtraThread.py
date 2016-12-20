@@ -75,7 +75,7 @@ elif env_name=="LQG1DD":
     sizeDS = 5
     mdp = envs.LQG1D(discrete_reward=True)
     discrete_actions = [-5.,-2.5,-1.,-0.5, 0., 0.5, 1., 2.5, 5]
-elif env_name=="Bycicle":
+elif env_name=="Bicycle":
     sizeDS = 5
     mdp = envs.Bicycle()
     discrete_actions = [-5.,-2.5,-1.,-0.5, 0., 0.5, 1., 2.5, 5]
@@ -135,7 +135,7 @@ elif env_name == "SwingPendulum":
     initial_states[:, 0] = np.linspace(-np.pi, np.pi, 5)
     score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5,
                                                               initial_states=initial_states)
-elif env_name == "Bycicle":
+elif env_name == "Bicycle":
     initial_states = np.zeros((1, 5))
     score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1,
                                                               initial_states=initial_states)
