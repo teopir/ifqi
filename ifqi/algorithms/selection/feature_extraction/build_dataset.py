@@ -33,7 +33,7 @@ if args.encode:
     from Autoencoder import Autoencoder
     logger.to_csv(output_csv, 'S0,S1,S2,S3,S4,S5,A0,A1,A2,A3,R,SS0,SS1,SS2,SS3,SS4,SS5')
     logger.to_csv(heatmap_csv, 'S0,S1,S2,S3,S4,S5,X,Y')
-    AE = Autoencoder((1, 90, 160), load_path=args.path)
+    AE = Autoencoder((1, 64, 96), load_path=args.path)
 else:
     logger.to_csv(output_csv, 'S,A,R,S1')
 
@@ -49,7 +49,7 @@ def episode(episode_id):
     # Get encoded features
     if args.encode:
         preprocessed_state = np.expand_dims(np.expand_dims(np.asarray(state), axis=0), axis=0)
-        encoded_state = AE.encode(preprocessed_state)
+        encoded_state = AE.flat_encode(preprocessed_state)
 
     # Save image of state
     if args.images:
@@ -71,7 +71,7 @@ def episode(episode_id):
         # Get encoded features
         if args.encode:
             preprocessed_next_state = np.expand_dims(np.expand_dims(np.asarray(next_state), axis=0), axis=0)
-            encoded_next_state = AE.encode(preprocessed_next_state)
+            encoded_next_state = AE.flat_encode(preprocessed_next_state)
             logger.to_csv(output_csv, [i for i in flat2gen([encoded_state[0], onehot_encode(action, action_space), reward, encoded_next_state[0]])])
             logger.to_csv(heatmap_csv, [i for i in flat2gen([encoded_state[0], env.viewer.char_pos[0], env.viewer.char_pos[1]])])
         # Save image of state

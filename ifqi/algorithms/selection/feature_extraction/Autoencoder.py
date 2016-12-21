@@ -1,8 +1,6 @@
 from keras.models import Model
 from keras.layers import *
-from keras.layers.advanced_activations import LeakyReLU
 from keras.optimizers import *
-from keras.regularizers import l2
 import numpy as np
 import keras.backend.tensorflow_backend as b
 
@@ -16,30 +14,32 @@ class Autoencoder:
         self.logger = logger
 
         # Input layer
-        self.inputs = Input(shape=input_shape)
+        self.inputs = Input(shape=input_shape)  # 64x96
 
         # Encoding layers
-        self.encoded = Convolution2D(32, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
-        self.encoded = AveragePooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)
-        self.encoded = Convolution2D(64, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
-        self.encoded = AveragePooling2D(pool_size=(3, 2), dim_ordering=self.dim_ordering)(self.encoded)
-        self.encoded = Convolution2D(128, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
-        self.encoded = AveragePooling2D(pool_size=(3, 2), dim_ordering=self.dim_ordering)(self.encoded)
-
-        self.encoded = Flatten()(self.encoded)
-        self.encoded = Dense(6)(self.encoded)
-        self.encoded = LeakyReLU(alpha=0.001)(self.encoded)
+        self.encoded = Convolution2D(128, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
+        self.encoded = MaxPooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)  # 32x48
+        self.encoded = Convolution2D(64, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = MaxPooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)  # 16x24
+        self.encoded = Convolution2D(32, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = MaxPooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)  # 8x12
+        self.encoded = Convolution2D(16, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = MaxPooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)  # 4x6
+        self.encoded = Convolution2D(1, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = MaxPooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)  # 2x3
 
         # Decoding layers
-        self.decoded = Dense(100, activation='relu')(self.encoded)
-        self.decoded = Reshape((1, 5, 20))(self.decoded)
-        self.decoded = Convolution2D(128, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = UpSampling2D(size=(3, 2), dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = Convolution2D(64, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = UpSampling2D(size=(3, 2), dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = Convolution2D(32, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = Convolution2D(1, 1, 1, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = Convolution2D(1, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)  # 4x6
+        self.decoded = Convolution2D(16, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)  # 8x12
+        self.decoded = Convolution2D(32, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)  # 16x24
+        self.decoded = Convolution2D(64, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)  # 32x48
+        self.decoded = Convolution2D(128, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)  # 64x96
+        self.decoded = Convolution2D(1, 3, 3, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
 
         # Models
         self.autoencoder = Model(input=self.inputs, output=self.decoded)
@@ -77,6 +77,11 @@ class Autoencoder:
         # Feed input to the model, return encoded images
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         return self.encoder.predict_on_batch(x)
+
+    def flat_encode(self, x):
+        # Feed input to the model, return encoded images flattened
+        x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        return np.asarray(self.encoder.predict_on_batch(x)).flatten()
 
     def save(self, filename=None, append=''):
         # Save the DQN weights to disk

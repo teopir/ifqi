@@ -11,10 +11,10 @@ class GridWorldEnv(gym.Env):
         'render.modes': ['human']
     }
 
-    def __init__(self, wall_random=True):
-        self.width = 16
-        self.height = 9
-        self._cell_size = 10
+    def __init__(self, width=12, height=8, wall_random=True):
+        self.width = width
+        self.height = height
+        self._cell_size = 8
 
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Box(self.height * self._cell_size, self.width * self._cell_size, 1)
