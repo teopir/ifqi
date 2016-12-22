@@ -4,6 +4,7 @@ from helpers import *
 from Logger import Logger
 
 def atexit_handler():
+    global AE
     AE.save()
 atexit.register(atexit_handler)
 
