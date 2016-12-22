@@ -1,19 +1,12 @@
-import random, argparse, numpy as np, progressbar, pandas as pd
-#############################################################################
-# Keep this import sequence to correctly create heatmaps on a headless server
-#############################################################################
-import matplotlib as mpl
-mpl.use('Agg')
-import matplotlib.pyplot as plt
-import seaborn as sns
-#############################################################################
+import random, argparse, numpy as np, progressbar
 from Logger import Logger
 from joblib import Parallel, delayed
 from helpers import flat2gen, onehot_encode
 from ifqi.envs.gridworld import GridWorldEnv
 
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--path', type=str, default='data/model.h5', help='path to the autoencoder weights file')
+parser.add_argument('--path', type=str, default='data/model.h5', help='autoencoder h5 file')
 parser.add_argument('-v', '--video', action='store_true', help='display video output')
 parser.add_argument('-e', '--encode', action='store_true', help='save a SARS dataset with the encoded state features')
 parser.add_argument('-i', '--images', action='store_true', help='save images of states with a SARS csv')
@@ -24,6 +17,7 @@ parser.add_argument('--njobs', type=int, default=1, help='number of threads to u
 args = parser.parse_args()
 
 assert args.encode != args.images, 'Set exactly one flag between -i and -e'
+assert not args.heatmap or (args.heatmap and args.encode), 'Heatmaps can only be generated when the -e flag is set'
 
 logger = Logger(debug=args.debug)
 output_csv = 'dataset.csv'
@@ -102,6 +96,12 @@ Parallel(n_jobs=n_jobs)(delayed(episode)(eid) for eid in pb(xrange(args.episodes
 
 # Save heatmap
 if args.heatmap:
+    # Keep this import sequence as is to correctly create heatmaps on a headless server
+    import matplotlib as mpl
+    mpl.use('Agg')
+    import matplotlib.pyplot as plt
+    import seaborn as sns, pandas as pd
+
     sns_plot = sns.heatmap(pd.read_csv(logger.path + heatmap_csv).corr())
     sns_plot.get_figure().savefig(logger.path + 'heatmap.png')
 

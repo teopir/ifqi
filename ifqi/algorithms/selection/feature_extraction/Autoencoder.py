@@ -1,4 +1,4 @@
-from keras.models import Model
+from keras.models import Model, load_model
 from keras.layers import *
 from keras.optimizers import *
 import numpy as np
@@ -13,20 +13,16 @@ class Autoencoder:
 
         self.logger = logger
 
+        # Build network
         # Input layer
         self.inputs = Input(shape=input_shape)  # 64x96
 
         # Encoding layers
-        self.encoded = Convolution2D(128, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
-        self.encoded = MaxPooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)  # 32x48
-        self.encoded = Convolution2D(64, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
-        self.encoded = MaxPooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)  # 16x24
-        self.encoded = Convolution2D(32, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
-        self.encoded = MaxPooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)  # 8x12
-        self.encoded = Convolution2D(16, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
-        self.encoded = MaxPooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)  # 4x6
-        self.encoded = Convolution2D(1, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
-        self.encoded = MaxPooling2D(pool_size=(2, 2), dim_ordering=self.dim_ordering)(self.encoded)  # 2x3
+        self.encoded = Convolution2D(128, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)  # 32x48
+        self.encoded = Convolution2D(64, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)  # 16x24
+        self.encoded = Convolution2D(32, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)  # 8x12
+        self.encoded = Convolution2D(16, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)  # 4x6
+        self.encoded = Convolution2D(1, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)  # 2x3
 
         # Decoding layers
         self.decoded = Convolution2D(1, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
@@ -59,6 +55,8 @@ class Autoencoder:
             with open(self.logger.path + 'architecture.json', 'w') as f:
                 f.write(self.autoencoder.to_json())
                 f.close()
+
+
 
     def train(self, x):
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
