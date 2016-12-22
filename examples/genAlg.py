@@ -70,7 +70,7 @@ if not extraTree:
     mutations = [0.1, 0.3, 0.1, 0.1, 0.3]#, 0.4, 0.4]
 else:
     ranges = {
-        "n_estimators": (1,50),
+        "n_estimators": (1,10),
         "min_sample_split": (1,10),
         "min_sample_leaf": (1,10),
         "min_weight_fraction_leaf": (1,1000),
