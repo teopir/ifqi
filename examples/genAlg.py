@@ -55,7 +55,7 @@ extraTree = args.extra
 #----------------------------------------------------------------------------------------------
 
 if not extraTree:
-    ranges = {
+    """ranges = {
         "n_epochs": (20,2000),
         "activation": (0,3),
         "batch_size": (100,1000),
@@ -63,26 +63,33 @@ if not extraTree:
         "n_layers": (1,3),
         "input_scaled":(0,2),
         "output_scaled":(0,2)
-    }
+    }"""
 
     ranges = [(20,300),(0,3),(100,1000),(5,100),(1,3)]#,(0,2), (0,2)]
 
     mutations = [0.1, 0.3, 0.1, 0.1, 0.3]#, 0.4, 0.4]
 else:
-    ranges = {
-        "n_estimators": (1,10),
+    """ranges = {
+        "n_estimators": (1,50),
         "min_sample_split": (1,10),
         "min_sample_leaf": (1,10),
         "min_weight_fraction_leaf": (1,1000),
         "bootstrap": (0, 2),
         "max_depth": (-200, 1000),
-    }
+    }"""
 
-    ranges = [(1, 10), (1, 10), (1, 10), (0, 1000), (0, 2), (-200,1000)]
+    ranges = [(1, 50), (1, 10), (1, 10), (0, 1000), (0, 2), (-200,1000)]
 
     mutations = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
 
 p_mut = 0.8
+if os.path.isfile("DNA.json"):
+    with open("DNA.json") as dna:
+        data = json.load(dna)
+        ranges = data["ranges"]
+        mutations = data["mutations"]
+        p_mut = data["p_mut"]
+
 
 def generates():
     global  ranges
