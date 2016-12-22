@@ -11,17 +11,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 def compute_feature_matrix(n_samples, n_features, states, actions, features):
-    '''
-    Computes the feature matrix X starting from the sampled data and
-    the feature functions
-
-    :param n_samples: number of samples
-    :param n_features: number of features
-    :param states: the states encountered in the run
-    :param actions: the actions performed in the run
-    :param features: a list of functions, each one is a feature
-    :return: X the feature matrix n_samples x n_features
-    '''
     X = np.zeros(shape=(n_samples,n_features))
     for i in range(n_samples):
         for j in range(n_features):
@@ -29,10 +18,6 @@ def compute_feature_matrix(n_samples, n_features, states, actions, features):
     return X
 
 def remove_projections(X, C, w):
-    '''
-    Makes the columns of matrix X orthogonal to the columns of
-    matrix C, based on the weighted inner product with weights w
-    '''
     W = np.diag(w)
     P_cx = LA.multi_dot([C.T, W, X])
     P_cc = LA.multi_dot([C.T, W, C])
@@ -42,59 +27,17 @@ def remove_projections(X, C, w):
     return X_ort
 
 def find_basis(X, w):
-    '''
-    Finds an orthonormal basis for the space of the columns of matrix X
-    based on the weighted inner product with weights w
-    '''
-
     W = np.diag(w)
     W_inv = np.diag(np.power(w,-1))
     
     X_tilda_ort = np.sqrt(W).dot(X)
     U_ort, s_ort, V_ort = LA.svd(X_tilda_ort)
-    tol = s_ort.max() * max(X_ort.shape) * np.finfo(s_ort.dtype).eps    #as done in numpy
+    tol = s_ort.max() * max(X_ort.shape) * np.finfo(s_ort.dtype).eps
     U_tilda_ort_ort = U_ort[:,:s_ort.shape[0]][:,s_ort > tol] 
     U_ort_ort = np.sqrt(W_inv).dot(U_tilda_ort_ort)
     return U_ort_ort
 
-def compute_k_opt(mdp, n_episodes, discount_factor, k_min, k_max, k_step):
-    _range = np.arange(k_min, k_max, k_step)
-    grad_J_vec = np.zeros(len(_range))
-    print('Finding the best parameter')
-    for i,k in enumerate(_range):
-        policy = GaussianPolicy1D(k, sigma, action_bounds)
-        mdp.reset()
-        dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
-        dataset = add_discount(dataset, 5, discount_factor)
-        states_actions = dataset[:, :2]
-        states = dataset[:, 0]
-        actions = dataset[:, 1]
-        discounts = dataset[:, -1]
-        rewards = dataset[:, 2]
-        n_samples = 100 * n_episodes
-
-        complement = [lambda x: policy.gradient_log_pdf(x[0], x[1])]
-        n_complement = 1
-        n_samples = dataset.shape[0]
-        C = compute_feature_matrix(n_samples, n_complement, states, actions, complement)
-        Q_true = np.array(map(lambda s, a: mdp.computeQFunction(s, a, K, np.power(sigma, 2)), states, actions))
-
-        W = np.diag(discounts)
-
-        grad_J_true = 1.0 / n_episodes * LA.multi_dot([C.T, W, Q_true])
-        grad_J_vec[i] = grad_J_true
-        J_hat = 1.0 / n_episodes * np.sum(rewards * discounts)
-
-        print('mu = %f grad_J = %f, J=%f' % (k, grad_J_true, J_hat))
-    best = _range[np.argmin(np.abs(grad_J_vec))]
-    print('The best parameter is %f' % best)
-    return best
-
 def estimate_Q(X, Q_true):
-    '''
-    Performs LS estimation of the Q function starting from the orthonormal
-    basis X and the target Q_true
-    '''
     w, residuals, rank, _ =  LA.lstsq(X, Q_true)
     rmse = np.sqrt(residuals/X.shape[0])
     Q_hat = X.dot(w)
@@ -112,11 +55,8 @@ state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 #Policy parameters
 action_bounds = np.array([[-max_action], [max_action]], ndmin=2)
 state_bounds = np.array([[-max_pos] , [max_pos]], ndmin=2)
-#K = mdp.computeOptimalK()
-K = -0.61803
-sigma = 0.1
-
-#K = compute_k_opt(mdp, 20, discount_factor, -0.62, -0.59, 0.005)
+K = mdp.computeOptimalK()
+sigma = 0.001
 
 policy = GaussianPolicy1D(K,sigma,action_bounds)
 
@@ -128,7 +68,6 @@ states_actions = dataset[:,:2]
 states = dataset[:,0]
 actions = dataset[:,1]
 discounts = dataset[:,-1]
-rewards = dataset[:,2]
 
 print('Dataset (sigma %f) has %d samples' % (sigma, dataset.shape[0]))
 
@@ -156,7 +95,6 @@ X_ort = remove_projections(X, C, discounts)
 X_ort_ort = find_basis(X_ort, discounts)
 print('Rank of feature matrix X %s/%s' % (X_ort_ort.shape[1], X.shape[1]))
 
-
 #---------------------------Q-function evaluation-----------------------------
 Q_true = np.array(map(lambda s,a: mdp.computeQFunction(s, a, K, np.power(sigma,2)), states, actions))
 Q_hat, w, rmse = estimate_Q(X_ort_ort, Q_true)
@@ -164,24 +102,11 @@ error = np.abs(Q_true - Q_hat)
 mae = np.mean(error)
 error_rel = np.abs((Q_true - Q_hat)/Q_true)
 mare = np.mean(error_rel)
-
-W = np.diag(discounts)
-C_norm = 1.0/n_episodes * LA.multi_dot([C.T, W, C])
-Q_true_norm = 1.0/n_episodes * LA.multi_dot([Q_true.T, W, Q_true])
-Q_hat_norm = 1.0/n_episodes * LA.multi_dot([Q_hat.T, W, Q_hat])
-
-grad_J_true = 1.0/n_episodes * LA.multi_dot([C.T, W, Q_true])
-grad_J_hat = 1.0/n_episodes * LA.multi_dot([C.T, W, Q_hat])
-J_hat = 1.0/n_episodes * np.sum(rewards * discounts)
+J_true = 1/(1-discount_factor) * LA.multi_dot([C.T, np.diag(discounts), Q_true])
+J_hat = 1/(1-discount_factor) * LA.multi_dot([C.T, np.diag(discounts), Q_hat])
 print('Results of LS rmse = %s mae = %s mare = %s' % (rmse, mae, mare))
-print('True policy gradient %s' % grad_J_true)
-print('Estimated policy gradient %s' % grad_J_hat)
-print('Estimated expected return %s' % J_hat)
-
-norm_grad_J_true = grad_J_true/np.sqrt(C_norm*Q_true_norm)
-norm_grad_J_hat = grad_J_hat/np.sqrt(C_norm*Q_hat_norm)
-print('True normalized policy gradient %s' % norm_grad_J_true)
-print('Estimated normalized  policy gradient %s' % norm_grad_J_hat)
+print('True policy gradient %s' % J_true)
+print('Estimated policy gradient %s' % J_hat)
 
 #-------------------------Plot------------------------------------------------
 fig = plt.figure()
@@ -191,6 +116,7 @@ ax.scatter(states, actions, Q_hat, c='b', marker='^')
 ax.set_xlabel('s')
 ax.set_ylabel('a')
 ax.set_zlabel('Q(s,a)')
+plt.show()
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
@@ -198,18 +124,21 @@ ax.scatter(states, actions, error, c='g', marker='*')
 ax.set_xlabel('s')
 ax.set_ylabel('a')
 ax.set_zlabel('error(s,a)')
+plt.show()
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.scatter(states, error, c='g', marker='*')
 ax.set_xlabel('s')
 ax.set_ylabel('|Q_true(s,*) - Q_hat(s,*)|')
+plt.show()
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.scatter(states, error_rel, c='g', marker='*')
 ax.set_xlabel('s')
 ax.set_ylabel('|Q_true(s,*) - Q_hat(s,*)|/|Q_true(s,*)|')
+plt.show()
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
@@ -217,6 +146,7 @@ ax.scatter(states[:n_episodes], Q_true[:n_episodes], c='r', marker='o')
 ax.scatter(states[:n_episodes], Q_hat[:n_episodes], c='b', marker='^')
 ax.set_xlabel('s')
 ax.set_ylabel('Q(s,*)')
+plt.show()
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
@@ -224,11 +154,13 @@ ax.scatter(actions[:n_episodes], Q_true[:n_episodes], c='r', marker='o')
 ax.scatter(actions[:n_episodes], Q_hat[:n_episodes], c='b', marker='^')
 ax.set_xlabel('a')
 ax.set_ylabel('Q(*,a)')
+plt.show()
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.scatter(states[:n_episodes], error_rel[:n_episodes], c='g', marker='*')
 ax.set_xlabel('s')
 ax.set_ylabel('|Q_true(s,*) - Q_hat(s,*)|/|Q_true(s,*)|')
-
 plt.show()
+
+

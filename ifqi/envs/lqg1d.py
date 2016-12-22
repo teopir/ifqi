@@ -39,7 +39,7 @@ class LQG1D(Environment):
     }
 
     def __init__(self, discrete_reward=False):
-        self.horizon = 100
+        self.horizon = 1000
         self.gamma = 0.99
 
         self.discrete_reward = discrete_reward
@@ -175,7 +175,7 @@ class LQG1D(Environment):
         LQG problem (u = K * x).
 
         Returns:
-            K (matrix): the optimal controller
+            K (matrix): the optimal controller bv
 
         """
         P = np.eye(self.Q.shape[0], self.Q.shape[1])

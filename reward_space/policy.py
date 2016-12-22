@@ -184,3 +184,36 @@ class AdvertisingGaussianPolicy(SimplePolicy):
     
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
+
+def scaled_gaussian(mu, min_, max_, i):
+    return np.exp((-0.5*(i-mu)**2)) / sum(np.exp((-0.5*(np.arange(min_, max_+1)-mu)**2)))
+
+def gradient_scaled_gaussian(mu, min_, max_, i):
+    return i-mu - sum((np.arange(min_, max_+1)-mu) * np.exp((-0.5*(np.arange(min_, max_+1)-mu)**2)))/sum(np.exp((-0.5*(np.arange(min_, max_+1)-mu)**2)))
+
+class BanditPolicy(SimplePolicy):
+    def __init__(self, mu):
+        self.seed()
+        self.mu = mu
+        self._build_policy()
+
+    def _build_policy(self):
+        self.policy = np.array([[scaled_gaussian(self.mu,1,3,1),
+                                scaled_gaussian(self.mu,1,3,2),
+                                scaled_gaussian(self.mu,1,3,3)]], ndmin=2)
+
+    def draw_action(self, state, done):
+        action = self.np_random.choice(3, p=self.policy[np.asscalar(state)])
+        return action
+
+    def get_distribution(self):
+        return self.policy
+
+    def gradient_log_pdf(self):
+        return np.array([[gradient_scaled_gaussian(self.mu,1,3,1),
+                         gradient_scaled_gaussian(self.mu,1,3,2),
+                         gradient_scaled_gaussian(self.mu,1,3,3)]], ndmin=2)
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+
