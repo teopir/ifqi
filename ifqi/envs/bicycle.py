@@ -19,6 +19,7 @@ from gym import spaces
 from gym.utils import seeding
 from environment import Environment
 
+import ifqi.utils.spaces as fqispaces
 from builtins import range
 
 """
@@ -131,7 +132,7 @@ class Bicycle(Environment):
         self.observation_space = spaces.Box(low=low, high=high)
 
         nactions = 9
-        self.action_space = spaces.Discrete(nactions)
+        self.action_space = fqispaces.DiscreteValued(range(9), decimals=0)
 
         # initialize state
         self._seed()
