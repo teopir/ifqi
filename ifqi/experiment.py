@@ -142,6 +142,10 @@ class Experiment(object):
         else:
             raise ValueError('Unknown estimator type.')
 
+        if modelConfig['modelName'] in ["ExtraTree", "ExtraTreeEnsemble"]:
+            if "max_depth" in modelConfig: params["max_depth"] = modelConfig["max_depth"]
+            if "min_weight_fraction_leaf" in modelConfig: params["min_weight_fraction_leaf"] = modelConfig["min_weight_fraction_leaf"]
+
         if "input_scaled" in modelConfig:
             params["input_scaled"] = modelConfig["input_scaled"]
         if "output_scaled" in modelConfig:
