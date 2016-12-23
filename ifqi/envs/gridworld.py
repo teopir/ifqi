@@ -11,17 +11,20 @@ class GridWorldEnv(gym.Env):
         'render.modes': ['human']
     }
 
-    def __init__(self, width=12, height=8, wall_random=True):
+    def __init__(self, width=12, height=8, cell_size=8, wall=True, wall_random=True):
+        # Viewer parameters
         self.width = width
         self.height = height
-        self._cell_size = 8
+        self._cell_size = cell_size
+        self.wall = wall
+        self.wall_random = wall_random
+        self.viewer = Viewer(width=self.width, height=self.height, cell_size=self._cell_size, draw_wall=self.wall, wall_random=self.wall_random)
 
-        self.action_space = spaces.Discrete(4)
+        # MDP parameters
+        self.action_space = spaces.Discrete(9)
         self.observation_space = spaces.Box(self.height * self._cell_size, self.width * self._cell_size, 1)
 
-        self.wall_random = wall_random
-        self.viewer = Viewer(width=self.width, height=self.height, cell_size=self._cell_size, wall_random=self.wall_random)
-
+        # Reset
         self._seed()
         self.reset()
 
@@ -51,20 +54,34 @@ class GridWorldEnv(gym.Env):
         return self.viewer.render()
 
     def set_grid_size(self, width, height):
+        """
+        Change the size of the gridworld and reset the environment
+        :param width: the new width (in number of cells) of the gridworld
+        :param height: the new height (in number of cells) of the gridworld
+        """
         self.width = width
         self.height = height
-        self.viewer = Viewer(height=self.height, width=self.width, cell_size=self._cell_size, wall_random=self.wall_random)
+        self.viewer = Viewer(height=self.height, width=self.width, cell_size=self._cell_size, draw_wall=self.wall, wall_random=self.wall_random)
         self.reset()
+
+    def encode_action(self, action):
+        """
+        :param action: an action from the environment's action space
+        :return: an [x, y] encoding of the direction associated to the action s.t. x,y are in {-1,0,1}
+        """
+        direction = self.viewer.directions[action]
+        out = [direction[0] / self.viewer.cell_size, direction[1] / self.viewer.cell_size]
+        return out
 
 
 class Viewer:
-    def __init__(self, width=16, height=9, cell_size=10, wall=True, wall_random=True):
+    def __init__(self, width=16, height=9, cell_size=10, draw_wall=True, wall_random=True):
         pg.init()
-        # Game parameters
+        # World parameters
         self.width = width
         self.height = height
         self.cell_size = cell_size
-        self.wall = wall
+        self.draw_wall = draw_wall
         self.wall_random = wall_random
         self.screen_size = (self.width * self.cell_size, self.height * self.cell_size)
 
@@ -75,10 +92,15 @@ class Viewer:
 
         # Directions
         self.directions = {
-            0: (0, -self.cell_size), # UP
-            1: (0, self.cell_size), # DOWN
-            2: (self.cell_size, 0), # RIGHT
-            3: (-self.cell_size, 0) # LEFT
+            0: (0, 0),  # Null action
+            1: (0, -self.cell_size),  # N
+            2: (self.cell_size, -self.cell_size),  # NE
+            3: (self.cell_size, 0),  # E
+            4: (self.cell_size, self.cell_size),  # SE
+            5: (0, self.cell_size),  # S
+            6: (-self.cell_size, self.cell_size),  # SW
+            7: (-self.cell_size, 0),  # W
+            8: (-self.cell_size, -self.cell_size)  # NW
         }
 
         # Surfaces
@@ -86,44 +108,53 @@ class Viewer:
         self.surface.fill((0, 0, 0))
         self.character = pg.Surface((self.cell_size, self.cell_size))  # Agent surface
         self.character.fill((255, 255, 255))
-        self.goal = pg.Surface((self.cell_size, self.cell_size)) # Goal surface
+        self.goal = pg.Surface((self.cell_size, self.cell_size))  # Goal surface
         self.goal.fill((255, 255, 255))
-        self.wall = pg.Surface((self.cell_size, self.cell_size)) # Wall surface
+        self.wall = pg.Surface((self.cell_size, self.cell_size))  # Wall surface
         self.wall.fill((255, 255, 255))
 
         # Screen
         self.screen = None
 
+        # Initialize viewer
         self.initialize_env()
         self.reset_agent()
         self.draw()
 
     def initialize_env(self):
+        """
+        Initializes the environment by resetting the character position and redrawing the goal and wall surfaces.
+        """
         # Reset position data
         self.goal_pos = set()
         self.wall_pos = set()
-        self.char_pos = (0,0)
+        self.char_pos = (0, 0)
 
-        # Init goal
+        # Initialize goal
         for y in range(self.height):
             self.goal_pos.add(((self.width - 1) * self.cell_size, y * self.cell_size))
 
-        # Init wall
-        if self.wall:
+        # Initialize wall
+        if self.draw_wall:
             if self.wall_random:
-                x = random.randrange(0, self.width - 1) * self.cell_size # Wall is randomly placed
+                x = random.randrange(0, self.width - 1) * self.cell_size  # Wall is randomly placed
             else:
                 x = self.width / 2 * self.cell_size  # Wall is in the middle
-            for y in range(self.height/2):
+            for y in range(self.height / 2):
                 self.wall_pos.add((x, y * self.cell_size))
 
     def reset_agent(self):
-        # Randomly place agent on any row of the first column
+        """
+        Randomly places the agent on any row of the first column
+        """
         y = random.randrange(0, self.height) * self.cell_size
         self.char_pos = (0, y)
         self.draw()
 
     def draw(self):
+        """
+        Updates the pygame surface to match the current status
+        """
         # Clear surface
         self.surface.fill((0, 0, 0))
 
@@ -132,7 +163,7 @@ class Viewer:
             self.surface.blit(self.goal, p)
 
         # Draw wall
-        if self.wall:
+        if self.draw_wall:
             for p in self.wall_pos:
                 self.surface.blit(self.wall, p)
 
@@ -152,11 +183,17 @@ class Viewer:
         self.draw()
 
     def get_state(self):
+        """
+        :return: grayscale image (PIL Image object) of the current pygame surface.
+        """
         img_str = pg.image.tostring(self.surface, 'RGB')
         out = Image.frombytes('RGB', self.screen_size, img_str).convert('L')
         return out
 
     def is_on_goal(self):
+        """
+        :return: True if the character is on the goal of the environment, False otherwise.
+        """
         return self.char_pos in self.goal_pos
 
     def close(self):

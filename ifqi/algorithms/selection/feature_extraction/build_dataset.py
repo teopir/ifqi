@@ -1,19 +1,19 @@
 import random, argparse, numpy as np, progressbar
 from Logger import Logger
 from joblib import Parallel, delayed
-from helpers import flat2gen, onehot_encode
+from helpers import flat2list
 from ifqi.envs.gridworld import GridWorldEnv
 
-
 parser = argparse.ArgumentParser()
-parser.add_argument('--path', type=str, default='data/model.h5', help='autoencoder h5 file')
-parser.add_argument('-v', '--video', action='store_true', help='display video output')
-parser.add_argument('-e', '--encode', action='store_true', help='save a SARS dataset with the encoded state features')
-parser.add_argument('-i', '--images', action='store_true', help='save images of states with a SARS csv')
-parser.add_argument('--heatmap', action='store_true', help='plot correlation matrix of features and coordinates')
 parser.add_argument('-d', '--debug', action='store_true', help='run in debug mode (no output files)')
+parser.add_argument('-v', '--video', action='store_true', help='display video output')
+parser.add_argument('--njobs', type=int, default=1,
+                    help='number of processes to use, set -1 to use all available cores. Don\'t set this flag if running on GPU.')
 parser.add_argument('--episodes', type=int, default=1000, help='number of episodes to run')
-parser.add_argument('--njobs', type=int, default=1, help='number of threads to use (don\'t set this flag if using GPU)')
+parser.add_argument('--path', type=str, default='data/model.h5', help='path to the hdf5 weights file for the autoencoder')
+parser.add_argument('-e', '--encode', action='store_true', help='save a SARS dataset with the encoded state features')
+parser.add_argument('-i', '--images', action='store_true', help='save images of states and a SARS csv with the images\' ids')
+parser.add_argument('--heatmap', action='store_true', help='save the correlation heatmap of features and coordinates')
 args = parser.parse_args()
 
 assert args.encode != args.images, 'Set exactly one flag between -i and -e'
@@ -25,19 +25,22 @@ heatmap_csv = 'heatmap.csv'
 
 if args.encode:
     from Autoencoder import Autoencoder
-    logger.to_csv(output_csv, 'S0,S1,S2,S3,S4,S5,A0,A1,A2,A3,R,SS0,SS1,SS2,SS3,SS4,SS5')
-    logger.to_csv(heatmap_csv, 'S0,S1,S2,S3,S4,S5,X,Y')
-    AE = Autoencoder((1, 64, 96), load_path=args.path)
+
+    AE = Autoencoder((1, 48, 48), load_path=args.path)
+    # TODO header states must be automatically generated from the output length of AE.flat_encode
+    logger.to_csv(output_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y,R,SS0,SS1,SS2,SS3,SS4,SS5,SS6,SS7,SS8')
+    logger.to_csv(heatmap_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y')
 else:
-    logger.to_csv(output_csv, 'S,A,R,S1')
+    logger.to_csv(output_csv, 'S,A,R,SS')
 
 
 def episode(episode_id):
     global args
-    env = GridWorldEnv()
+    env = GridWorldEnv(width=6, height=6, cell_size=8, wall=False, wall_random=False)
     action_space = env.action_space.n
     frame_counter = 0
 
+    # Get current state
     state = env.reset()
 
     # Get encoded features
@@ -66,8 +69,9 @@ def episode(episode_id):
         if args.encode:
             preprocessed_next_state = np.expand_dims(np.expand_dims(np.asarray(next_state), axis=0), axis=0)
             encoded_next_state = AE.flat_encode(preprocessed_next_state)
-            logger.to_csv(output_csv, [i for i in flat2gen([encoded_state[0], onehot_encode(action, action_space), reward, encoded_next_state[0]])])
-            logger.to_csv(heatmap_csv, [i for i in flat2gen([encoded_state[0], env.viewer.char_pos[0], env.viewer.char_pos[1]])])
+            logger.to_csv(output_csv, flat2list([encoded_state, env.encode_action(action), reward, encoded_next_state]))
+            logger.to_csv(heatmap_csv, flat2list([encoded_state, env.viewer.char_pos[0], env.viewer.char_pos]))
+
         # Save image of state
         if args.images:
             next_state_id = '%04d_%d' % (episode_id, frame_counter)
@@ -86,7 +90,6 @@ def episode(episode_id):
         if args.images:
             state_id = next_state_id
 
-    # End episode
 
 # Run episodes
 print '\nRunning episodes...'
@@ -104,4 +107,3 @@ if args.heatmap:
 
     sns_plot = sns.heatmap(pd.read_csv(logger.path + heatmap_csv).corr())
     sns_plot.get_figure().savefig(logger.path + 'heatmap.png')
-

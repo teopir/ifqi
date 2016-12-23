@@ -3,13 +3,18 @@ from PIL import Image
 
 
 def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
-    # Generates a batch iterator to train the autoencoder.
-    # Batches of length batch_size are randomly created iterating over the dataset nb_epochs times.
-    # Set batch size to 'all' if you want to use the whole dataset as batch.
+    """
+    Yields batches of length batch_size, randomly created iterating over the dataset nb_epochs times.
+    :param dataset_folder: path to folder containing .png or .jpg images.
+    :param batch_size: number of images to yiela at a time. Set to 'all' if you want to use the whole dataset as batch.
+    :param nb_epochs: number of times to iterate the dataset.
+    :param shuffle: whether to shuffle the data before each epoch.
+    :return: an iterator for the batches.
+    """
 
     data = []
     for filename in os.listdir(dataset_folder):
-        if filename.endswith('.png'):
+        if filename.endswith('.png') or filename.endswith('.jpg'):
             data.append(filename)
 
     data_size = len(data)
@@ -30,17 +35,33 @@ def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
                 images.append(np.expand_dims(np.asarray(image), axis=0))
             yield images
 
+
 def flat2gen(alist):
-	"""
-	Takes a 2d list and yields its elements in order.
-	"""
-	for item in alist:
-		if isinstance(item, list) or isinstance(item, np.ndarray):
-			for subitem in item: yield subitem
-		else:
-			yield item
+    """
+    :param alist: a 2d list
+    :return: an iterator for the flattened list
+    """
+    for item in alist:
+        if isinstance(item, list) or isinstance(item, np.ndarray):
+            for subitem in item: yield subitem
+        else:
+            yield item
+
+
+def flat2list(alist):
+    """
+    :param alist: a 2d list
+    :return: a flattened version of the list
+    """
+    return [i for i in flat2gen(alist)]
+
 
 def onehot_encode(value, nb_categories):
+    """
+    :param value: discreet value being encoded.
+    :param nb_categories: number of possible discreet values being encoded.
+    :return: an array of length nb_categories, such that the value-th element equals 1 and all the others 0.
+    """
     out = [0] * nb_categories
     out[value] = 1
     return out
