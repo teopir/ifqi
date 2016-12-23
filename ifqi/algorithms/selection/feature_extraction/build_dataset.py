@@ -70,7 +70,7 @@ def episode(episode_id):
             preprocessed_next_state = np.expand_dims(np.expand_dims(np.asarray(next_state), axis=0), axis=0)
             encoded_next_state = AE.flat_encode(preprocessed_next_state)
             logger.to_csv(output_csv, flat2list([encoded_state, env.encode_action(action), reward, encoded_next_state]))
-            logger.to_csv(heatmap_csv, flat2list([encoded_state, env.viewer.char_pos[0], env.viewer.char_pos]))
+            logger.to_csv(heatmap_csv, flat2list([encoded_state, env.viewer.char_pos[0], env.viewer.char_pos[1]]))
 
         # Save image of state
         if args.images:
