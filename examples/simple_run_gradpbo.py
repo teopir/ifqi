@@ -2,11 +2,12 @@ import numpy as np
 
 from ifqi import envs
 from ifqi.evaluation import evaluation
-from ifqi.evaluation.utils import check_dataset, split_data_for_fqi
+from ifqi.evaluation.utils import check_dataset, split_dataset, split_data_for_fqi
 from ifqi.models.regressor import Regressor
-from ifqi.models.mlp import MLP
-from ifqi.models.linear import Ridge
-from ifqi.algorithms.pbo.PBO import PBO
+from ifqi.algorithms.pbo.gradpbo import GradPBO
+
+from keras.models import Sequential
+from keras.layers import Dense
 
 """
 Simple script to quickly run pbo. It solves the LQG environment.
@@ -19,7 +20,7 @@ reward_idx = state_dim + action_dim
 discrete_actions = np.linspace(-8, 8, 20)
 dataset = evaluation.collect_episodes(mdp, n_episodes=100)
 check_dataset(dataset, state_dim, action_dim, reward_dim)
-sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
+# sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
 
 ### Q REGRESSOR ##########################
 class LQG_Q():
@@ -58,28 +59,24 @@ q_regressor = Regressor(LQG_Q, **q_regressor_params)
 
 ### F_RHO REGRESSOR ######################
 n_q_regressors_weights = q_regressor._regressor.count_params()
-rho_regressor_params = {'n_input': n_q_regressors_weights,
-                        'n_output': n_q_regressors_weights,
-                        'hidden_neurons': [20],
-                        'activation': 'sigmoid',
-                        'optimizer': 'rmsprop',
-                        'input_scaled': 1}
-rho_regressor = Regressor(MLP, **rho_regressor_params)
+rho_regressor = Sequential()
+rho_regressor.add(Dense(20, input_dim=n_q_regressors_weights, init='uniform', activation='sigmoid'))
+rho_regressor.add(Dense(n_q_regressors_weights, init='uniform', activation='linear'))
+rho_regressor.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 ##########################################
 
 ### PBO ##################################
-pbo = PBO(estimator=q_regressor,
-          estimator_rho=rho_regressor,
-          state_dim=state_dim,
-          action_dim=action_dim,
-          discrete_actions=discrete_actions,
-          gamma=mdp.gamma,
-          learning_steps=50,
-          batch_size=10,
-          learning_rate=1e-1,
-          verbose=True)
-
-weights = pbo.fit(sast, r)
+pbo = GradPBO(bellman_model=rho_regressor,
+              q_model=q_regressor,
+              gamma=mdp.gamma,
+              optimizer="adam")
+state, actions, reward, next_states = split_dataset(dataset,
+                                                    state_dim=state_dim,
+                                                    action_dim=action_dim,
+                                                    reward_dim=reward_dim)
+theta0 = np.array([1., 0.], dtype='float32').reshape(1, -1)
+weights = pbo.fit(state, actions, next_states,
+                  reward, theta0, discrete_actions)
 ##########################################
 
 print(weights)

@@ -109,10 +109,10 @@ class LQG_PBO(object):
         return self.eval_f(theta)
 
 
-F = np.array([[1, 2], [3, 4]])
-print(PolynomialFeatures(3).fit_transform(F))
-lqgpbo = LQG_PBO()
-print(lqgpbo.evaluate(F))
+# F = np.array([[1, 2], [3, 4]])
+# print(PolynomialFeatures(3).fit_transform(F))
+# lqgpbo = LQG_PBO()
+# print(lqgpbo.evaluate(F))
 
 gamma = 0.99
 rho = np.array([1., 2., 0., 3.]).reshape(2, 2)
@@ -138,7 +138,7 @@ model.add(Dense(2, init='uniform', activation='linear'))
 model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 
 # =================================================================
-gpbo = GradPBO(bellman_model=lbpo, q_model=q_model, gamma=gamma)
+gpbo = GradPBO(bellman_model=lbpo, q_model=q_model, gamma=gamma, optimizer="adam")
 assert np.allclose(bellmanop(rho, theta), gpbo.bopf(theta)), \
     '{}, {}'.format(bellmanop(rho, theta), gpbo.bopf(theta))
 assert np.allclose(lqr_reg(s, a, theta), gpbo.qf(s, a, theta))
@@ -152,3 +152,4 @@ eps = np.sqrt(np.finfo(float).eps)
 f = lambda x: empirical_bop(s, a, r, nexts, actions, gamma, x, theta)
 approx_grad = optimize.approx_fprime(rho.ravel(), f, eps).reshape(berr_grad[0].shape)
 assert np.allclose(berr_grad, approx_grad), '{}, {}'.format(berr_grad, approx_grad)
+
