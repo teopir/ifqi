@@ -153,8 +153,9 @@ varSetting = ExperimentVariables(experimentName)
 replay_experience = False
 for repetition in range(actualRepetition, repetitions):
 
+    z = varSetting.loadSingle(regressorN, sizeN, datasetN, repetition, iterations, "score")
     #print ("check on",continue_, varSetting.loadSingle(regressorN,sizeN,datasetN,repetition,iterations,"score"))
-    if continue_ and varSetting.loadSingle(regressorN,sizeN,datasetN,repetition,iterations,"score"):
+    if continue_ and (z or z==0):
         print ("Experiment already done")
         break
 
