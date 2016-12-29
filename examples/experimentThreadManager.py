@@ -28,7 +28,7 @@ This version allow multithreading
 
 import argparse
 
-def execute(commands, nThread, refresh_time=10.,shuffled=False):
+def execute(commands, nThread, refresh_time=0.5,shuffled=False):
 
     if(shuffled):
         shuffle(commands)
@@ -91,7 +91,7 @@ if __name__ == '__main__':
                 else:
                     commands.append(["python", myPath, experimentName, configFile, str(regressor), str(size), str(dataset)])
     
-    execute(commands,nThread,10.)
+    execute(commands,nThread,0.5)
     
     #--------------------------------------------------------------------------
     # DiaryExperiment
