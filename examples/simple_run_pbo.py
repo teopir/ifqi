@@ -6,7 +6,7 @@ from ifqi.evaluation.utils import check_dataset, split_data_for_fqi
 from ifqi.models.regressor import Regressor
 from ifqi.models.mlp import MLP
 from ifqi.models.linear import Ridge
-from ifqi.algorithms.pbo.PBO import PBO
+from ifqi.algorithms.pbo.pbo import PBO
 
 """
 Simple script to quickly run pbo. It solves the LQG environment.

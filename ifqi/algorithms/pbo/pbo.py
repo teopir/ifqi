@@ -73,26 +73,18 @@ class PBO(Algorithm):
 
         return self._q_weights_list
 
-    def my_listener(self, bestEvaluable, qq):
+    def my_listener(self, bestEvaluable, bestEvaluation):
         """
         Customized NES listener. It is used to update the parameters of the
         q regressor with the last best one found.
-
-        Args:
-            bestEvaluable (np.array): the array containing the last best
-                                      parameters for the q regressor found
         """
         self._iteration += 1
         print('Iteration: %d' % self._iteration)
         self._q_weights_list.append(self._get_q_weights())
-        #print(bestEvaluable)
-        # new_q_weights = self._f(self.iteration_best_rho)
-        new_q_weights = self._f(bestEvaluable)
-        #print(self._get_q_weights(), new_q_weights, -new_q_weights[1]**2 / new_q_weights[0])
+        new_q_weights = self._f(self.iteration_best_rho)
         self._set_q_weights(new_q_weights)
+        self._rho_values.append(self.iteration_best_rho)
         self.iteration_best_rho_value = np.inf
-        self._rho_values.append(bestEvaluable)
-
 
     def _fitness(self, rho):
         """
