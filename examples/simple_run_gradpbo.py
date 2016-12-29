@@ -8,6 +8,7 @@ from ifqi.algorithms.pbo.gradpbo import GradPBO
 
 from keras.models import Sequential
 from keras.layers import Dense
+from matplotlib import pyplot as plt
 
 """
 Simple script to quickly run pbo. It solves the LQG environment.
@@ -20,72 +21,76 @@ reward_idx = state_dim + action_dim
 discrete_actions = np.linspace(-8, 8, 20)
 dataset = evaluation.collect_episodes(mdp, n_episodes=100)
 check_dataset(dataset, state_dim, action_dim, reward_dim)
+
+
 # sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
 
 ### Q REGRESSOR ##########################
-class LQG_Q():
-    def __init__(self):
-        self.w = np.array([1., 0.])
+class LQG_Q(object):
+    def model(self, s, a, omega):
+        q = - omega[:, 0] ** 2 * s * a - 0.5 * omega[:, 1] * a * a - 0.4 * omega[:, 1] * s * s
+        return q.ravel()
 
-    def predict(self, sa):
-        k, b = self.w
-        #print(k,b)
-        return - b * b * sa[:, 0] * sa[:, 1] - 0.5 * k * sa[:, 1] ** 2 - 0.4 * k * sa[:, 0] ** 2
+    def n_params(self):
+        return 2
 
-    def get_weights(self):
-        return self.w
+    def get_k(self, omega):
+        return -omega[:, 0]**2 / omega[:, 1]
 
-    def set_weights(self, w):
-        self.w = np.array(w)
 
-    def count_params(self):
-        return self.w.size
-
-q_regressor_params = dict()
-q_regressor = Regressor(LQG_Q, **q_regressor_params)
-#phi = dict(name='poly', params=dict(degree=3))
-#q_regressor_params = dict(features=phi)
-#q_regressor = Regressor(Ridge, **q_regressor_params)
-#q_regressor.fit(sast[:, :state_dim + action_dim], r)  # necessary to init Ridge
+q_regressor = LQG_Q()
 ##########################################
 
-# q_regressor_params = {'n_input': 2,
-#                       'n_output': 1,
-#                       'hidden_neurons': [20, 20],
-#                       'activation': 'sigmoid',
-#                       'optimizer': 'rmsprop',
-#                       'input_scaled': 1}
-# q_regressor = Regressor(MLP, **q_regressor_params)
-
 ### F_RHO REGRESSOR ######################
-n_q_regressors_weights = q_regressor._regressor.count_params()
+n_q_regressors_weights = q_regressor.n_params()
+Sequential.n_inputs = lambda self: n_q_regressors_weights
+
 rho_regressor = Sequential()
 rho_regressor.add(Dense(20, input_dim=n_q_regressors_weights, init='uniform', activation='sigmoid'))
 rho_regressor.add(Dense(n_q_regressors_weights, init='uniform', activation='linear'))
 rho_regressor.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
+# rho_regressor.fit(None, None)
 ##########################################
 
 ### PBO ##################################
 pbo = GradPBO(bellman_model=rho_regressor,
               q_model=q_regressor,
+              discrete_actions=discrete_actions,
               gamma=mdp.gamma,
-              optimizer="adam")
+              optimizer="adam",
+              state_dim=state_dim,
+              action_dim=action_dim)
 state, actions, reward, next_states = split_dataset(dataset,
                                                     state_dim=state_dim,
                                                     action_dim=action_dim,
                                                     reward_dim=reward_dim)
 theta0 = np.array([1., 0.], dtype='float32').reshape(1, -1)
 weights = pbo.fit(state, actions, next_states,
-                  reward, theta0, discrete_actions)
+                  reward, theta0)
 ##########################################
-
 print(weights)
+
+
+theta = theta0.copy()
+L = [np.array(theta)]
+for i in range(100):
+    theta = pbo.apply_bop(theta)
+    L.append(np.array(theta))
+
+L = np.array(L).squeeze()
+print(L.shape)
+
+print(theta)
+print('K: {}'.format(q_regressor.get_k(theta)))
+
+plt.scatter(L[:, 0], L[:, 1])
+plt.show()
 
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
 print(values)
 
-from matplotlib import pyplot as plt
+
 weights = np.array(weights)
 plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
 

@@ -3,17 +3,24 @@ import theano
 import theano.tensor as T
 import numpy as np
 
-from keras.engine.training import slice_X, batch_shuffle, make_batches
+from keras.engine.training import slice_X, batch_shuffle, make_batches, \
+    standardize_input_data, check_array_lengths
 from keras import optimizers
 
 
 class GradPBO(object):
-    def __init__(self, bellman_model, q_model, gamma, optimizer):
+    def __init__(self, bellman_model, q_model, gamma,
+                 discrete_actions,
+                 optimizer,
+                 state_dim=None, action_dim=None):
+        self.state_dim = state_dim
+        self.action_dim = action_dim
         self.gamma = gamma
         s = T.dmatrix()
         a = T.dmatrix()
         s_next = T.dmatrix()
         r = T.dvector()
+        # r = T.dmatrix()
         all_actions = T.dmatrix()
         self.bellman_model = bellman_model
         self.q_model = q_model
@@ -35,18 +42,28 @@ class GradPBO(object):
         self.grad_berrf = theano.function([s, a, s_next, r, theta, all_actions], self.grad_berr)
 
         self.train_function = None
+        self.draw_action_function = None
         self.s = s
         self.a = a
         self.s_next = s_next
         self.r = r
         self.all_actions = all_actions
         self.optimizer = optimizers.get(optimizer)
+        self.all_actions_value = standardize_input_data(discrete_actions, ['all_actions'],
+                                                        [(None,
+                                                          self.action_dim)] if self.action_dim is not None else None,
+                                                        check_batch_dim=False, exception_prefix='discrete_actions')
 
     def _compute_max_q(self, s, all_actions, theta):
         q_values, _ = theano.scan(fn=lambda a, s, theta: self.q_model.model(s, a, theta),
                                   sequences=[all_actions], non_sequences=[s, theta])
         return T.max(q_values)
         # return q_values
+
+    def _compute_argmax_q(self, s, all_actions, theta):
+        q_values, _ = theano.scan(fn=lambda a, s, theta: self.q_model.model(s, a, theta),
+                                  sequences=[all_actions], non_sequences=[s, theta])
+        return T.argmax(q_values)
 
     def bellman_error(self, s, a, nexts, r, theta, gamma, all_actions):
         # compute new parameters
@@ -77,18 +94,36 @@ class GradPBO(object):
             # returns loss and metrics. Updates weights at each call.
             self.train_function = theano.function(inputs, [self.berr], updates=training_updates)
 
-    def fit(self, s, a, s_next, r, theta, all_actions,
+    def fit(self, s, a, s_next, r, theta,
             batch_size=32, nb_epoch=10, verbose=1, shuffle=True):
         self._make_train_function()
         f = self.train_function
-        # we need to standardize input data (check keras)
-        ins = [s] + a + s_next + r + theta + all_actions
-        return self._fit_loop(f, ins, batch_size, nb_epoch, verbose, shuffle)
 
-    def _fit_loop(self, f, ins, batch_size=32,
-                  nb_epoch=100, verbose=1, shuffle=True):
+        s = standardize_input_data(s, ['s'], [(None, self.state_dim)] if self.state_dim is not None else None,
+                                   check_batch_dim=False, exception_prefix='state')
+        a = standardize_input_data(a, ['a'], [(None, self.action_dim)] if self.action_dim is not None else None,
+                                   check_batch_dim=False, exception_prefix='action')
+        # r = standardize_input_data(r, ['r'], [(None, 1)],
+        #                            check_batch_dim=False, exception_prefix='reward')
+        s_next = standardize_input_data(s_next, ['s_next'],
+                                        [(None, self.state_dim)] if self.state_dim is not None else None,
+                                        check_batch_dim=False, exception_prefix='state_next')
+        theta = standardize_input_data(theta, ['theta'], (None, self.bellman_model.n_inputs()),
+                                       check_batch_dim=False, exception_prefix='theta')
+        all_actions = standardize_input_data(self.all_actions_value, ['all_actions'],
+                                             [(None, self.action_dim)] if self.action_dim is not None else None,
+                                             check_batch_dim=False, exception_prefix='discrete_actions')
+        check_array_lengths(s, a, s_next)
+        ins = s + a + s_next + [r]
+        return self._fit_loop(f, ins, theta, all_actions,
+                              batch_size, nb_epoch, verbose, shuffle)
+
+    def _fit_loop(self, f, ins, theta, discrete_actions,
+                  batch_size=32, nb_epoch=100, verbose=1, shuffle=True):
         nb_train_sample = ins[0].shape[0]
+        print(nb_train_sample)
         index_array = np.arange(nb_train_sample)
+        print(theta)
         for epoch in range(nb_epoch):
             if shuffle == 'batch':
                 index_array = batch_shuffle(index_array, batch_size)
@@ -108,8 +143,32 @@ class GradPBO(object):
                     raise Exception('TypeError while preparing batch. '
                                     'If using HDF5 input data, '
                                     'pass shuffle="batch".')
-                outs = f(ins_batch)
-                print(ins[-2])
+                inp = ins_batch + theta + discrete_actions
+                outs = f(*inp)
+                theta = [self.bellman_model.predict(theta)]
+                print(theta)
+                print('k: {}'.format(self.q_model.get_k(theta[0])))
                 print(outs)
                 print()
-        return {}
+
+        self.learned_theta_value = theta[0]
+        return theta
+
+    def apply_bop(self, theta):
+        return self.bellman_model.predict(theta)
+
+    def _make_draw_action_function(self):
+        if self.draw_action_function is None:
+            # compute max over actions with old parameters
+            theta = self.bellman_model.inputs[0]
+            inputs = [self.s, theta, self.all_actions]
+            idx_max, _ = theano.scan(fn=self._compute_argmax_q,
+                                     sequences=[self.s], non_sequences=[self.all_actions, theta])
+            self.draw_action_function = theano.function(inputs, [self.all_actions[idx_max]])
+
+    def draw_action(self, state, done, flag):
+        self._make_draw_action_function()
+        state = standardize_input_data(state, ['state'],
+                                       [(None, self.state_dim)] if self.state_dim is not None else None,
+                                       check_batch_dim=False, exception_prefix='draw_state')
+        return self.draw_action_function(state, self.learned_theta_value, self.all_actions_value)
