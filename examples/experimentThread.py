@@ -155,7 +155,7 @@ for repetition in range(actualRepetition, repetitions):
 
     z = varSetting.loadSingle(regressorN, sizeN, datasetN, repetition, iterations, "score")
     #print ("check on",continue_, varSetting.loadSingle(regressorN,sizeN,datasetN,repetition,iterations,"score"))
-    if continue_ and (z or z==0):
+    if continue_ and (z or type(z)!=bool):
         print ("Experiment already done")
         break
 
