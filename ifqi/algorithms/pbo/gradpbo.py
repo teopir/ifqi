@@ -171,4 +171,4 @@ class GradPBO(object):
         state = standardize_input_data(state, ['state'],
                                        [(None, self.state_dim)] if self.state_dim is not None else None,
                                        check_batch_dim=False, exception_prefix='draw_state')
-        return self.draw_action_function(state, self.learned_theta_value, self.all_actions_value)
+        return self.draw_action_function(state[0], self.learned_theta_value, self.all_actions_value[0])
