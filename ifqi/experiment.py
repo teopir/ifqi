@@ -145,6 +145,9 @@ class Experiment(object):
         if modelConfig['modelName'] in ["ExtraTree", "ExtraTreeEnsemble"]:
             if "max_depth" in modelConfig: params["max_depth"] = modelConfig["max_depth"]
             if "min_weight_fraction_leaf" in modelConfig: params["min_weight_fraction_leaf"] = modelConfig["min_weight_fraction_leaf"]
+        if modelConfig['modelName'] in ["MLP", "MLPEnsemble"]:
+            if "early_stopping" in modelConfig: params["early_stopping"] = modelConfig["early_stopping"]
+
 
         if "input_scaled" in modelConfig:
             params["input_scaled"] = modelConfig["input_scaled"]
