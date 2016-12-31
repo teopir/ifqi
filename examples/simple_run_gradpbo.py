@@ -15,7 +15,10 @@ Simple script to quickly run pbo. It solves the LQG environment.
 
 """
 
+np.random.seed(6652)
+
 mdp = envs.LQG1D()
+mdp.seed(2897270658018522815)
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 reward_idx = state_dim + action_dim
 discrete_actions = np.linspace(-8, 8, 20)
@@ -23,19 +26,26 @@ dataset = evaluation.collect_episodes(mdp, n_episodes=100)
 check_dataset(dataset, state_dim, action_dim, reward_dim)
 
 
+INCREMENTAL = True
+ACTIVATION = 'tanh'
+
 # sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
 
 ### Q REGRESSOR ##########################
 class LQG_Q(object):
     def model(self, s, a, omega):
-        q = - omega[:, 0] ** 2 * s * a - 0.5 * omega[:, 1] * a * a - 0.4 * omega[:, 1] * s * s
+        b = omega[:, 0]
+        k = omega[:, 1]
+        q = - b * b * s * a - 0.5 * k * a * a - 0.4* k * s * s
         return q.ravel()
 
     def n_params(self):
         return 2
 
     def get_k(self, omega):
-        return -omega[:, 0]**2 / omega[:, 1]
+        b = omega[:, 0]
+        k = omega[:, 1]
+        return - b * b / k
 
 
 q_regressor = LQG_Q()
@@ -46,7 +56,7 @@ n_q_regressors_weights = q_regressor.n_params()
 Sequential.n_inputs = lambda self: n_q_regressors_weights
 
 rho_regressor = Sequential()
-rho_regressor.add(Dense(20, input_dim=n_q_regressors_weights, init='uniform', activation='sigmoid'))
+rho_regressor.add(Dense(20, input_dim=n_q_regressors_weights, init='uniform', activation=ACTIVATION))
 rho_regressor.add(Dense(n_q_regressors_weights, init='uniform', activation='linear'))
 rho_regressor.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 # rho_regressor.fit(None, None)
@@ -59,12 +69,12 @@ pbo = GradPBO(bellman_model=rho_regressor,
               gamma=mdp.gamma,
               optimizer="adam",
               state_dim=state_dim,
-              action_dim=action_dim)
+              action_dim=action_dim, incremental=INCREMENTAL)
 state, actions, reward, next_states = split_dataset(dataset,
                                                     state_dim=state_dim,
                                                     action_dim=action_dim,
                                                     reward_dim=reward_dim)
-theta0 = np.array([1., 0.], dtype='float32').reshape(1, -1)
+theta0 = np.array([6., 0.], dtype='float32').reshape(1, -1)
 history = pbo.fit(state, actions, next_states, reward, theta0,
                   batch_size=10, nb_epoch=2,
                   theta_metrics={'k': lambda theta: q_regressor.get_k(theta)})
@@ -74,7 +84,7 @@ weights = np.array(history.hist['theta']).squeeze()
 
 theta = theta0.copy()
 L = [np.array(theta)]
-for i in range(100):
+for i in range(4000):
     theta = pbo.apply_bop(theta)
     L.append(np.array(theta))
 
@@ -85,6 +95,9 @@ print(theta)
 print('K: {}'.format(q_regressor.get_k(theta)))
 
 plt.scatter(L[:, 0], L[:, 1])
+plt.title('Application of Bellman operator')
+plt.xlabel('b')
+plt.ylabel('k')
 plt.show()
 
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
@@ -93,7 +106,13 @@ print(values)
 
 
 weights = np.array(weights)
-plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
+plt.title('[train] evaluated weights')
+plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]),
+            cmap='viridis', linewidth='0')
+plt.xlabel('b')
+plt.ylabel('k')
+plt.colorbar()
+plt.show()
 
 best_rhos = pbo._rho_values[-1]
 q_w = np.array([4, 8])

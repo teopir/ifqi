@@ -11,7 +11,6 @@ from keras import callbacks as cbks
 
 
 class PBOHistory(cbks.History):
-
     def on_train_begin(self, logs={}):
         self.epoch = []
         self.batch = []
@@ -23,13 +22,15 @@ class PBOHistory(cbks.History):
             if k in logs:
                 self.hist.setdefault(k, []).append(logs[k])
 
+
 class GradPBO(object):
     def __init__(self, bellman_model, q_model, gamma,
                  discrete_actions,
                  optimizer,
-                 state_dim=None, action_dim=None):
+                 state_dim=None, action_dim=None, incremental=True):
         self.state_dim = state_dim
         self.action_dim = action_dim
+        self.incremental = incremental
         self.gamma = gamma
         s = T.dmatrix()
         a = T.dmatrix()
@@ -82,8 +83,9 @@ class GradPBO(object):
 
     def bellman_error(self, s, a, nexts, r, theta, gamma, all_actions):
         # compute new parameters
-        # c = self.linear_bellapx(rho, theta)
         c = self.bellman_model.outputs[0]
+        if self.incremental:
+            c = c + theta
         # compute q-function with new parameters
         qbpo = self.q_model.model(s, a, c)
 
@@ -232,7 +234,6 @@ class GradPBO(object):
         callbacks.on_train_begin()
         callback_model.stop_training = False
 
-        print(theta)
         for epoch in range(nb_epoch):
             callbacks.on_epoch_begin(epoch)
             if shuffle == 'batch':
@@ -271,11 +272,10 @@ class GradPBO(object):
                 for l, o in zip(out_labels, outs):
                     batch_logs[l] = o
 
-                theta = [self.bellman_model.predict(theta)]
-                # print(theta)
-                # print('k: {}'.format(self.q_model.get_k(theta[0])))
-                # print(outs)
-                # print()
+                if self.incremental:
+                    theta = [theta[0] + self.bellman_model.predict(theta)]
+                else:
+                    theta = [self.bellman_model.predict(theta)]
 
                 callbacks.on_batch_end(batch_index, batch_logs)
 
@@ -296,10 +296,14 @@ class GradPBO(object):
 
         callbacks.on_train_end()
         self.learned_theta_value = theta[0]
+        print(self.learned_theta_value)
         return history
 
     def apply_bop(self, theta):
-        return self.bellman_model.predict(theta)
+        if self.incremental:
+            return theta + self.bellman_model.predict(theta)
+        else:
+            return self.bellman_model.predict(theta)
 
     def _make_draw_action_function(self):
         if self.draw_action_function is None:
