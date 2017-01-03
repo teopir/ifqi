@@ -42,6 +42,10 @@ class Acrobot(Environment):
         self.observation_space = spaces.Box(low=-high, high=high)
         self.action_space = fqispaces.DiscreteValued([-5, 5], decimals=0)
 
+        # evaluation initial states
+        self.initial_states = np.zeros((41, 4))
+        self.initial_states[:, 0] = np.linspace(-2, 2, 41)
+
         # initialize state
         self.seed()
         self.reset()
