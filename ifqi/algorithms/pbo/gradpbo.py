@@ -37,7 +37,7 @@ class GradPBO(object):
             -
         q_model (object): A class representing the Q-function approximation
         gamma (float): discount factor
-        discrete_actions (numpy.matrix): discrete actions used to approximate the maximum (nactions, action_dim)
+        discrete_actions (numpy.array): discrete actions used to approximate the maximum (nactions, action_dim)
         optimizer: str (name of optimizer) or optimizer object.
                 See [Keras optimizers](https://keras.io/optimizers/).
         state_dim (None, int): state dimension (state_dim)
@@ -70,21 +70,23 @@ class GradPBO(object):
         # define bellman operator (check that BOP has only one output)
         assert isinstance(bellman_model.inputs, list)
         assert len(bellman_model.inputs) == 1
+        assert isinstance(bellman_model.outputs, list)
+        assert len(bellman_model.outputs) == 1
         theta = bellman_model.inputs[0]
 
         # construct (theano) Bellman error
         self.T_bellman_err = self.bellman_error(T_s, T_a, T_s_next, T_r, theta, self.gamma, T_discrete_actions)
-        # get trainable parameters
-        params = self.bellman_model.trainable_weights
-        # compute (theano) gradient
-        self.T_grad_bellman_err = T.grad(self.T_bellman_err, params)
 
-        # compile all functions
-        self.F_bellman_operator = theano.function([theta], bellman_model.outputs[0])
-        self.F_q = theano.function([T_s, T_a, theta], self.q_model.model(T_s, T_a, theta))
-        self.F_bellman_err = theano.function([T_s, T_a, T_s_next, T_r, theta, T_discrete_actions], self.T_bellman_err)
-        self.F_grad_bellman_berr = theano.function([T_s, T_a, T_s_next, T_r, theta, T_discrete_actions],
-                                                   self.T_grad_bellman_err)
+        # get trainable parameters
+        #params = self.bellman_model.trainable_weights
+        # compute (theano) gradient
+        # self.T_grad_bellman_err = T.grad(self.T_bellman_err, params)
+        # # compile all functions
+        # self.F_bellman_operator = theano.function([theta], bellman_model.outputs[0])
+        # self.F_q = theano.function([T_s, T_a, theta], self.q_model.model(T_s, T_a, theta))
+        # self.F_bellman_err = theano.function([T_s, T_a, T_s_next, T_r, theta, T_discrete_actions], self.T_bellman_err)
+        # self.F_grad_bellman_berr = theano.function([T_s, T_a, T_s_next, T_r, theta, T_discrete_actions],
+        #                                            self.T_grad_bellman_err)
 
         # define function to be used for train and drawing actions
         self.train_function = None
@@ -95,7 +97,11 @@ class GradPBO(object):
         self.T_s_next = T_s_next
         self.T_r = T_r
         self.T_discrete_actions = T_discrete_actions
+
+        # get keras optimizer
         self.optimizer = optimizers.get(optimizer)
+
+        # validate input data (the output is a list storing the validated input)
         self.discrete_actions = standardize_input_data(discrete_actions, ['discrete_actions'],
                                                        [(None,
                                                          self.action_dim)] if self.action_dim is not None else None,
