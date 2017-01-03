@@ -10,11 +10,10 @@ from keras import optimizers
 from keras import callbacks as cbks
 
 
-class PBOHistory(cbks.History):
+class PBOHistory(cbks.Callback):
     def on_train_begin(self, logs={}):
         self.epoch = []
         self.batch = []
-        self.history = {}
         self.hist = {}
 
     def on_batch_end(self, batch, logs={}):
@@ -24,64 +23,134 @@ class PBOHistory(cbks.History):
 
 
 class GradPBO(object):
+    """
+    Construct a GradPBO instance given the specified parameters
+
+    Args:
+        bellman_model (object): A class representing the Bellman operator.
+            It must comply with the following structure
+            - inputs (list): attributes that defines the inputs (theano variables) of the model.
+                             len(inputs) must be equal to 1.
+            - outputs (list): attributes that defines the outputs (theano variables) of the model.
+                             len(outputs) must be equal to 1.
+            - trainable_weights (list): list of theano variables representing trainable weights.
+            -
+        q_model (object): A class representing the Q-function approximation
+        gamma (float): discount factor
+        discrete_actions (numpy.matrix): discrete actions used to approximate the maximum (nactions, action_dim)
+        optimizer: str (name of optimizer) or optimizer object.
+                See [Keras optimizers](https://keras.io/optimizers/).
+        state_dim (None, int): state dimension (state_dim)
+        action_dim (None, int): action dimension (action_dim)
+        incremental (boolean): if true the incremental version of the Bellman operator is used:
+                                Incremental: theta' = theta + f(theta). Not incremental: theta' = f(theta).
+    """
     def __init__(self, bellman_model, q_model, gamma,
                  discrete_actions,
                  optimizer,
                  state_dim=None, action_dim=None, incremental=True):
+        # save MDP information
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.incremental = incremental
         self.gamma = gamma
-        s = T.dmatrix()
-        a = T.dmatrix()
-        s_next = T.dmatrix()
-        r = T.dvector()
-        # r = T.dmatrix()
-        all_actions = T.dmatrix()
+
+        # create theano variables
+        T_s = T.dmatrix()
+        T_a = T.dmatrix()
+        T_s_next = T.dmatrix()
+        T_r = T.dvector()
+        # T_r = T.dmatrix()
+        T_discrete_actions = T.dmatrix()
+
+        # store models of bellman apx and Q-function
         self.bellman_model = bellman_model
         self.q_model = q_model
 
-        # define bellman operator
+        # define bellman operator (check that BOP has only one output)
         assert isinstance(bellman_model.inputs, list)
         assert len(bellman_model.inputs) == 1
         theta = bellman_model.inputs[0]
 
-        self.berr = self.bellman_error(s, a, s_next, r, theta, self.gamma, all_actions)
+        # construct (theano) Bellman error
+        self.T_bellman_err = self.bellman_error(T_s, T_a, T_s_next, T_r, theta, self.gamma, T_discrete_actions)
+        # get trainable parameters
         params = self.bellman_model.trainable_weights
-        self.grad_berr = T.grad(self.berr, params)
+        # compute (theano) gradient
+        self.T_grad_bellman_err = T.grad(self.T_bellman_err, params)
 
         # compile all functions
-        self.bopf = theano.function([theta], bellman_model.outputs[0])
-        q = self.q_model.model(s, a, theta)
-        self.qf = theano.function([s, a, theta], q)
-        self.berrf = theano.function([s, a, s_next, r, theta, all_actions], self.berr)
-        self.grad_berrf = theano.function([s, a, s_next, r, theta, all_actions], self.grad_berr)
+        self.F_bellman_operator = theano.function([theta], bellman_model.outputs[0])
+        self.F_q = theano.function([T_s, T_a, theta], self.q_model.model(T_s, T_a, theta))
+        self.F_bellman_err = theano.function([T_s, T_a, T_s_next, T_r, theta, T_discrete_actions], self.T_bellman_err)
+        self.F_grad_bellman_berr = theano.function([T_s, T_a, T_s_next, T_r, theta, T_discrete_actions],
+                                                   self.T_grad_bellman_err)
 
+        # define function to be used for train and drawing actions
         self.train_function = None
         self.draw_action_function = None
-        self.s = s
-        self.a = a
-        self.s_next = s_next
-        self.r = r
-        self.all_actions = all_actions
-        self.optimizer = optimizers.get(optimizer)
-        self.all_actions_value = standardize_input_data(discrete_actions, ['all_actions'],
-                                                        [(None,
-                                                          self.action_dim)] if self.action_dim is not None else None,
-                                                        check_batch_dim=False, exception_prefix='discrete_actions')
 
-    def _compute_max_q(self, s, all_actions, theta):
+        self.T_s = T_s
+        self.T_a = T_a
+        self.T_s_next = T_s_next
+        self.T_r = T_r
+        self.T_discrete_actions = T_discrete_actions
+        self.optimizer = optimizers.get(optimizer)
+        self.discrete_actions = standardize_input_data(discrete_actions, ['discrete_actions'],
+                                                       [(None,
+                                                         self.action_dim)] if self.action_dim is not None else None,
+                                                       check_batch_dim=False, exception_prefix='discrete_actions')
+
+    def _compute_max_q(self, s, discrete_actions, theta):
+        """
+        Compute the maximum value of the Q-function in the given state.
+
+        Args:
+            s (theano.matrix): the state matrix (1 x state_dim)
+            discrete_actions (theano.matrix): the discrete actions (nactions x action_dim)
+            theta (theano.matrix): the parameters of the Q-function (1 x n_q_params)
+
+        Returns:
+            The maximum values of the Q-function in the given state w.r.t. all the discrete actions
+
+        """
         q_values, _ = theano.scan(fn=lambda a, s, theta: self.q_model.model(s, a, theta),
-                                  sequences=[all_actions], non_sequences=[s, theta])
+                                  sequences=[discrete_actions], non_sequences=[s, theta])
         return T.max(q_values)
         # return q_values
 
     def _compute_argmax_q(self, s, all_actions, theta):
+        """
+        Compute the index of the action with the maximum Q-value in the given state.
+
+        Args:
+            s (theano.matrix): the state matrix (1 x state_dim)
+            discrete_actions (theano.matrix): the discrete actions (nactions x action_dim)
+            theta (theano.matrix): the parameters of the Q-function (1 x n_q_params)
+
+        Returns:
+            The index of the action that maximixes the Q-function in the given state
+        """
         q_values, _ = theano.scan(fn=lambda a, s, theta: self.q_model.model(s, a, theta),
                                   sequences=[all_actions], non_sequences=[s, theta])
         return T.argmax(q_values)
 
-    def bellman_error(self, s, a, nexts, r, theta, gamma, all_actions):
+    def bellman_error(self, s, a, nexts, r, theta, gamma, discrete_actions):
+        """
+        Compute the symbolic expression of the Bellman error.
+
+        Args:
+            s (theano.matrix): the state matrix (nsamples x state_dim)
+            a (theano.matrix): the action matrix (nsamples x state_dim)
+            nexts (theano.matrix): the next state matrix (nsamples x state_dim)
+            r (theano.vector): the reward vector (nsamples)
+            theta (theano.matrix): the parameters of the Q-function (1 x n_q_params)
+            gamma (float): discount factor
+            discrete_actions (theano.matrix): the discrete actions (nactions x action_dim)
+
+        Returns:
+            The theano expression of the Bellman error
+        """
         # compute new parameters
         c = self.bellman_model.outputs[0]
         if self.incremental:
@@ -91,27 +160,45 @@ class GradPBO(object):
 
         # compute max over actions with old parameters
         qmat, _ = theano.scan(fn=self._compute_max_q,
-                              sequences=[nexts], non_sequences=[all_actions, theta])
+                              sequences=[nexts], non_sequences=[discrete_actions, theta])
 
         # compute empirical BOP
         v = qbpo - r - gamma * qmat
         # compute error
-        err = 0.5 * T.sum(v ** 2)
+        err = 0.5 * T.mean(v ** 2)
         return err
 
     def _make_train_function(self):
+        """
+        Construct the python train function from theano to be used in the fit process
+        Returns:
+            None
+        """
         if self.train_function is None:
             theta = self.bellman_model.inputs[0]
-            inputs = [self.s, self.a, self.s_next, self.r, theta, self.all_actions]
+            inputs = [self.T_s, self.T_a, self.T_s_next, self.T_r, theta, self.T_discrete_actions]
 
             training_updates = self.optimizer.get_updates(self.bellman_model.trainable_weights,
-                                                          {}, self.berr)
-            updates = training_updates
+                                                          {}, self.T_bellman_err)
 
             # returns loss and metrics. Updates weights at each call.
-            self.train_function = theano.function(inputs, [self.berr], updates=training_updates)
+            self.train_function = theano.function(inputs, [self.T_bellman_err], updates=training_updates)
 
-    def _standardize_user_data(self, s, a, s_next, r, theta, check_batch_dim=True):
+    def _standardize_user_data(self, s, a, s_next, r, theta, check_batch_dim=False):
+        """
+
+        Args:
+            s (numpy.array): the samples of the state (nsamples, state_dim)
+            a (numpy.array): the samples of the state (nsamples, action_dim)
+            s_next (numpy.array): the samples of the next (reached) state (nsamples, state_dim)
+            r (numpy.array): the sample of the reward (nsamples, )
+            theta (numpy.array): the sample of the Q-function parameters (1, n_params)
+            check_batch_dim (bool): default False
+
+        Returns:
+            The standardized values (s, a, s_next, r, theta)
+
+        """
         s = standardize_input_data(s, ['s'], [(None, self.state_dim)] if self.state_dim is not None else None,
                                    check_batch_dim=check_batch_dim, exception_prefix='state')
         a = standardize_input_data(a, ['a'], [(None, self.action_dim)] if self.action_dim is not None else None,
@@ -129,12 +216,43 @@ class GradPBO(object):
     def fit(self, s, a, s_next, r, theta,
             batch_size=32, nb_epoch=10, verbose=1, callbacks=[],
             validation_split=0., validation_data=None, shuffle=True, theta_metrics={}):
+        """
+
+        Args:
+            s (numpy.array): the samples of the state (nsamples, state_dim)
+            a (numpy.array): the samples of the state (nsamples, action_dim)
+            s_next (numpy.array): the samples of the next (reached) state (nsamples, state_dim)
+            r (numpy.array): the sample of the reward (nsamples, )
+            theta (numpy.array): the sample of the Q-function parameters (1, n_params)
+            batch_size (int): dimension of the batch used for a single step of the gradient
+            nb_epoch (int): number of epochs
+            verbose (int): 0 or 1. Verbosity mode. 0 = silent, 1 = verbose.
+            callbacks (list): list of callbacks to be called during training.
+                See [Keras Callbacks](https://keras.io/callbacks/).
+            validation_split (float): float between 0 and 1:
+                fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate the loss and any model metrics
+                on this data at the end of each epoch.
+            validation_data (tuple): data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                This could be a tuple (val_s, val_a, val_s_next, val_r) or a tuple
+                (val_s, val_a, val_s_next, val_r, val_theta).
+            shuffle (boolean): whether to shuffle the training data before each epoch.
+            theta_metrics (dict): dictionary storing the pairs (name: callable object).
+                The callable object/function is used to evaluate the Q-function parameters
+                at each iteration. The signature of the callable is simple: f(theta)
+                e.g.: theta_metrics={'k': lambda theta: evaluate(theta)})
+
+        Returns:
+            A PBOHistory instance storing train information
+        """
         s, a, s_next, r, theta = self._standardize_user_data(
             s, a, s_next, r, theta,
             check_batch_dim=False
         )
 
-        all_actions = standardize_input_data(self.all_actions_value, ['all_actions'],
+        all_actions = standardize_input_data(self.discrete_actions, ['all_actions'],
                                              [(None, self.action_dim)] if self.action_dim is not None else None,
                                              check_batch_dim=False, exception_prefix='discrete_actions')
 
@@ -184,7 +302,7 @@ class GradPBO(object):
         f = self.train_function
 
         # prepare display labels
-        out_labels = ['bell_error']
+        out_labels = ['bellman_error']
 
         if do_validation:
             callback_metrics = copy.copy(out_labels) + ['val_' + n for n in out_labels]
@@ -300,23 +418,48 @@ class GradPBO(object):
         return history
 
     def apply_bop(self, theta):
+        """
+        Applies the Bellman operator to the provided Q-function parameters
+        Args:
+            theta (numpy.array): the sample of the Q-function parameters (1, n_params)
+
+        Returns:
+            The updated parameters
+
+        """
         if self.incremental:
             return theta + self.bellman_model.predict(theta)
         else:
             return self.bellman_model.predict(theta)
 
     def _make_draw_action_function(self):
+        """
+        Construct the python function from theano to be used in the draw_action process
+        Returns:
+            None
+        """
         if self.draw_action_function is None:
             # compute max over actions with old parameters
             theta = self.bellman_model.inputs[0]
-            inputs = [self.s, theta, self.all_actions]
             idx_max, _ = theano.scan(fn=self._compute_argmax_q,
-                                     sequences=[self.s], non_sequences=[self.all_actions, theta])
-            self.draw_action_function = theano.function(inputs, [self.all_actions[idx_max]])
+                                     sequences=[self.T_s], non_sequences=[self.T_discrete_actions, theta])
+            inputs = [self.T_s, theta, self.T_discrete_actions]
+            self.draw_action_function = theano.function(inputs, [self.T_discrete_actions[idx_max]])
 
     def draw_action(self, state, done, flag):
+        """
+        Samples the action to be executed.
+        Args:
+            state (numpy.array): the state to be evaluated (1, state_dim) or (state_dim,)
+            done: ??
+            flag: ??
+
+        Returns:
+            The action to be executed in the state
+        """
         self._make_draw_action_function()
         state = standardize_input_data(state, ['state'],
                                        [(None, self.state_dim)] if self.state_dim is not None else None,
                                        check_batch_dim=False, exception_prefix='draw_state')
-        return self.draw_action_function(state[0], self.learned_theta_value, self.all_actions_value[0])
+        return self.draw_action_function(state[0], self.learned_theta_value, self.discrete_actions[
+            0])  # we take index zero since they are lists of numpy matrices
