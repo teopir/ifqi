@@ -78,6 +78,7 @@ state, actions, reward, next_states = split_dataset(dataset,
                                                     action_dim=action_dim,
                                                     reward_dim=reward_dim)
 theta0 = np.array([[-6., 10.001], [6, 8.]], dtype='float32')#.reshape(1, -1)
+theta0 = np.array([-6., 10.001], dtype='float32').reshape(1, -1)
 history = pbo.fit(state, actions, next_states, reward, theta0,
                   batch_size=10, nb_epoch=2,
                   theta_metrics={'k': lambda theta: q_regressor.get_k(theta)})
