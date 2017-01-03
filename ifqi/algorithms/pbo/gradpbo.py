@@ -77,17 +77,6 @@ class GradPBO(object):
         # construct (theano) Bellman error
         self.T_bellman_err = self.bellman_error(T_s, T_a, T_s_next, T_r, theta, self.gamma, T_discrete_actions)
 
-        # get trainable parameters
-        #params = self.bellman_model.trainable_weights
-        # compute (theano) gradient
-        # self.T_grad_bellman_err = T.grad(self.T_bellman_err, params)
-        # # compile all functions
-        # self.F_bellman_operator = theano.function([theta], bellman_model.outputs[0])
-        # self.F_q = theano.function([T_s, T_a, theta], self.q_model.model(T_s, T_a, theta))
-        # self.F_bellman_err = theano.function([T_s, T_a, T_s_next, T_r, theta, T_discrete_actions], self.T_bellman_err)
-        # self.F_grad_bellman_berr = theano.function([T_s, T_a, T_s_next, T_r, theta, T_discrete_actions],
-        #                                            self.T_grad_bellman_err)
-
         # define function to be used for train and drawing actions
         self.train_function = None
         self.draw_action_function = None
@@ -125,7 +114,7 @@ class GradPBO(object):
         return T.max(q_values)
         # return q_values
 
-    def _compute_argmax_q(self, s, all_actions, theta):
+    def _compute_argmax_q(self, s, discrete_actions, theta):
         """
         Compute the index of the action with the maximum Q-value in the given state.
 
@@ -138,7 +127,7 @@ class GradPBO(object):
             The index of the action that maximixes the Q-function in the given state
         """
         q_values, _ = theano.scan(fn=lambda a, s, theta: self.q_model.model(s, a, theta),
-                                  sequences=[all_actions], non_sequences=[s, theta])
+                                  sequences=[discrete_actions], non_sequences=[s, theta])
         return T.argmax(q_values)
 
     def bellman_error(self, s, a, nexts, r, theta, gamma, discrete_actions):
@@ -172,6 +161,11 @@ class GradPBO(object):
         v = qbpo - r - gamma * qmat
         # compute error
         err = 0.5 * T.mean(v ** 2)
+        return err
+
+    def bellman_error_multiple_theta(self, s, a, nexts, r, theta_matrix, gamma, discrete_actions):
+        err, _ = theano.scan(fn=self.bellman_error,
+                              sequences=[theta_matrix], non_sequences=[s, a, nexts, r, gamma, discrete_actions])
         return err
 
     def _make_train_function(self):
@@ -469,3 +463,17 @@ class GradPBO(object):
                                        check_batch_dim=False, exception_prefix='draw_state')
         return self.draw_action_function(state[0], self.learned_theta_value, self.discrete_actions[
             0])  # we take index zero since they are lists of numpy matrices
+
+
+    def _make_additional_functions(self):
+        # get trainable parameters
+        params = self.bellman_model.trainable_weights
+        theta = self.bellman_model.inputs[0]
+        # compute (theano) gradient
+        self.T_grad_bellman_err = T.grad(self.T_bellman_err, params)
+        # compile all functions
+        self.F_bellman_operator = theano.function([theta], self.bellman_model.outputs[0])
+        self.F_q = theano.function([self.T_s, self.T_a, theta], self.q_model.model(self.T_s, self.T_a, theta))
+        self.F_bellman_err = theano.function([self.T_s, self.T_a, self.T_s_next, self.T_r, theta, self.T_discrete_actions], self.T_bellman_err)
+        self.F_grad_bellman_berr = theano.function([self.T_s, self.T_a, self.T_s_next, self.T_r, theta, self.T_discrete_actions],
+                                                   self.T_grad_bellman_err)

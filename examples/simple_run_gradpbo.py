@@ -25,8 +25,8 @@ discrete_actions = np.linspace(-8, 8, 20)
 dataset = evaluation.collect_episodes(mdp, n_episodes=100)
 check_dataset(dataset, state_dim, action_dim, reward_dim)
 
-INCREMENTAL = False
-ACTIVATION = 'sigmoid'
+INCREMENTAL = True
+ACTIVATION = 'tanh'
 
 
 # sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
@@ -77,7 +77,7 @@ state, actions, reward, next_states = split_dataset(dataset,
                                                     state_dim=state_dim,
                                                     action_dim=action_dim,
                                                     reward_dim=reward_dim)
-theta0 = np.array([6., 0.001], dtype='float32').reshape(1, -1)
+theta0 = np.array([[-6., 10.001], [6, 8.]], dtype='float32')#.reshape(1, -1)
 history = pbo.fit(state, actions, next_states, reward, theta0,
                   batch_size=10, nb_epoch=2,
                   theta_metrics={'k': lambda theta: q_regressor.get_k(theta)})
@@ -133,6 +133,21 @@ plt.savefig(
     'LQG_MLP_{}_bpo_application_incremental_{}_activation_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION),
     bbox_inches='tight')
 #plt.show()
+plt.close('all')
+
+B_i, K_i = np.mgrid[-6:6:40j, -5:35:40j]
+theta = np.column_stack((B_i.ravel(),K_i.ravel()))
+theta_p = pbo.apply_bop(theta)
+
+fig = plt.figure(figsize=(15,10))
+Q = plt.quiver(theta[:,0], theta[:,1], theta_p[:,0]-theta[:,0], theta_p[:,1]-theta[:,1], angles='xy')
+plt.xlabel('b')
+plt.ylabel('k')
+plt.title('Gradient field - Act: {}, Inc: {}'.format(ACTIVATION, INCREMENTAL))
+plt.savefig(
+    'LQG_MLP_{}_grad_field_{}_activation_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION),
+    bbox_inches='tight')
+plt.show()
 
 
 # best_rhos = pbo._rho_values[-1]

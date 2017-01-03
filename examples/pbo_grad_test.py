@@ -44,7 +44,7 @@ def empirical_bop(s, a, r, snext, all_a, gamma, rho, theta):
             if qv > bop[i]:
                 bop[i] = qv
     v = qnop - r - gamma * bop
-    return 0.5 * np.sum(v ** 2)
+    return 0.5 * np.mean(v ** 2)
 
 
 class LBPO(object):
@@ -125,7 +125,7 @@ s = np.array([1., 2., 3.]).reshape(-1, 1)
 a = np.array([0., 3., 4.]).reshape(-1, 1)
 nexts = s + 1
 r = np.array([-1., -5., 0.])
-actions = np.array([1, 2, 3]).reshape(-1, 1)  # discretization of the actions
+discrete_actions = np.array([1, 2, 3]).reshape(-1, 1)  # discretization of the actions
 # to be used for maximum estimate
 
 # it is also possible to use keras model
@@ -138,18 +138,23 @@ model.add(Dense(2, init='uniform', activation='linear'))
 model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 
 # =================================================================
-gpbo = GradPBO(bellman_model=lbpo, q_model=q_model, gamma=gamma, optimizer="adam")
-assert np.allclose(bellmanop(rho, theta), gpbo.bopf(theta)), \
-    '{}, {}'.format(bellmanop(rho, theta), gpbo.bopf(theta))
-assert np.allclose(lqr_reg(s, a, theta), gpbo.qf(s, a, theta))
+INCREMENTAL = False
+gpbo = GradPBO(bellman_model=lbpo, q_model=q_model,
+               discrete_actions=discrete_actions,
+               gamma=gamma, optimizer="adam",
+               state_dim=1, action_dim=1, incremental=INCREMENTAL)
+gpbo._make_additional_functions()
+assert np.allclose(bellmanop(rho, theta), gpbo.F_bellman_operator(theta)), \
+    '{}, {}'.format(bellmanop(rho, theta), gpbo.F_bellman_operator(theta))
+assert np.allclose(lqr_reg(s, a, theta), gpbo.F_q(s, a, theta))
 
-berr = gpbo.berrf(s, a, nexts, r, theta, actions)
-tv = empirical_bop(s, a, r, nexts, actions, gamma, rho, theta)
+berr = gpbo.F_bellman_err(s, a, nexts, r, theta, discrete_actions)
+tv = empirical_bop(s, a, r, nexts, discrete_actions, gamma, rho, theta)
 assert np.allclose(berr, tv), '{}, {}'.format(berr, tv)
 
-berr_grad = gpbo.grad_berrf(s, a, nexts, r, theta, actions)
+berr_grad = gpbo.F_grad_bellman_berr(s, a, nexts, r, theta, discrete_actions)
 eps = np.sqrt(np.finfo(float).eps)
-f = lambda x: empirical_bop(s, a, r, nexts, actions, gamma, x, theta)
+f = lambda x: empirical_bop(s, a, r, nexts, discrete_actions, gamma, x, theta)
 approx_grad = optimize.approx_fprime(rho.ravel(), f, eps).reshape(berr_grad[0].shape)
 assert np.allclose(berr_grad, approx_grad), '{}, {}'.format(berr_grad, approx_grad)
 
