@@ -36,6 +36,14 @@ class CarOnHill(Environment):
         self.observation_space = spaces.Box(low=-high, high=high)
         self.action_space = fqispaces.DiscreteValued([-4., 4.], decimals=0)
 
+        # evaluation initial states
+        self.initial_states = np.zeros((289, 2))
+        cont = 0
+        for i in range(-8, 9):
+            for j in range(-8, 9):
+                self.initial_states[cont, :] = [0.125 * i, 0.375 * j]
+                cont += 1
+
         # initialize state
         self.seed()
         self.reset()

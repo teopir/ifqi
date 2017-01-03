@@ -83,20 +83,6 @@ dataset = evaluation.collect_episodes(
                                   ['n_episodes'])[-1])
 print('Dataset has %d samples' % dataset.shape[0])
 
-# Load initial state to start evaluation episodes. This is the only setting
-# to be chosen outside the configuration file.
-# IF MULTIPLE EXPERIMENTS ARE TO BE PERFORMED STARTING FROM THE SAME
-# INITIAL STATE, USE AN ARRAY WITH THE SAME INITIAL STATE REPEATED FOR THE
-# DESIRED NUMBER OF EVALUATION RUNS.
-initial_states = np.zeros((289, 2))
-cont = 0
-for i in range(-8, 9):
-    for j in range(-8, 9):
-        initial_states[cont, :] = [0.125 * i, 0.375 * j]
-        cont += 1
-######################################################################
-######################################################################
-
 results = list()
 # Run
 if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
@@ -123,7 +109,7 @@ if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
 
             fqi.fit(sast, r, **fit_params)
 
-            experiment_results.append(evaluate(mdp, fqi, initial_states, args))
+            experiment_results.append(evaluate(mdp, fqi, mdp.initial_states, args))
         mean_results = np.mean(experiment_results, axis=0)
         print('J: %f' % mean_results[0])
         results.append(mean_results)
@@ -154,7 +140,7 @@ elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
             fqi.partial_fit(None, None, **fit_params)
 
             if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
-                values = evaluate(mdp, fqi, initial_states, args)
+                values = evaluate(mdp, fqi, mdp.initial_states, args)
                 experiment_results.append(values)
                 print('J: %f' % values[0])
         results.append(experiment_results)
