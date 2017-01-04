@@ -14,7 +14,7 @@ class PBO(Algorithm):
     """
     def __init__(self, estimator, estimator_rho, state_dim, action_dim,
                  discrete_actions, gamma, learning_steps,
-                 batch_size, learning_rate, verbose=False):
+                 batch_size, learning_rate, incremental=True, verbose=False):
         """
         Constructor.
         Args:
@@ -31,6 +31,7 @@ class PBO(Algorithm):
         self._learning_steps = learning_steps
         self._batch_size = batch_size
         self._learning_rate = learning_rate
+        self._incremental = incremental
         self._q_weights_list = list()
         super(PBO, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, None,
@@ -82,6 +83,11 @@ class PBO(Algorithm):
         print('Iteration: %d' % self._iteration)
         self._q_weights_list.append(self._get_q_weights())
         new_q_weights = self._f(self.iteration_best_rho)
+        if self._incremental:
+            if hasattr(self, '_q_weights'):
+                new_q_weights += self._q_weights
+            self._q_weights = new_q_weights
+
         self._set_q_weights(new_q_weights)
         self._rho_values.append(self.iteration_best_rho)
         self.iteration_best_rho_value = np.inf
