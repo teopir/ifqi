@@ -18,8 +18,9 @@ class LSPI(Algorithm):
     """
 
     def __init__(self, estimator, state_dim, action_dim,
-                 discrete_actions, gamma, verbose=False):
+                 discrete_actions, gamma, epsilon=1e-6, verbose=False):
         self.__name__ = 'LSPI'
+        self._epsilon = epsilon
         super(LSPI, self).__init__(estimator, state_dim, action_dim,
                                    discrete_actions, gamma, None,
                                    verbose)
@@ -49,17 +50,36 @@ class LSPI(Algorithm):
         if r is not None:
             self._r = r
 
+        self._iteration = 1
+
         phi_hat = self._estimator.features(self._sa).T
-        best_actions = self.draw_action(self._snext, self._absorbing)
-        snext_anext = np.concatenate((self._snext, best_actions), axis=1)
-        pi_phi_hat = self._estimator.features(snext_anext)
 
-        A = phi_hat * (phi_hat - self.gamma * pi_phi_hat).T
-        b = phi_hat * self._r
-
-        if np.linalg.matrix_rank(A) == phi_hat.shape[0]:
-            w = np.linalg.solve(A, b)
-        else:
-            w = np.linalg.pinv(A) * b
+        w = np.zeros((phi_hat.shape[0], 1))
 
         self._estimator.set_weights(w)
+        self._estimator.fit(self._sa, self._r)
+
+        delta = np.inf
+        while delta < self._epsilon:
+            print('Iteration: %d' % self._iteration)
+
+            best_actions = self.draw_action(self._snext,
+                                            self._absorbing).reshape(-1, 1)
+            snext_anext = np.concatenate((self._snext, best_actions), axis=1)
+            pi_phi_hat = self._estimator.features.test_features(snext_anext)
+
+            A = phi_hat * (phi_hat - self.gamma * pi_phi_hat).T
+            b = phi_hat * self._r
+
+            old_w = w
+            if np.linalg.matrix_rank(A) == phi_hat.shape[0]:
+                w = np.linalg.solve(A, b)
+            else:
+                w = np.linalg.pinv(A) * b
+
+            self._estimator.set_weights(w)
+            self._estimator.fit(self._sa, self._r)
+
+            delta = np.linalg.norm(w - old_w)
+
+            self._iteration += 1
