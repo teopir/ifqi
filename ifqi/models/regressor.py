@@ -5,15 +5,15 @@ from ifqi.preprocessors.features import select_features
 
 class Regressor(object):
     def __init__(self, regressor_class=None, **kwargs):
-        self._features = select_features(kwargs.pop('features', None))
+        self.features = select_features(kwargs.pop('features', None))
         self._input_scaled = kwargs.pop('input_scaled', None)
         self._output_scaled = kwargs.pop('output_scaled', None)
 
         self._regressor = regressor_class(**kwargs)
 
     def fit(self, X, y, **kwargs):
-        if self._features:
-            X = self._features(X)
+        if self.features:
+            X = self.features(X)
 
         if self._input_scaled:
             self._pre_X = preprocessing.StandardScaler()
@@ -26,8 +26,8 @@ class Regressor(object):
         return self._regressor.fit(X, y, **kwargs)
 
     def predict(self, X, **kwargs):
-        if self._features:
-            X = self._features.test_features(X)
+        if self.features:
+            X = self.features.test_features(X)
 
         if self._input_scaled:
             if hasattr(self, '_pre_X'):

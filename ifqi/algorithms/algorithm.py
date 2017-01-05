@@ -47,7 +47,6 @@ class Algorithm(object):
             assert len(self._actions) > 1, \
                 'Error: at least two actions are required'
 
-        self.__name__ = None
         self._iteration = 0
         self._verbose = verbose
 

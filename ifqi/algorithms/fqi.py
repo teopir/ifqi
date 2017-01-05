@@ -5,7 +5,15 @@ from ifqi.algorithms.algorithm import Algorithm
 
 class FQI(Algorithm):
     """
-    This class implements the functions to run Fitted Q-Iteration algorithm.
+    This class implements the Fitted Q-Iteration algorithm.
+    This algorithm is an off-policy batch algorithm that works with finite
+    action spaces.
+    It exploits the Bellman operator to build a dataset of Q-values from which
+    a regressor is trained.
+
+    References
+    ==========
+    [Ernst, Geurts, Wehenkel. Tree-Based Batch Mode Reinforcement Learning](http://www.jmlr.org/papers/volume6/ernst05a/ernst05a.pdf)
     """
 
     def __init__(self, estimator, state_dim, action_dim,

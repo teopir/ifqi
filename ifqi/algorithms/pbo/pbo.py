@@ -33,6 +33,7 @@ class PBO(Algorithm):
         self._learning_rate = learning_rate
         self._incremental = incremental
         self._q_weights_list = list()
+        self.__name__ = 'PBO'
         super(PBO, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, None,
                                   verbose)
