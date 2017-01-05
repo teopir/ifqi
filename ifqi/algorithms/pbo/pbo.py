@@ -39,7 +39,7 @@ class PBO(Algorithm):
                                   verbose)
         self._rho_values = []
 
-    def fit(self, sast=None, r=None):
+    def fit(self, sast, r):
         """
         Perform a run of PBO using input data sast and r.
         Note that if the dataset does not change between iterations, you can
@@ -55,13 +55,12 @@ class PBO(Algorithm):
             the history of the parameters used to update the q regressor
         """
         self.iteration_best_rho_value = np.inf
-        if sast is not None:
-            next_states_idx = self.state_dim + self.action_dim
-            self._sa = sast[:, :next_states_idx]
-            self._snext = sast[:, next_states_idx:-1]
-            self._absorbing = sast[:, -1]
-        if r is not None:
-            self._r = r
+
+        next_states_idx = self.state_dim + self.action_dim
+        self._sa = sast[:, :next_states_idx]
+        self._snext = sast[:, next_states_idx:-1]
+        self._absorbing = sast[:, -1]
+        self._r = r
 
         optimizer = ExactNES(self._fitness, self._get_rho(),
                              minimize=True, batchSize=self._batch_size,
