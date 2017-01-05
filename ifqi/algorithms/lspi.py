@@ -54,32 +54,30 @@ class LSPI(Algorithm):
 
         phi_hat = self._estimator.features(self._sa).T
 
-        w = np.zeros((phi_hat.shape[0], 1))
-
-        self._estimator.set_weights(w)
         self._estimator.fit(self._sa, self._r)
-
+        w = np.zeros((phi_hat.shape[0], 1))
         delta = np.inf
-        while delta < self._epsilon:
+        while delta >= self._epsilon:
             print('Iteration: %d' % self._iteration)
 
             best_actions = self.draw_action(self._snext,
                                             self._absorbing).reshape(-1, 1)
             snext_anext = np.concatenate((self._snext, best_actions), axis=1)
-            pi_phi_hat = self._estimator.features.test_features(snext_anext)
+            pi_phi_hat = self._estimator.features.test_features(snext_anext).T
 
-            A = phi_hat * (phi_hat - self.gamma * pi_phi_hat).T
-            b = phi_hat * self._r
+            A = np.dot(phi_hat, (phi_hat - self.gamma * pi_phi_hat).T)
+            b = np.dot(phi_hat, self._r).reshape(-1, 1)
 
-            old_w = w
+            old_w = np.copy(w)
             if np.linalg.matrix_rank(A) == phi_hat.shape[0]:
                 w = np.linalg.solve(A, b)
             else:
-                w = np.linalg.pinv(A) * b
+                w = np.dot(np.linalg.pinv(A), b)
 
-            self._estimator.set_weights(w)
-            self._estimator.fit(self._sa, self._r)
+            self._estimator.set_weights(w.T)
 
             delta = np.linalg.norm(w - old_w)
+
+            print('delta: %f' % delta)
 
             self._iteration += 1
