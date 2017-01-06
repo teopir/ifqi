@@ -14,7 +14,7 @@ class PBO(Algorithm):
     """
     def __init__(self, estimator, estimator_rho, state_dim, action_dim,
                  discrete_actions, gamma, learning_steps,
-                 batch_size, learning_rate, verbose=False):
+                 batch_size, learning_rate, incremental=True, verbose=False):
         """
         Constructor.
         Args:
@@ -31,13 +31,15 @@ class PBO(Algorithm):
         self._learning_steps = learning_steps
         self._batch_size = batch_size
         self._learning_rate = learning_rate
+        self._incremental = incremental
         self._q_weights_list = list()
+        self.__name__ = 'PBO'
         super(PBO, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, None,
                                   verbose)
         self._rho_values = []
 
-    def fit(self, sast=None, r=None):
+    def fit(self, sast, r):
         """
         Perform a run of PBO using input data sast and r.
         Note that if the dataset does not change between iterations, you can
@@ -53,13 +55,12 @@ class PBO(Algorithm):
             the history of the parameters used to update the q regressor
         """
         self.iteration_best_rho_value = np.inf
-        if sast is not None:
-            next_states_idx = self.state_dim + self.action_dim
-            self._sa = sast[:, :next_states_idx]
-            self._snext = sast[:, next_states_idx:-1]
-            self._absorbing = sast[:, -1]
-        if r is not None:
-            self._r = r
+
+        next_states_idx = self.state_dim + self.action_dim
+        self._sa = sast[:, :next_states_idx]
+        self._snext = sast[:, next_states_idx:-1]
+        self._absorbing = sast[:, -1]
+        self._r = r
 
         optimizer = ExactNES(self._fitness, self._get_rho(),
                              minimize=True, batchSize=self._batch_size,
@@ -82,6 +83,11 @@ class PBO(Algorithm):
         print('Iteration: %d' % self._iteration)
         self._q_weights_list.append(self._get_q_weights())
         new_q_weights = self._f(self.iteration_best_rho)
+        if self._incremental:
+            if hasattr(self, '_q_weights'):
+                new_q_weights += self._q_weights
+            self._q_weights = new_q_weights
+
         self._set_q_weights(new_q_weights)
         self._rho_values.append(self.iteration_best_rho)
         self.iteration_best_rho_value = np.inf

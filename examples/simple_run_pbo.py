@@ -34,6 +34,11 @@ class LQG_Q():
     def get_weights(self):
         return self.w
 
+    def get_k(self, omega):
+        b = omega[:, 0]
+        k = omega[:, 1]
+        return - b * b / k
+
     def set_weights(self, w):
         self.w = np.array(w)
 
@@ -42,27 +47,19 @@ class LQG_Q():
 
 q_regressor_params = dict()
 q_regressor = Regressor(LQG_Q, **q_regressor_params)
-#phi = dict(name='poly', params=dict(degree=3))
-#q_regressor_params = dict(features=phi)
-#q_regressor = Regressor(Ridge, **q_regressor_params)
-#q_regressor.fit(sast[:, :state_dim + action_dim], r)  # necessary to init Ridge
-##########################################
 
-# q_regressor_params = {'n_input': 2,
-#                       'n_output': 1,
-#                       'hidden_neurons': [20, 20],
-#                       'activation': 'sigmoid',
-#                       'optimizer': 'rmsprop',
-#                       'input_scaled': 1}
-# q_regressor = Regressor(MLP, **q_regressor_params)
-
+ACTIVATION = 'sigmoid'
+INCREMENTAL = False
 ### F_RHO REGRESSOR ######################
 n_q_regressors_weights = q_regressor._regressor.count_params()
 rho_regressor_params = {'n_input': n_q_regressors_weights,
                         'n_output': n_q_regressors_weights,
                         'hidden_neurons': [20],
-                        'activation': 'sigmoid',
+                        'init': 'uniform',
+                        'loss': 'mse',
+                        'activation': ACTIVATION,
                         'optimizer': 'rmsprop',
+                        'metrics': ['accuracy'],
                         'input_scaled': 1}
 rho_regressor = Regressor(MLP, **rho_regressor_params)
 ##########################################
@@ -77,41 +74,43 @@ pbo = PBO(estimator=q_regressor,
           learning_steps=50,
           batch_size=10,
           learning_rate=1e-1,
+          incremental=INCREMENTAL,
           verbose=True)
 
 weights = pbo.fit(sast, r)
 ##########################################
 
-print(weights)
-
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
+
 print(values)
 
 from matplotlib import pyplot as plt
 weights = np.array(weights)
-plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
+plt.subplot(1, 3, 1)
+plt.title('[train] evaluated weights')
+plt.xlabel('b')
+plt.ylabel('k')
+plt.scatter(weights[:, 1], weights[:, 0], s=50, c=np.arange(weights.shape[0]), cmap='inferno')
+plt.colorbar()
 
 best_rhos = pbo._rho_values[-1]
-q_w = np.array([4, 8])
-L = [q_w]
-for _ in range(10):
-    q_w = pbo._f2(best_rhos, q_w)
-    print(-q_w[1] ** 2 / q_w[0])
-    L.append(q_w)
-L = np.array(L)
-plt.figure()
-plt.scatter(L[:, 0], L[:, 1], s=50, c=np.arange(L.shape[0]), cmap='inferno')
+ks = q_regressor._regressor.get_k(np.array(pbo._q_weights_list))
+plt.subplot(1, 3, 2)
+plt.xlabel('iteration')
+plt.ylabel('coefficient of max action (opt ~0.6)')
+plt.plot(ks)
+plt.grid()
 
 B_i, K_i = np.meshgrid(np.linspace(-10, 11, 20), np.linspace(-10, 11, 20))
 B_f = np.zeros(B_i.shape)
 K_f = np.zeros(K_i.shape)
 for i in range(B_i.shape[0]):
     for j in range(K_i.shape[0]):
-        B_f[i, j], K_f[i, j] = pbo._f2(best_rhos, np.array([B_i[i, j], K_i[i, j]]))
+        K_f[i, j], B_f[i, j] = pbo._f2(best_rhos, np.array([K_i[i, j], B_i[i, j]]))
 
-fig = plt.figure(figsize=(15, 10))
-Q = plt.quiver(B_i, K_i, B_f - B_i, K_f - K_i, angles='xy')
+plt.subplot(1, 3, 3)
+plt.quiver(B_i, K_i, B_f - B_i, K_f - K_i, angles='xy')
 plt.axis([-10, 10, -10, 10])
 plt.xlabel('b')
 plt.ylabel('k')

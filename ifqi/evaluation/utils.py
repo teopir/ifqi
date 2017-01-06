@@ -21,20 +21,20 @@ def check_dataset(data, state_dim, action_dim, reward_dim):
             '{} != {}'.format(s, snext)
 
 
-def split_dataset(dataset, state_dim, action_dim, reward_dim):
+def split_dataset(dataset, state_dim, action_dim, reward_dim, last=None):
     nextstate_idx = state_dim + action_dim + reward_dim
     reward_idx = action_dim + state_dim
-    state = dataset[:, 0:state_dim]
-    actions = dataset[:, state_dim:reward_idx]
-    reward = dataset[:, reward_idx]
-    next_states = dataset[:, nextstate_idx:nextstate_idx + state_dim]
+    state = dataset[:last, 0:state_dim]
+    actions = dataset[:last, state_dim:reward_idx]
+    reward = dataset[:last, reward_idx]
+    next_states = dataset[:last, nextstate_idx:nextstate_idx + state_dim]
     return state, actions, reward, next_states
 
 
-def split_data_for_fqi(dataset, state_dim, action_dim, reward_dim):
+def split_data_for_fqi(dataset, state_dim, action_dim, reward_dim, last=None):
     reward_idx = state_dim + action_dim
-    sast = np.append(dataset[:, :reward_idx],
-                     dataset[:, reward_idx + reward_dim:-1],
+    sast = np.append(dataset[:last, :reward_idx],
+                     dataset[:last, reward_idx + reward_dim:-1],
                      axis=1)
-    r = dataset[:, reward_idx]
+    r = dataset[:last, reward_idx]
     return sast, r

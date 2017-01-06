@@ -2,16 +2,17 @@ import argparse
 import json
 import os
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from ifqi.loadexperiment import get_MDP, get_model
 from ifqi import envs
+from ifqi.algorithms.fqi import FQI
 from ifqi.evaluation import evaluation
-from ifqi.algorithms.fqi.FQI import FQI
-from ifqi.models.regressor import Regressor
-from ifqi.models.ensemble import Ensemble
+from ifqi.evaluation.utils import split_data_for_fqi
+from ifqi.loadexperiment import get_MDP, get_model
 from ifqi.models.actionregressor import ActionRegressor
+from ifqi.models.ensemble import Ensemble
+from ifqi.models.regressor import Regressor
 
 """
 Script to run fqi. It reads a configuration .json file and perform evaluation
@@ -102,10 +103,8 @@ if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
 
             episode_end_idxs = np.argwhere(dataset[:, -1] == 1).ravel()
             last_el = episode_end_idxs[i - 1]
-            sast = np.append(dataset[:last_el + 1, :reward_idx],
-                             dataset[:last_el + 1, reward_idx + 1:-1],
-                             axis=1)
-            r = dataset[:last_el + 1, reward_idx]
+            sast, r = split_data_for_fqi(dataset, state_dim, action_dim,
+                                         reward_dim, last_el + 1)
 
             fqi.fit(sast, r, **fit_params)
 
@@ -128,10 +127,7 @@ elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
                   verbose=config['fqi']['verbose'])
         fit_params = config['fit_params']
 
-        sast = np.append(dataset[:, :reward_idx],
-                         dataset[:, reward_idx + 1:-1],
-                         axis=1)
-        r = dataset[:, reward_idx]
+        sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
 
         fqi.partial_fit(sast, r, **fit_params)
 

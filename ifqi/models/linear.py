@@ -6,7 +6,7 @@ Scikit-learn linear models wrapper.
 """
 
 
-class Ridge(object):
+class Linear(object):
     def __init__(self):
         self.model = self.init_model()
 
@@ -21,7 +21,7 @@ class Ridge(object):
         pass
 
     def init_model(self):
-        return lm.Ridge()
+        return lm.LinearRegression()
 
     def count_params(self):
         if hasattr(self.model, 'coef_'):
@@ -38,3 +38,11 @@ class Ridge(object):
     def set_weights(self, w):
         if hasattr(self.model, 'coef_'):
             self.model.coef_ = w
+
+
+class Ridge(Linear):
+    def __init__(self):
+        super(Ridge, self).__init__()
+
+    def init_model(self):
+        return lm.Ridge()
