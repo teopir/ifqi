@@ -28,11 +28,9 @@ class LSTDQ(Algorithm):
             self._snext = sast[:, next_states_idx:-1]
             self._absorbing = sast[:, -1]
 
-            self._phi_hat = self._estimator.features(self._sa).T
-
+            self._phi_hat = self._estimator.features.fit_transform(self._sa).T
+            # to initialize the regressor
             self._estimator.fit(self._sa, np.zeros((self._sa.shape[0], 1)))
-            w = np.zeros((self._phi_hat.shape[0], 1))
-            self._estimator.set_weights(w.T)
 
             self._iteration = 1
         if r is not None:
@@ -41,10 +39,10 @@ class LSTDQ(Algorithm):
         best_actions = self.draw_action(self._snext,
                                         self._absorbing).reshape(-1, 1)
         snext_anext = np.concatenate((self._snext, best_actions), axis=1)
-        pi_phi_hat = self._estimator.features.test_features(snext_anext).T
+        pi_phi_hat = self._estimator.features.transform(snext_anext).T
 
         A = np.dot(self._phi_hat, (self._phi_hat - self.gamma * pi_phi_hat).T)
-        b = np.dot(self._phi_hat, self._r).reshape(-1, 1)
+        b = np.dot(self._phi_hat, self._r.reshape(-1, 1))
 
         if np.linalg.matrix_rank(A) == self._phi_hat.shape[0]:
             w = np.linalg.solve(A, b)
@@ -94,9 +92,7 @@ class LSPI(object):
             self._lstdq.fit()
 
             delta = np.linalg.norm(self._lstdq._estimator.get_weights() - old_w)
-
             print('delta: %f' % delta)
-
             iteration += 1
 
     def draw_action(self, states, absorbing, evaluation=False):

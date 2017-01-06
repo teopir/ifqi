@@ -13,7 +13,10 @@ class Regressor(object):
 
     def fit(self, X, y, **kwargs):
         if self.features:
-            X = self.features(X)
+            X = self.features.fit_transform(X)
+
+        if 'exclude_action' in kwargs:
+            X = X[:, :-1]
 
         if self._input_scaled:
             self._pre_X = preprocessing.StandardScaler()
@@ -27,7 +30,10 @@ class Regressor(object):
 
     def predict(self, X, **kwargs):
         if self.features:
-            X = self.features.test_features(X)
+            X = self.features.transform(X)
+
+        if 'exclude_action' in kwargs:
+            X = X[:, :-1]
 
         if self._input_scaled:
             if hasattr(self, '_pre_X'):
