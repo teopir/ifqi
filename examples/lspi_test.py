@@ -9,7 +9,6 @@ from ifqi.evaluation import evaluation
 from ifqi.evaluation.utils import check_dataset, split_data_for_fqi
 from ifqi.models.linear import Linear
 from ifqi.models.regressor import Regressor
-from ifqi.models.actionregressor import ActionRegressor
 
 mdp = env.CarOnHill()
 state_dim, action_dim, reward_dim = get_space_info(mdp)
