@@ -61,6 +61,8 @@ class LQG1D(Environment):
                                        shape=(1,))
         self.observation_space = spaces.Box(low=-high, high=high)
 
+        self.initial_states = np.array([[1, 2, 5, 7, 10]]).T
+
         # initialize state
         self.seed()
         self.reset()

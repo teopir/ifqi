@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import numpy as np
+
 import ifqi.envs as env
 from ifqi.algorithms.lspi import LSPI
 from ifqi.envs.utils import get_space_info
@@ -19,8 +21,7 @@ dataset = evaluation.collect_episodes(mdp, n_episodes=500)
 check_dataset(dataset, state_dim, action_dim, reward_dim)
 
 regressor_params = dict(features=dict(name='poly',
-                                      action_phi='andcondition',
-                                      params=dict(degree=9)))
+                                      params=dict(degree=5)))
 regressor = Regressor(Linear, **regressor_params)
 lspi = LSPI(regressor, state_dim, action_dim, mdp.action_space.values,
             mdp.gamma)
