@@ -68,11 +68,13 @@ class ActionRegressor(object):
             **kwargs: additional parameters to be passed to the fit function of
                       the estimator
         """
+        kwargs['exclude_action'] = None
+
         for i in range(len(self._models)):
             action = self._actions[i]
             idxs = np.all(X[:, -1:] == action, axis=1)
 
-            self._models[i].fit(X[idxs, :-1], y[idxs], **kwargs)
+            self._models[i].fit(X[idxs, :], y[idxs], **kwargs)
 
     def predict(self, x, **kwargs):
         """
@@ -90,6 +92,7 @@ class ActionRegressor(object):
         Returns:
             output (np.array): target associated to sample x
         """
+        kwargs['exclude_action'] = None
 
         predictions = np.zeros(x.shape[0])
         for i in range(self._actions.shape[0]):
@@ -97,7 +100,7 @@ class ActionRegressor(object):
             idxs = np.all(x[:, -1:] == action, axis=1)
 
             if np.any(idxs):
-                p = self._models[i].predict(x[idxs, :-1], **kwargs)
+                p = self._models[i].predict(x[idxs, :], **kwargs)
                 predictions[idxs] = p
 
         return predictions
