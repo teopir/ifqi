@@ -9,6 +9,7 @@ from ifqi.algorithms.pbo.pfpo import PFPO
 from keras.models import Sequential
 from keras.layers import Dense
 from matplotlib import pyplot as plt
+from keras import activations
 
 import theano
 import theano.tensor as T
@@ -24,7 +25,7 @@ mdp = envs.LQG1D()
 mdp.seed(2897270658018522815)
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 reward_idx = state_dim + action_dim
-discrete_actions = np.linspace(-8, 8, 20)
+discrete_actions = np.linspace(-8, 8, 20).astype(theano.config.floatX)
 dataset = evaluation.collect_episodes(mdp, n_episodes=100)
 check_dataset(dataset, state_dim, action_dim, reward_dim)
 
@@ -47,8 +48,8 @@ class LQG_Q(object):
 
     def evaluate(self, s, a):
         if not hasattr(self, "eval_f"):
-            T_s = T.matrix()
-            T_a = T.matrix()
+            T_s = T.fmatrix()
+            T_a = T.fmatrix()
             self.eval_f = theano.function([T_s, T_a], self.model(T_s, T_a))
         return self.eval_f(s, a)
 
@@ -66,22 +67,134 @@ class LQG_Q(object):
         return "R1"
 
 
-theta0 = np.array([6., 10.001], dtype='float32').reshape(1, -1)
-q_regressor = LQG_Q(theta0)
+# import keras
+# from keras.models import Model
+# from keras.layers import Input, Dense
+# keras.backend.set_floatx(theano.config.floatX)
+# print(theano.config.floatX)
+
+# class LQG_Q_NN(object):
+#     def __init__(self, input_dim,
+#                  layers=[{'output_dim': 20, 'activation':'tanh'}, {'output_dim':1, 'activation':'linear'}]):
+#         self.T_s = Input(shape=(1,))
+#         self.T_a = Input(shape=(1,))
+#         self.layer_opts = layers
+#         self.layers = list()
+#         self.trainable_weights = []
+#         input_shape = (None, input_dim)
+#         for el in layers:
+#             l = Dense(**el)
+#             l.build(input_shape)
+#             super(Dense, l).build(input_shape)
+#             self.layers.append(l)
+#             input_shape = (None, el['output_dim'])
+#         print(self.layers)
+#         for el in self.layers:
+#             self.trainable_weights += el.trainable_weights
+#         print(self.trainable_weights)
+#
+#     def model(self, s, a):
+#         s = s.reshape((-1,1), ndim=2)
+#         a = a.reshape((-1,1), ndim=2)
+#         inv = T.concatenate((s,a),axis=1)
+#         for el in self.layers:
+#             inv = el(inv)
+#         return inv.ravel()
+#
+#     def evaluate(self, s, a):
+#         if not hasattr(self, "eval_f"):
+#             T_s = T.fmatrix()
+#             T_a = T.fmatrix()
+#             self.eval_f = theano.function([T_s, T_a], self.model(T_s, T_a))
+#         return self.eval_f(s, a)
+#
+#     def get_k(self, theta):
+#         return 1
+#
+#     def name(self):
+#         return "R2"
+
+
+class LQG_NN(object):
+    def __init__(self, input_dim, output_dim,
+                 layers=[20], activations=['relu']):
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.layers = layers
+        self.activations = activations
+        self.trainable_weights = self.init()
+
+    def init(self):
+        # define the shared parameters
+        self.W, self.b = [], []
+        params = []
+        for i in range(len(self.layers)):
+            self.W.append(self.init_weights((self.input_dim if i == 0 else self.layers[i - 1], self.layers[i]),
+                                            sigma=0, name='W_{}'.format(i)))
+            params.append(self.W[-1])
+            self.b.append(theano.shared(value=np.zeros((self.layers[i],), dtype=theano.config.floatX),
+                                        borrow=True, name='b_{}'.format(i)))
+            params.append(self.b[-1])
+        last_layer_dim = self.input_dim
+        if len(self.layers) > 0:
+            last_layer_dim = self.layers[-1]
+        self.Wy = self.init_weights((last_layer_dim, self.output_dim), sigma=0, name='Wy')
+        self.by = theano.shared(value=np.zeros((self.output_dim,), dtype=theano.config.floatX),
+                                borrow=True, name='by')
+        # params = self.W + self.b + [self.Wy, self.by]
+        params += [self.Wy, self.by]
+        return params
+
+    def model(self, s, a):
+        s = s.reshape((-1, 1), ndim=2)
+        a = a.reshape((-1, 1), ndim=2)
+        y = T.concatenate((s, a), axis=1)
+        for i in range(len(self.layers)):
+            act = activations.get(self.activations[i])
+            y = act(T.dot(y, self.W[i]) + self.b[i])
+        act = activations.get("linear")
+        y = act(T.dot(y, self.Wy) + self.by)
+        return y
+
+    def floatX(self, arr):
+        return np.asarray(arr, dtype=theano.config.floatX)
+
+    def init_weights(self, shape, sigma=0.01, name=''):
+        if sigma == 0:
+            W_bound = np.sqrt(6. / (shape[0] + shape[1]))
+            return theano.shared(self.floatX(np.random.uniform(low=-W_bound, high=W_bound, size=shape)),
+                                 borrow=True, name=name)
+        return theano.shared(self.floatX(np.random.randn(*shape) * sigma), borrow=True, name=name)
+
+    def get_k(self, theta):
+        return 1.
+
+    def evaluate(self, s, a):
+        if not hasattr(self, "eval_f"):
+            T_s = T.fmatrix()
+            T_a = T.fmatrix()
+            self.eval_f = theano.function([T_s, T_a], self.model(T_s, T_a))
+        return self.eval_f(s, a)
+
+
+theta0 = np.array([6., 10.001], dtype=theano.config.floatX).reshape(1, -1)
+q_regressor = LQG_NN(2,1,layers=[4,4], activations=['tanh', 'tanh'])
+# q_regressor = LQG_Q(theta0)
 ##########################################
 
 ### PBO ##################################
 pfpo = PFPO(q_model=q_regressor,
             discrete_actions=discrete_actions,
             gamma=mdp.gamma,
-            optimizer="adam",
+            optimizer="Nadam",
             state_dim=state_dim,
             action_dim=action_dim)
 state, actions, reward, next_states = split_dataset(dataset,
                                                     state_dim=state_dim,
                                                     action_dim=action_dim,
                                                     reward_dim=reward_dim)
-history = pfpo.fit(state, actions, next_states, reward,
+history = pfpo.fit(state.astype(theano.config.floatX), actions.astype(theano.config.floatX),
+                   next_states.astype(theano.config.floatX), reward.astype(theano.config.floatX),
                    batch_size=1, nb_epoch=2,
                    theta_metrics={'k': lambda theta: q_regressor.get_k(theta)})
 ##########################################
@@ -95,6 +208,18 @@ print(values)
 ks = np.array(history.hist['k']).squeeze()
 weights = np.array(history.hist['theta']).squeeze()
 
+
+S = np.linspace(-8, 8, 20).reshape(-1,1).astype(theano.config.floatX)
+A = discrete_actions.reshape(-1,1).astype(theano.config.floatX)
+L = q_regressor.evaluate(S, A)
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.plot(S, A, L)
+plt.show()
+
 plt.figure()
 plt.title('[train] evaluated weights - theta_0 ={}'.format(theta0))
 plt.scatter(weights[:, 0], weights[:, 1], s=50, c=np.arange(weights.shape[0]),
@@ -103,7 +228,7 @@ plt.xlabel('b')
 plt.ylabel('k')
 plt.colorbar()
 plt.savefig(
-    'PFPO_LQG_MLP_{}_evaluated_weights_incremental_{}_activation_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION),
+    'PFPO_LQG_MLP_{}_evaluated_weights.png'.format(q_regressor.name()),
     bbox_inches='tight')
 
 plt.figure()
@@ -112,7 +237,7 @@ plt.title('Coefficient Optimal Action - theta_0 ={}'.format(theta0))
 plt.xlabel('iteration')
 plt.ylabel('coefficient of max action (opt ~0.6)')
 plt.savefig(
-    'PFPO_LQG_MLP_{}_max_coeff_{}_activation_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION),
+    'PFPO_LQG_MLP_{}_max_coeff.png'.format(q_regressor.name()),
     bbox_inches='tight')
 
 plt.show()

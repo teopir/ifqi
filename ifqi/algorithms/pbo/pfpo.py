@@ -49,12 +49,12 @@ class PFPO(object):
         self.gamma = gamma
 
         # create theano variables
-        T_s = T.dmatrix()
-        T_a = T.dmatrix()
-        T_s_next = T.dmatrix()
-        T_r = T.dvector()
+        T_s = T.matrix()
+        T_a = T.matrix()
+        T_s_next = T.matrix()
+        T_r = T.vector()
         # T_r = T.dmatrix()
-        T_discrete_actions = T.dmatrix()
+        T_discrete_actions = T.matrix()
 
         # store models of bellman apx and Q-function
         self.q_model = q_model
@@ -129,7 +129,7 @@ class PFPO(object):
             The theano expression of the Bellman error
         """
         # compute q-function
-        qbpo = self.q_model.model(s, a)
+        qbpo = self.q_model.model(s, a).ravel()
 
         # compute max over actions with old parameters
         qmat, _ = theano.scan(fn=self._compute_max_q,
@@ -402,6 +402,7 @@ class PFPO(object):
         Returns:
             The action to be executed in the state
         """
+        state = state.astype(theano.config.floatX)
         self._make_draw_action_function()
         state = standardize_input_data(state, ['state'],
                                        [(None, self.state_dim)] if self.state_dim is not None else None,
@@ -413,7 +414,7 @@ class PFPO(object):
         # compile all functions
         self.F_q = theano.function([self.T_s, self.T_a], self.q_model.model(self.T_s, self.T_a))
         self.F_bellman_err = theano.function(
-            [self.T_s, self.T_a, self.T_s_next, self.T_r, self.T_discrete_actions], self.T_bellman_err)
+            [self.T_s, self.T_a, self.T_s_next, self.T_r, self.T_discrete_actions], self.T_bellman_err, on_unused_input='ignore')
         T_grad_bellman_err = T.grad(self.T_bellman_err, self.q_model.trainable_weights)
         self.F_grad_bellman_berr = theano.function(
             [self.T_s, self.T_a, self.T_s_next, self.T_r, self.T_discrete_actions], T_grad_bellman_err)
