@@ -16,6 +16,9 @@ class Ensemble(object):
         self._models = self._init_model()
 
     def fit(self, X, y, **kwargs):
+        if 'exclude_action' in kwargs:
+            X = X[:, :-1]
+            kwargs.pop('exclude_action')
         if not hasattr(self, '_target_sum'):
             self._target_sum = np.zeros(y.shape)
         delta = y - self._target_sum
@@ -23,6 +26,9 @@ class Ensemble(object):
         self._target_sum += self._models[-1].predict(X).ravel()
 
     def predict(self, x, **kwargs):
+        if 'exclude_action' in kwargs:
+            x = x[:, :-1]
+            kwargs.pop('exclude_action')
         if 'action_idx' in kwargs:
             action_idx = kwargs['action_idx']
             n_actions = kwargs['n_actions']
