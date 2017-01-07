@@ -14,7 +14,8 @@ class MLP(object):
                  activation,
                  optimizer,
                  regularizer=None,
-                 early_stopping=False):
+                 early_stopping=False,
+                 delta_min=0.000001):
         assert isinstance(hidden_neurons, list), 'hidden_neurons should be \
             of type list specifying the number of hidden neurons for each \
             hidden layer. The given type is: ' + str(type(hidden_neurons))
@@ -25,11 +26,12 @@ class MLP(object):
         self.activation = activation
         self.regularizer = regularizer
         self.model = self.init_model()
-        self.early_stopping =early_stopping
+        self.early_stopping = early_stopping
+        self.delta_min = delta_min
 
     def fit(self, X, y, **kwargs):
         if self.early_stopping:
-            early_s = EarlyStopping(monitor='val_loss', patience=10, min_delta=0.000001, verbose=0, mode='auto')
+            early_s = EarlyStopping(monitor='val_loss', patience=10, min_delta=self.delta_min, verbose=0, mode='auto')
             history = self.model.fit(X, y, callbacks=[early_s], validation_split=0.1,**kwargs)
             #print("history_len: ", len(history.history['loss']))
             #print("history_last: ", history.history['loss'][-1])

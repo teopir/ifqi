@@ -147,6 +147,7 @@ class Experiment(object):
             if "min_weight_fraction_leaf" in modelConfig: params["min_weight_fraction_leaf"] = modelConfig["min_weight_fraction_leaf"]
         if modelConfig['modelName'] in ["MLP", "MLPEnsemble"]:
             if "early_stopping" in modelConfig: params["early_stopping"] = modelConfig["early_stopping"]
+            if "delta_min" in modelConfig: params["delta_min"] = modelConfig["delta_min"]
 
 
         if "input_scaled" in modelConfig:
