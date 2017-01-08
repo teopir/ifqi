@@ -20,7 +20,7 @@ Ernst, Damien, Pierre Geurts, and Louis Wehenkel.
 Journal of Machine Learning Research 6.Apr (2005): 503-556.
 """
 
-mdp = envs.Acrobot()
+mdp = envs.CarOnHill()
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 assert reward_dim == 1
 regressor_params = {'n_estimators': 50,
@@ -36,10 +36,10 @@ regressor = Regressor(ExtraTreesRegressor, **regressor_params)
 
 # Action regressor of Ensemble of ExtraTreesEnsemble
 # regressor = Ensemble(ExtraTreesRegressor, **regressor_params)
-# regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
-#                            decimals=5, **regressor_params)
+regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
+                            decimals=5, **regressor_params)
 
-dataset = evaluation.collect_episodes(mdp, n_episodes=20)
+dataset = evaluation.collect_episodes(mdp, n_episodes=1000)
 check_dataset(dataset, state_dim, action_dim, reward_dim) # this is just a
 # check, it can be removed in experiments
 print('Dataset has %d samples' % dataset.shape[0])
@@ -69,16 +69,13 @@ fit_params = {}
 #     "criterion": "mse"
 # }
 
-initial_states = np.zeros((41, 4))
-initial_states[:, 0] = np.linspace(-2, 2, 41)
-
 fqi.partial_fit(sast, r, **fit_params)
 
-iterations = 100
+iterations = 20
 iteration_values = []
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fit_params)
-    values = evaluation.evaluate_policy(mdp, fqi, initial_states=initial_states)
+    values = evaluation.evaluate_policy(mdp, fqi, initial_states=mdp.initial_states)
     print(values)
     iteration_values.append(values[0])
 

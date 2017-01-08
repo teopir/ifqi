@@ -20,7 +20,7 @@ class CarOnHill(Environment):
     }
 
     def __init__(self):
-        self.horizon = 300
+        self.horizon = 100
         self.gamma = 0.95
 
         self.max_pos = 1.
