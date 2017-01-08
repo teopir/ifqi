@@ -7,8 +7,9 @@ from .lqg1d import LQG1D
 from .advertisingMDP import AdvertisingMDP
 from .swingPendulum import SwingPendulum
 from .bandit import Bandit
+from .taxi import TaxiEnv
 from .utils import get_space_info
 
 
 __all__ = ['Acrobot', 'Bicycle', 'CarOnHill', 'CartPole', 'InvPendulum',
-           'LQG1D', 'SwingPendulum', 'AdvertisingMDP', 'Bandit']
+           'LQG1D', 'SwingPendulum', 'AdvertisingMDP', 'Bandit', 'TaxiEnv']

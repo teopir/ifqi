@@ -30,7 +30,7 @@ class AdvertisingMDP(Environment):
         self.reset()
 
     def step(self, action, render=False):
-        action = np.asscalar(action)
+        action = np.asscalar(np.array(action))
         self.state = np.array([self.np_random.choice(3, p = self.P_sas[action])])
         reward = self.R_sas[action,self.state]
         return self.get_state(), reward, False, {}

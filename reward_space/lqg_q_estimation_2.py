@@ -121,7 +121,7 @@ sigma = 0.1
 policy = GaussianPolicy1D(K,sigma,action_bounds)
 
 #Collect samples
-n_episodes = 100
+n_episodes = 10
 dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
 dataset = add_discount(dataset, 5, discount_factor)
 states_actions = dataset[:,:2]

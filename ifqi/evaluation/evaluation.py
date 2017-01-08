@@ -190,18 +190,28 @@ def collect_episode(mdp, policy=None):
     t = 0
     data = list()
     horizon = mdp.horizon
+    gamma = mdp.gamma
     state = mdp.reset()
     # state_dim, action_dim, reward_dim = get_space_info(mdp)
 
+    discount = 1.
     while t < horizon and not done:
         if policy is not None:
             action = policy.draw_action(state, done)
         else:
             action = mdp.action_space.sample()
-        action = np.array([action]).ravel()
+
         next_state, reward, done, _ = mdp.step(action)
+
+        action = np.array([action]).ravel()
+        state = np.array([state]).ravel()
+        next_state = np.array([next_state]).ravel()
+
         new_el = state.tolist() + action.tolist() + [reward] + \
-            next_state.tolist()
+            next_state.tolist() + [discount]
+
+        discount *= gamma
+
         if not done:
             if t < horizon - 1:
                 new_el += [0, 0]

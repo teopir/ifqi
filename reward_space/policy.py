@@ -1,5 +1,6 @@
 import numpy as np
 from gym.utils import seeding
+from taxi_policy_iteration import compute_policy
 
 class Policy(object):
     
@@ -185,11 +186,11 @@ class AdvertisingGaussianPolicy(SimplePolicy):
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
 
-def scaled_gaussian(mu, min_, max_, i):
-    return np.exp((-0.5*(i-mu)**2)) / sum(np.exp((-0.5*(np.arange(min_, max_+1)-mu)**2)))
+def scaled_gaussian(mu, sigma, min_, max_, i):
+    return np.exp((-0.5*((i-mu)/sigma)**2)) / sum(np.exp((-0.5*((np.arange(min_, max_+1)-mu)/sigma)**2)))
 
-def gradient_scaled_gaussian(mu, min_, max_, i):
-    return i-mu - sum((np.arange(min_, max_+1)-mu) * np.exp((-0.5*(np.arange(min_, max_+1)-mu)**2)))/sum(np.exp((-0.5*(np.arange(min_, max_+1)-mu)**2)))
+def gradient_scaled_gaussian(mu, sigma, min_, max_, i):
+    return i-mu - sum(((np.arange(min_, max_+1)-mu)/sigma) * np.exp((-0.5*((np.arange(min_, max_+1)-mu)/sigma)**2)))/sum(np.exp(((-0.5*(np.arange(min_, max_+1)-mu)/sigma)**2)))
 
 class BanditPolicy(SimplePolicy):
     def __init__(self, mu):
@@ -198,9 +199,9 @@ class BanditPolicy(SimplePolicy):
         self._build_policy()
 
     def _build_policy(self):
-        self.policy = np.array([[scaled_gaussian(self.mu,1,3,1),
-                                scaled_gaussian(self.mu,1,3,2),
-                                scaled_gaussian(self.mu,1,3,3)]], ndmin=2)
+        self.policy = np.array([[scaled_gaussian(self.mu,1.,1,3,1),
+                                scaled_gaussian(self.mu,1.,1,3,2),
+                                scaled_gaussian(self.mu,1.,1,3,3)]], ndmin=2)
 
     def draw_action(self, state, done):
         action = self.np_random.choice(3, p=self.policy[np.asscalar(state)])
@@ -210,10 +211,110 @@ class BanditPolicy(SimplePolicy):
         return self.policy
 
     def gradient_log_pdf(self):
-        return np.array([[gradient_scaled_gaussian(self.mu,1,3,1),
-                         gradient_scaled_gaussian(self.mu,1,3,2),
-                         gradient_scaled_gaussian(self.mu,1,3,3)]], ndmin=2)
+        return np.array([[gradient_scaled_gaussian(self.mu,1.,1,3,1),
+                         gradient_scaled_gaussian(self.mu,1.,1,3,2),
+                         gradient_scaled_gaussian(self.mu,1.,1,3,3)]], ndmin=2)
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
 
+
+class TaxiEnvPolicy(SimplePolicy):
+
+    def __init__(self):
+        policy = compute_policy()
+        self.nS = 500
+        self.nA = 6
+        self.PI = np.zeros((self.nS, self.nA))
+        self.PI2 = np.zeros((self.nS, self.nS * self.nA))
+        s = np.array(policy.keys())
+        a = np.array(policy.values())
+        self.PI[s, a] = 1.
+        self.PI2[s, s * self.nA + a] = 1.
+        self.seed()
+
+    def draw_action(self, state, done):
+        action = self.np_random.choice(6, p=self.PI[np.asscalar(state)])
+        return action
+
+    def get_distribution(self):
+        return self.PI2
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+
+class TaxiEnvPolicyStateParameter(SimplePolicy):
+
+    def __init__(self, mu, sigma, opt_idx):
+        self.opt_policy = compute_policy()
+        self.opt_idx = opt_idx
+        self.mu = mu
+        self.sigma = sigma
+        self.nS = 500
+        self.nA = 6
+        self.PI = np.zeros((self.nS, self.nA))
+        self.PI2 = np.zeros((self.nS, self.nS * self.nA))
+        self.C = np.zeros((self.nS * self.nA, self.nS))
+
+        idx1 = np.delete(np.arange(1,self.nA+1), opt_idx-1)
+        for i in range(self.nS):
+            opt_a= self.opt_policy[i]
+            self.PI[i,opt_a] = scaled_gaussian(self.mu,self.sigma, 1,self.nA,opt_idx)
+            self.PI2[i,i*self.nA + opt_a] = self.PI[i,opt_a]
+            self.C[i*self.nA + opt_a, i] = gradient_scaled_gaussian(self.mu, self.sigma, 1, self.nA, opt_idx)
+            idx2 = np.delete(np.arange(self.nA), opt_a)
+            for j,jidx in zip(idx2,idx1):
+                self.PI[i, j] = scaled_gaussian(self.mu, self.sigma, 1, self.nA, jidx)
+                self.PI2[i, i * self.nA + j] = self.PI[i, j]
+                self.C[i * self.nA + j, i] = gradient_scaled_gaussian(self.mu, self.sigma, 1, self.nA, jidx)
+        self.seed()
+
+    def get_distribution(self):
+        return self.PI2
+
+    def draw_action(self, state, done):
+        action = self.np_random.choice(6, p=self.PI[np.asscalar(state)])
+        return action
+
+    def gradient_log_pdf(self):
+        return self.C
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+
+class TaxiEnvPolicy2StateParameter(SimplePolicy):
+
+    def __init__(self, sigma):
+        self.opt_policy = compute_policy()
+        self.nS = 500
+        self.nA = 6
+        self.PI = np.zeros((self.nS, self.nA))
+        self.PI2 = np.zeros((self.nS, self.nS * self.nA))
+        self.C = np.zeros((self.nS * self.nA, 2*self.nS))
+
+        for i in range(self.nS):
+            opt_a= self.opt_policy[i]
+            self.PI[i,opt_a] = 1. / (1. + (self.nA - 1) * np.exp(-0.5/sigma))
+            self.PI2[i,i*self.nA + opt_a] = self.PI[i,opt_a]
+            self.C[i*self.nA + opt_a, 2*i] = 0.
+            self.C[i*self.nA + opt_a, 2*i+1] = 0.
+            idx2 = np.delete(np.arange(self.nA), opt_a)
+            for ind,j in enumerate(idx2):
+                self.PI[i, j] = np.exp(-0.5/sigma) / (1. + (self.nA - 1) * np.exp(-0.5/sigma))
+                self.PI2[i, i * self.nA + j] = self.PI[i, j]
+                self.C[i * self.nA + j, 2*i] = np.cos(ind * 2 * np.pi / (self.nA - 1))/sigma
+                self.C[i * self.nA + j, 2*i+1] = np.sin(ind * 2 * np.pi / (self.nA - 1))/sigma
+        self.seed()
+
+    def get_distribution(self):
+        return self.PI2
+
+    def draw_action(self, state, done):
+        action = self.np_random.choice(6, p=self.PI[np.asscalar(state)])
+        return action
+
+    def gradient_log_pdf(self):
+        return self.C
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
