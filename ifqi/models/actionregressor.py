@@ -69,7 +69,8 @@ class ActionRegressor(object):
         for i in range(len(self._models)):
             action = self._actions[i]
             idxs = np.all(X[:, -1:] == action, axis=1)
-
+            if i == range(len(self._models))[-1]:
+                return self._models[i].fit(X[idxs, :-1], y[idxs], **kwargs)
             self._models[i].fit(X[idxs, :-1], y[idxs], **kwargs)
 
     def predict(self, x, **kwargs):

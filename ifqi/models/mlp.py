@@ -32,11 +32,11 @@ class MLP(object):
     def fit(self, X, y, **kwargs):
         if self.early_stopping:
             early_s = EarlyStopping(monitor='val_loss', patience=10, min_delta=self.delta_min, verbose=0, mode='auto')
-            history = self.model.fit(X, y, callbacks=[early_s], validation_split=0.1,**kwargs)
+            return self.model.fit(X, y, callbacks=[early_s], validation_split=0.1,**kwargs)
             #print("history_len: ", len(history.history['loss']))
             #print("history_last: ", history.history['loss'][-1])
         else:
-            self.model.fit(X, y,**kwargs)
+            return self.model.fit(X, y,**kwargs)
 
     def predict(self, x, **kwargs):
         predictions = self.model.predict(x, **kwargs)

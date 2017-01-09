@@ -66,6 +66,7 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--diary", help="The experiment will be included in the diary", action="store_true")
     parser.add_argument("-l", "--addLast", help="The experiment will be merged with the last one present in the diary", action="store_true")
     parser.add_argument("-c", "--cont", help="continue the experiment made", action="store_true")
+    parser.add_argument("-s", "--loss", help="continue the experiment made", action="store_true")
     parser.add_argument("nThread", type=int, help="Set the number of cores")
 
     args = parser.parse_args()
@@ -76,6 +77,7 @@ if __name__ == '__main__':
     nThread = args.nThread
     addLast = args.addLast
     continue_ = args.cont
+    have_loss = args.loss
     exp = Experiment(configFile)
 
     commands = []
@@ -86,10 +88,12 @@ if __name__ == '__main__':
     for regressor in range(len(exp.config["regressors"])):
         for size in range(len(exp.config["experimentSetting"]["sizes"])):
             for dataset in range(exp.config['experimentSetting']['datasets']):
+                last = []
                 if continue_:
-                    commands.append(["python", myPath ,experimentName, configFile, str(regressor),  str(size), str(dataset), "--cont"])
-                else:
-                    commands.append(["python", myPath, experimentName, configFile, str(regressor), str(size), str(dataset)])
+                    last.append("--cont")
+                if have_loss:
+                    last.append("--loss")
+                commands.append(["python", myPath, experimentName, configFile, str(regressor), str(size), str(dataset)] + last)
     
     execute(commands,nThread,0.5)
     

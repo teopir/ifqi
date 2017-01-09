@@ -40,6 +40,7 @@ parser.add_argument("regressor", type=int, help="Provide the index of the regres
 parser.add_argument("size", type=int, help="Provide the index of the size listed in the configuration file")
 parser.add_argument("dataset", type=int, help="Provide the index of the dataset")
 parser.add_argument("-c","--cont", action="store_true", help="Provide the index of the dataset")
+parser.add_argument("-s","--loss", action="store_true", help="Provide info on the loss / ect. Valid only for MLP")
 args = parser.parse_args()
 
 experimentName = args.experimentName
@@ -53,6 +54,8 @@ sizeN = args.size
 datasetN = args.dataset
 
 continue_ = args.cont
+
+haveLoss = args.loss
 
 print("Started experiment with regressor " + str(regressorN)+ " dataset " + str(datasetN) + ", size " + str(sizeN))
 
@@ -176,14 +179,20 @@ for repetition in range(actualRepetition, repetitions):
 
             if iteration==1:
                 fqi = exp.getFQI(regressorN)
-                fqi.partial_fit(sastFirst[:], rFirst[:], **fit_params)
+                ret_fit = fqi.partial_fit(sastFirst[:], rFirst[:], **fit_params)[2]
             else:
                 if replay_experience:
                     #TODO:understand what's wrong
-                    fqi.partial_fit(sast[:], r[:], **fit_params)
+                    ret_fit = fqi.partial_fit(sast[:], r[:], **fit_params)[2]
                     replay_experience = False
                 else:
-                    fqi.partial_fit(None, None, **fit_params)
+                    ret_fit = fqi.partial_fit(None, None, **fit_params)[2]
+
+            if haveLoss:
+                print ("ret_fit:", ret_fit)
+                varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "nEpoch", len(ret_fit.history['loss']))
+                varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "loss", ret_fit.history['loss'][-1])
+                varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "valLoss", ret_fit.history['val_loss'][-1])
 
             if easyReplicability:
                 varSetting.savePickle(regressorN,sizeN,datasetN,repetition,iteration,"FQI",fqi)
