@@ -140,7 +140,7 @@ elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
                 experiment_results.append(values)
                 print('J: %f' % values[0])
         results.append(experiment_results)
-    results = np.mean(results, axis=0)
+    results = (np.mean(results, axis=0), np.std(results, axis=0))
 else:
     raise ValueError('unknown metric requested.')
 
