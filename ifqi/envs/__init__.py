@@ -8,6 +8,7 @@ from .swingPendulum import SwingPendulum
 from .synthetic import SyntheticToyFS
 from .utils import get_space_info
 from .gridworld import GridWorldEnv
+from .atari import Atari
 
-__all__ = ['Acrobot', 'Bicycle', 'CarOnHill', 'CartPole', 'GridWorldEnv' 'InvPendulum',
+__all__ = ['Acrobot', 'Atari', 'Bicycle', 'CarOnHill', 'CartPole', 'GridWorldEnv' 'InvPendulum',
            'LQG1D', 'SwingPendulum', 'SyntheticToyFS']
