@@ -25,8 +25,9 @@ class Ensemble(object):
         if not hasattr(self, '_target_sum'):
             self._target_sum = np.zeros(y.shape)
         delta = y - self._target_sum
-        self._models[-1].fit(X, delta, **kwargs)
+        ret = self._models[-1].fit(X, delta, **kwargs)
         self._target_sum += self._models[-1].predict(X).ravel()
+        return ret
 
     def predict(self, x, **kwargs):
         if 'idx' in kwargs:
