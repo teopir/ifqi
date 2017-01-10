@@ -52,10 +52,10 @@ class FQI(Algorithm):
 
             y = self._r
         else:
-            maxq, maxa = self.maxQA(self._snext, self._absorbing)
-
             if self._verbose > 0:
                 print('Iteration {}'.format(self._iteration + 1))
+
+            maxq, maxa = self.maxQA(self._snext, self._absorbing)
 
             if hasattr(self._estimator, 'adapt'):
                 # update estimator structure
