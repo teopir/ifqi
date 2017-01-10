@@ -143,11 +143,11 @@ class FQI:
 
             y = self._r + self.gamma * maxq
 
-        self._estimator.fit(self._sa, y.ravel(), **kwargs)
+        ret_fit = self._estimator.fit(self._sa, y.ravel(), **kwargs)
 
         self._iteration += 1
 
-        return self._sa, y
+        return self._sa, y, ret_fit
 
     def fit(self, sast, r, **kwargs):
         """
