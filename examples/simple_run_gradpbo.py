@@ -25,8 +25,9 @@ discrete_actions = np.linspace(-8, 8, 20)
 dataset = evaluation.collect_episodes(mdp, n_episodes=100)
 check_dataset(dataset, state_dim, action_dim, reward_dim)
 
-INCREMENTAL = True
+INCREMENTAL = False
 ACTIVATION = 'tanh'
+STEPS_AHEAD = 5
 
 
 # sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
@@ -58,16 +59,37 @@ q_regressor = LQG_Q()
 n_q_regressors_weights = q_regressor.n_params()
 Sequential.n_inputs = lambda self: n_q_regressors_weights
 
+
+def _model_evaluation(self, theta):
+    inv = theta
+    for el in self.flattened_layers:
+        # print(el)
+        inv = el(inv)
+    return inv
+
+
+Sequential._model_evaluation = _model_evaluation
 rho_regressor = Sequential()
 rho_regressor.add(Dense(20, input_dim=n_q_regressors_weights, init='uniform', activation=ACTIVATION))
 rho_regressor.add(Dense(n_q_regressors_weights, init='uniform', activation='linear'))
 rho_regressor.compile(loss='mse', optimizer='rmsprop', metrics=['accuracy'])
+
+import theano
+import theano.tensor as T
+
+theta = T.matrix()
+
+res = rho_regressor._model_evaluation(theta)
+ff = theano.function([theta], res)
+h = np.array([[1, 2.]], dtype=theano.config.floatX)
+assert np.allclose(ff(h), rho_regressor.predict(h))
 # rho_regressor.fit(None, None)
 ##########################################
 
 ### PBO ##################################
 pbo = GradPBO(bellman_model=rho_regressor,
               q_model=q_regressor,
+              steps_ahead=STEPS_AHEAD,
               discrete_actions=discrete_actions,
               gamma=mdp.gamma,
               optimizer="adam",
@@ -77,7 +99,7 @@ state, actions, reward, next_states = split_dataset(dataset,
                                                     state_dim=state_dim,
                                                     action_dim=action_dim,
                                                     reward_dim=reward_dim)
-theta0 = np.array([[-6., 10.001], [6, 8.]], dtype='float32')#.reshape(1, -1)
+#theta0 = np.array([[-6., 10.001], [6, 8.]], dtype='float32')  # .reshape(1, -1)
 theta0 = np.array([-6., 10.001], dtype='float32').reshape(1, -1)
 history = pbo.fit(state, actions, next_states, reward, theta0,
                   batch_size=10, nb_epoch=2,
@@ -101,7 +123,7 @@ plt.xlabel('b')
 plt.ylabel('k')
 plt.colorbar()
 plt.savefig(
-    'LQG_MLP_{}_evaluated_weights_incremental_{}_activation_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION),
+    'LQG_MLP_{}_evaluated_weights_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
 
 plt.figure()
@@ -109,9 +131,8 @@ plt.plot(ks[30:-1])
 plt.xlabel('iteration')
 plt.ylabel('coefficient of max action (opt ~0.6)')
 plt.savefig(
-    'LQG_MLP_{}_max_coeff_{}_activation_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION),
+    'LQG_MLP_{}_max_coeff_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
-
 
 theta = theta0.copy()
 L = [np.array(theta)]
@@ -131,22 +152,22 @@ plt.title('Application of Bellman operator')
 plt.xlabel('b')
 plt.ylabel('k')
 plt.savefig(
-    'LQG_MLP_{}_bpo_application_incremental_{}_activation_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION),
+    'LQG_MLP_{}_bpo_application_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
-#plt.show()
+# plt.show()
 plt.close('all')
 
 B_i, K_i = np.mgrid[-6:6:40j, -5:35:40j]
-theta = np.column_stack((B_i.ravel(),K_i.ravel()))
+theta = np.column_stack((B_i.ravel(), K_i.ravel()))
 theta_p = pbo.apply_bop(theta)
 
-fig = plt.figure(figsize=(15,10))
-Q = plt.quiver(theta[:,0], theta[:,1], theta_p[:,0]-theta[:,0], theta_p[:,1]-theta[:,1], angles='xy')
+fig = plt.figure(figsize=(15, 10))
+Q = plt.quiver(theta[:, 0], theta[:, 1], theta_p[:, 0] - theta[:, 0], theta_p[:, 1] - theta[:, 1], angles='xy')
 plt.xlabel('b')
 plt.ylabel('k')
 plt.title('Gradient field - Act: {}, Inc: {}'.format(ACTIVATION, INCREMENTAL))
 plt.savefig(
-    'LQG_MLP_{}_grad_field_{}_activation_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION),
+    'LQG_MLP_{}_grad_field_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
 plt.show()
 
