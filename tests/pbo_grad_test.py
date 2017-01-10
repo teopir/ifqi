@@ -56,6 +56,9 @@ class LBPO(object):
         self.inputs = [self.theta]
         self.trainable_weights = [self.rho]
 
+    def _model_evaluation(self, theta):
+        return T.dot(theta, self.rho)
+
     def evaluate(self, theta):
         if not hasattr(self, "eval_f"):
             self.eval_f = theano.function(self.inputs, self.outputs[0])
@@ -128,18 +131,9 @@ r = np.array([-1., -5., 0.])
 discrete_actions = np.array([1, 2, 3]).reshape(-1, 1)  # discretization of the actions
 # to be used for maximum estimate
 
-# it is also possible to use keras model
-from keras.models import Sequential
-from keras.layers import Dense
-
-model = Sequential()
-model.add(Dense(4, input_dim=2, init='uniform', activation='relu'))
-model.add(Dense(2, init='uniform', activation='linear'))
-model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
-
 # =================================================================
 INCREMENTAL = False
-gpbo = GradPBO(bellman_model=lbpo, q_model=q_model,
+gpbo = GradPBO(bellman_model=lbpo, q_model=q_model, steps_ahead=1,
                discrete_actions=discrete_actions,
                gamma=gamma, optimizer="adam",
                state_dim=1, action_dim=1, incremental=INCREMENTAL)
@@ -158,3 +152,22 @@ f = lambda x: empirical_bop(s, a, r, nexts, discrete_actions, gamma, x, theta)
 approx_grad = optimize.approx_fprime(rho.ravel(), f, eps).reshape(berr_grad[0].shape)
 assert np.allclose(berr_grad, approx_grad), '{}, {}'.format(berr_grad, approx_grad)
 
+# =================================================================
+# TODO
+# it is also possible to use keras model
+from keras.models import Sequential
+from keras.layers import Dense
+
+def _model_evaluation(self, theta):
+    inv = theta
+    for el in self.flattened_layers:
+        print(el)
+        inv = el(inv)
+    return inv
+
+
+Sequential._model_evaluation = _model_evaluation
+model = Sequential()
+model.add(Dense(4, input_dim=2, init='uniform', activation='relu'))
+model.add(Dense(2, init='uniform', activation='linear'))
+model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
