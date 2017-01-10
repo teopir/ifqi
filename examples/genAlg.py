@@ -28,10 +28,10 @@ import random
 parser = argparse.ArgumentParser(
     description='Execution of one experiment thread provided a configuration file and\n\t A regressor (index)\n\t Size of dataset (index)\n\t Dataset (index)')
 
-parser.add_argument("configFile", type=str, help="Provide the name of the configuration file")
+parser.add_argument("envName", type=str, help="Provide the name of the environment")
 parser.add_argument("nPop", type=int, help="Provide the size of the population")
 parser.add_argument("nCore", type=int, help="Provides the number of core to use")
-parser.add_argument("outFile", type=str, help="Provides the number of core to use")
+parser.add_argument("outFile", type=str, help="Provides the name of the file")
 parser.add_argument("nDataset", type=int, help="Provides the number dataset to use",nargs="?", default=1)
 parser.add_argument("-cont", action='store_const',
                     const=True, default=False,
@@ -42,7 +42,7 @@ parser.add_argument("-extra", action='store_const',
 
 args = parser.parse_args()
 
-configFile = args.configFile
+configFile = args.envName
 nCore = args.nCore
 nPop = args.nPop
 outFile = args.outFile
@@ -56,18 +56,20 @@ extraTree = args.extra
 
 if not extraTree:
     """ranges = {
-        "n_epochs": (20,2000),
-        "activation": (0,3),
-        "batch_size": (100,1000),
-        "n_neurons": (5,100),
-        "n_layers": (1,3),
-        "input_scaled":(0,2),
-        "output_scaled":(0,2)
-    }"""
+    "n_epochs": (500,501),
+    "activation": (0,3),
+    "batch_size": (2000,2001),
+    "n_neurons": (10,10),
+    "n_layers": (2,3),
+    "delta_minA": (0,10),
+    "delta_minB": (3,16),
+    "patienceA": (0,10),
+    "patienceB": (0,3)
+}"""
 
-    ranges = [(20,300),(0,3),(100,1000),(5,100),(1,3)]#,(0,2), (0,2)]
+    ranges = [(500,501),(0,3),(2000,2001),(10,11),(2,3),(0,10),(3,16),(0,10),(0,3)]#,(0,2), (0,2)]
 
-    mutations = [0.1, 0.3, 0.1, 0.1, 0.3]#, 0.4, 0.4]
+    mutations = [0., 0., 0., 0., 0.,0.25,0.25,0.25,0.25]#, 0.4, 0.4]
 else:
     """ranges = {
         "n_estimators": (1,50),

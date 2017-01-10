@@ -148,6 +148,7 @@ class Experiment(object):
         if modelConfig['modelName'] in ["MLP", "MLPEnsemble"]:
             if "early_stopping" in modelConfig: params["early_stopping"] = modelConfig["early_stopping"]
             if "delta_min" in modelConfig: params["delta_min"] = modelConfig["delta_min"]
+            if "patience" in modelConfig: params["patience"] = modelConfig["patience"]
 
 
         if "input_scaled" in modelConfig:

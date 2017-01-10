@@ -17,11 +17,15 @@ parser = argparse.ArgumentParser(
 
 
 ranges = {
-    "n_epochs": (20,2000),
+    "n_epochs": (5000,5001),
     "activation": (0,3),
-    "batch_size": (100,1000),
-    "n_neurons": (5,100),
-    "n_layers": (1,3)
+    "batch_size": (2000,2001),
+    "n_neurons": (10,10),
+    "n_layers": (2,3),
+    "delta_minA": (0,10),
+    "delta_minB": (3,15),
+    "patienceA": (0,10),
+    "patienceB": (0,3)
 }
 
 parser.add_argument("env_name", type=str, help="Provide the environment")
@@ -30,6 +34,10 @@ parser.add_argument("activation", type=int, help="Provides the number of core to
 parser.add_argument("batch_size", type=int, help="Provides the number of core to use")
 parser.add_argument("n_neurons", type=int, help="Provides the number of core to use")
 parser.add_argument("n_layers", type=int, help="Provides the number of core to use")
+parser.add_argument("deltaMinA", type=int, help="Provides the x in xE10-y for delta_min")
+parser.add_argument("deltaMinB", type=int, help="Provides the y in xE10-y for delta_min")
+parser.add_argument("patienceA", type=int, help="Provides the x in xE10y for patience")
+parser.add_argument("patienceB", type=int, help="Provides the y in xE10y for patience")
 parser.add_argument("seed", type=int, help="Provides the seed of randomness")
 #parser.add_argument("input_scaled", type=int, help="Provides the number of core to use")
 #parser.add_argument("output_scaled", type=int, help="Provides the number of core to use")
@@ -44,6 +52,10 @@ activation = args.activation
 batchSize = args.batch_size
 nNeurons = args.n_neurons
 nLayers = args.n_layers
+deltaMinA = args.deltaMinA
+deltaMinB = args.deltaMinB
+patienceA = args.patienceA
+patienceB = args.patienceB
 input_scaled = True #args.input_scaled
 output_scaled = True #args.output_scaled
 seed = args.seed
@@ -79,6 +91,11 @@ elif env_name=="LQG1DD":
     sizeDS = 5
     mdp = envs.LQG1D(discrete_reward=True)
     discrete_actions = [-5.,-2.5,-1.,-0.5, 0., 0.5, 1., 2.5, 5]
+elif env_name=="Bicycle":
+    sizeDS = 2000
+    mdp = envs.Bicycle(navigate=True)
+    discrete_actions = mdp.action_space.values
+
 
 mdp.seed(0)
 
@@ -87,6 +104,9 @@ state_dim, action_dim = envs.get_space_info(mdp)
 regressor_params = {"n_input": state_dim+action_dim,
                     "n_output": 1,
                     "optimizer": "rmsprop",
+                     "early_stopping":True,
+                     "delta_min": deltaMinA * 10**(-deltaMinB),
+                     "patience": patienceA * 10**(patienceB) + 1,
                      "activation": act,
                      "hidden_neurons":[ nNeurons]*nLayers}
 
@@ -134,10 +154,11 @@ fitParams = {
      "nb_epoch": nEpochs,
      "batch_size": batchSize,
      "verbose": False
+
 }
 fqi.partial_fit(sastFirst[:], rFirst[:], **fitParams)
 
-iterations = 3
+iterations = 25
 
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
@@ -157,6 +178,8 @@ elif env_name == "SwingPendulum":
     initial_states[:, 0] = np.linspace(-np.pi, np.pi, 5)
     score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5,
                                                               initial_states=initial_states)
+elif env_name == "Bicycle":
+    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1)
 
 print(score)
 
