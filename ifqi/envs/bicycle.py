@@ -21,12 +21,14 @@ from gym.utils import seeding
 
 from builtins import range
 
+from .environment import Environment
+
 """
 TODO: to test
 """
 
 
-class Bicycle(gym.Env):
+class Bicycle(Environment):
     """Bicycle balancing/riding domain.
     From the paper:
     Learning to Drive a Bicycle using Reinforcement Learning and Shaping.
@@ -136,10 +138,6 @@ class Bicycle(gym.Env):
         # initialize state
         self._seed()
         self._reset()
-
-    def _seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def _reset(self, state=None):
         self._absorbing = False
