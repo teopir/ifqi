@@ -1,7 +1,5 @@
 import numpy as np
 from gym import spaces
-from gym.utils import seeding
-from gym.spaces import prng
 
 from .environment import Environment
 
@@ -33,10 +31,6 @@ class SyntheticToyFS(Environment):
         cost = - self.state[0] ** 2 - u
 
         return self.get_state(), cost, False, {}
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def reset(self, state=None):
         if state is None:

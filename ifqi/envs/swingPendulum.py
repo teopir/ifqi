@@ -7,10 +7,8 @@ Created on Fri Sep  9 09:25:48 2016
 Pendulum as described in Reinforcement Learning in Continuous Time and Space
 """
 
-
 import numpy as np
 from gym import spaces
-from gym.utils import seeding
 
 import ifqi.utils.spaces as fqispaces
 from .environment import Environment
@@ -69,10 +67,6 @@ class SwingPendulum(Environment):
         reward = np.cos(theta)
 
         return self.get_state(), reward, False, {}
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def reset(self, state=None):
         if state is None:

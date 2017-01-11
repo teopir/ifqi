@@ -1,4 +1,4 @@
-import numpy as np, os, random
+import numpy as np, os, random, pickle
 from PIL import Image
 
 
@@ -39,7 +39,7 @@ def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
 def flat2gen(alist):
     """
     :param alist: a 2d list
-    :return: an iterator for the flattened list
+    :return: a generator for the flattened list
     """
     for item in alist:
         if isinstance(item, list) or isinstance(item, np.ndarray):
@@ -65,3 +65,23 @@ def onehot_encode(value, nb_categories):
     out = [0] * nb_categories
     out[value] = 1
     return out
+
+
+def p_load(filename):
+    """Loads the pickle object stored as the given filename.
+
+    :param filename: relative path to pickle file.
+    :return: the loaded object.
+    """
+    with open(filename, 'rb') as f:
+        out = pickle.load(f)
+    return out
+
+
+def p_dump(obj, filename):
+    """Dumps an object to pickle file.
+    :param obj: the object to dump.
+    :param filename: the filename to which save the object.
+    """
+    with open(filename, 'wb') as f:
+        pickle.dump(obj, f)

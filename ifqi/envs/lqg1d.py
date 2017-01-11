@@ -1,9 +1,7 @@
 """classic Linear Quadratic Gaussian Regulator task"""
 from numbers import Number
 
-# import gym
 from gym import spaces
-from gym.utils import seeding
 from gym.spaces import prng
 import numpy as np
 
@@ -81,10 +79,6 @@ class LQG1D(Environment):
                 return self.get_state(), 0, False, {}
             return self.get_state(), -1, False, {}
         return self.get_state(), -np.asscalar(cost), False, {}
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def reset(self, state=None):
         if state is None:

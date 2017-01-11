@@ -36,7 +36,7 @@ else:
 
 def episode(episode_id):
     global args
-    env = GridWorldEnv(width=6, height=6, cell_size=8, wall=False, wall_random=False)
+    env = GridWorldEnv(width=6, height=6, cell_size=8, wall=True, wall_random=True)
     action_space = env.action_space.n
     frame_counter = 0
 

@@ -1,4 +1,4 @@
-from keras.models import Model, load_model
+from keras.models import Model
 from keras.layers import *
 from keras.optimizers import *
 import numpy as np

@@ -1,11 +1,9 @@
 """classic Linear Quadratic Gaussian Regulator task"""
 from numbers import Number
 
-# import gym
-from gym import spaces
-from gym.utils import seeding
-from gym.spaces import prng
 import numpy as np
+from gym import spaces
+from gym.spaces import prng
 
 from .environment import Environment
 

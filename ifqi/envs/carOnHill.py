@@ -5,6 +5,7 @@ from gym.utils import seeding
 from scipy.integrate import odeint
 
 import ifqi.utils.spaces as fqispaces
+
 from .environment import Environment
 
 
@@ -66,10 +67,6 @@ class CarOnHill(Environment):
             reward = 0
 
         return self.get_state(), reward, self._absorbing, {}
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def reset(self, state=None):
         self._absorbing = False

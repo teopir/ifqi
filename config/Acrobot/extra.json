@@ -8,8 +8,7 @@
         "evaluation": {
             "metric": "n_episodes",
             "n_experiments": 10,
-            "n_episodes": [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000],
-            "seed": "None"
+            "n_episodes": [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000]
         }
     },
     "model": {

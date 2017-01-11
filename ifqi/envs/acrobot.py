@@ -1,7 +1,5 @@
-# import gym
 import numpy as np
 from gym import spaces
-from gym.utils import seeding
 from scipy.integrate import odeint
 
 from ifqi.utils import spaces as fqispaces
@@ -74,10 +72,6 @@ class Acrobot(Environment):
             reward = 1 - d
 
         return self.get_state(), reward, self._absorbing, {}
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def reset(self, state=None):
         self._absorbing = False

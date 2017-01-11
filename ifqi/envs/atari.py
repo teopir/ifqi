@@ -1,8 +1,9 @@
 import gym
 import numpy as np
-from .environment import Environment
 from gym.utils import seeding
 from PIL import Image
+
+from .environment import Environment
 
 
 class Atari(Environment):
@@ -29,10 +30,6 @@ class Atari(Environment):
         # initialize state
         self.seed()
         self.reset()
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def reset(self):
         state = self._preprocess_observation(self.env.reset())
