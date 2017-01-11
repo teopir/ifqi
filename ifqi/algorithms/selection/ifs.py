@@ -14,7 +14,11 @@ from sklearn.base import MetaEstimatorMixin
 from sklearn.base import clone
 from sklearn.feature_selection.base import SelectorMixin
 from sklearn.metrics import r2_score, mean_squared_error
-from sklearn.model_selection import cross_val_score, check_cv, cross_val_predict
+import sklearn
+if sklearn.__version__ == '0.17':
+    from sklearn.cross_validation import cross_val_score, check_cv, cross_val_predict
+else:
+    from sklearn.model_selection import cross_val_score, check_cv, cross_val_predict
 from sklearn.preprocessing import StandardScaler
 
 
@@ -160,7 +164,10 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
         cv = self.cv
         cv = check_cv(cv, y, classifier=is_classifier(self.estimator))
-        n_splits = cv.get_n_splits(X, y)
+#        if sklearn.__version__ == '0.17':
+        n_splits = cv.n_folds
+#        else:
+#            n_splits = cv.get_n_splits(X, y)
 
         if self.verbose > 0:
             print("Fitting {0} folds for each of iteration".format(n_splits))

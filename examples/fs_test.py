@@ -7,6 +7,8 @@ from ifqi.algorithms.selection import RFS, IFS
 from sklearn.ensemble import ExtraTreesRegressor
 import numpy as np
 
+from sklearn.feature_selection import RFE
+
 # np.random.seed(3452)
 
 mdp = env.SyntheticToyFS()
@@ -30,4 +32,4 @@ state, actions, reward, next_states = \
 # print(dataset[:10, :])
 
 fs.fit(state, actions, next_states, reward)
-print(fs.get_support())  # this are the selected features, it should be [s0,s2, a0]
+print(fs.get_support())  # this are the selected features, it should be [s0, s2, a0]

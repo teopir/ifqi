@@ -14,7 +14,11 @@ from sklearn.base import MetaEstimatorMixin
 from sklearn.base import clone
 from sklearn.feature_selection.base import SelectorMixin
 from sklearn.metrics import r2_score, mean_squared_error
-from sklearn.model_selection import cross_val_score, check_cv
+import sklearn
+if sklearn.__version__ == '0.17':
+    from sklearn.cross_validation import cross_val_score, check_cv
+else:
+    from sklearn.model_selection import cross_val_score, check_cv
 from sklearn.preprocessing import StandardScaler
 
 
