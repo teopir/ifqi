@@ -215,7 +215,7 @@ class Viewer:
 
         new_pos = (new_x, new_y)
 
-        allowed_pos = []
+        allowed_pos = [(x, y)]
         if new_pos in self.wall_pos:
             if not (new_x, y) in self.wall_pos: # Agent can move horizontally
                 allowed_pos.append((new_x, y))
