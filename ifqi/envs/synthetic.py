@@ -1,10 +1,10 @@
 import numpy as np
-import gym
 from gym import spaces
-from gym.utils import seeding
+
+from .environment import Environment
 
 
-class SyntheticToyFS(gym.Env):
+class SyntheticToyFS(Environment):
     def __init__(self):
         self.horizon = 10
         self.gamma = 0.99
@@ -31,10 +31,6 @@ class SyntheticToyFS(gym.Env):
         cost = - self.state[0] ** 2 - u
 
         return self.get_state(), cost, False, {}
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def reset(self, state=None):
         if state is None:

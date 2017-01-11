@@ -1,12 +1,11 @@
 import numpy as np
-import gym
 from gym import spaces
-from gym.utils import seeding
 
 import ifqi.utils.spaces as fqispaces
+from .environment import Environment
 
 
-class InvPendulum(gym.Env):
+class InvPendulum(Environment):
     """
     The Inverted Pendulum environment.
 
@@ -63,10 +62,6 @@ class InvPendulum(gym.Env):
             reward = -1
 
         return self.get_state(), reward, self._absorbing, {}
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def reset(self, state=None):
         self._absorbing = False

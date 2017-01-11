@@ -1,5 +1,4 @@
 import numpy as np
-import gym
 from builtins import range
 from gym import spaces
 from gym.utils import seeding
@@ -7,8 +6,10 @@ from scipy.integrate import odeint
 
 import ifqi.utils.spaces as fqispaces
 
+from .environment import Environment
 
-class CarOnHill(gym.Env):
+
+class CarOnHill(Environment):
     """
     The Car On Hill environment as presented in:
     "Tree-Based Batch Mode Reinforcement Learning, D. Ernst et. al."
@@ -66,10 +67,6 @@ class CarOnHill(gym.Env):
             reward = 0
 
         return self.get_state(), reward, self._absorbing, {}
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def reset(self, state=None):
         self._absorbing = False

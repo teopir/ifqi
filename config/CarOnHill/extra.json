@@ -9,8 +9,7 @@
             "metric": "fqi_iteration",
             "n_experiments": 2,
             "n_episodes": [1000],
-            "n_steps_to_evaluate": 5,
-            "seed": "None"
+            "n_steps_to_evaluate": 5
         }
     },
     "model": {

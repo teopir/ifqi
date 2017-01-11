@@ -1,12 +1,13 @@
-import gym, pygame as pg, random, logging, numpy as np
+import pygame as pg, random, logging
 from gym import spaces
-from gym.utils import seeding
 from PIL import Image
+
+from .environment import Environment
 
 logger = logging.getLogger(__name__)
 
 
-class GridWorldEnv(gym.Env):
+class GridWorldEnv(Environment):
     metadata = {
         'render.modes': ['human']
     }
@@ -27,10 +28,6 @@ class GridWorldEnv(gym.Env):
         # Reset
         self._seed()
         self.reset()
-
-    def _seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def _step(self, action):
         assert self.action_space.contains(action), "%r (%s) invalid" % (action, type(action))
