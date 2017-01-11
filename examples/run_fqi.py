@@ -78,29 +78,30 @@ if not config['model']['fit_actions']:
     regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
                                 decimals=5, **regressor_params)
 
-# Load dataset
-dataset = evaluation.collect_episodes(
-    mdp, n_episodes=np.sort(config['experiment_setting']['evaluation']
-                                  ['n_episodes'])[-1])
-print('Dataset has %d samples' % dataset.shape[0])
-
 results = list()
 # Run
-if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
-    for i in config['experiment_setting']['evaluation']['n_episodes']:
-        experiment_results = list()
-        for e in range(
-                config['experiment_setting']['evaluation']['n_experiments']):
-            # Load FQI
-            fqi = FQI(estimator=regressor,
-                      state_dim=state_dim,
-                      action_dim=action_dim,
-                      discrete_actions=discrete_actions,
-                      gamma=config['fqi']['gamma'],
-                      horizon=config['fqi']['horizon'],
-                      verbose=config['fqi']['verbose'])
-            fit_params = config['fit_params']
+for e in range(config['experiment_setting']['evaluation']['n_experiments']):
+    print('Experiment: %d' % (e + 1))
+    experiment_results = list()
 
+    # Load dataset
+    dataset = evaluation.collect_episodes(
+        mdp, n_episodes=np.sort(config['experiment_setting']['evaluation']
+                                ['n_episodes'])[-1])
+    print('Dataset has %d samples' % dataset.shape[0])
+
+    # Load FQI
+    fqi = FQI(estimator=regressor,
+              state_dim=state_dim,
+              action_dim=action_dim,
+              discrete_actions=discrete_actions,
+              gamma=config['fqi']['gamma'],
+              horizon=config['fqi']['horizon'],
+              verbose=config['fqi']['verbose'])
+    fit_params = config['fit_params']
+
+    if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
+        for i in config['experiment_setting']['evaluation']['n_episodes']:
             episode_end_idxs = np.argwhere(dataset[:, -1] == 1).ravel()
             last_el = episode_end_idxs[i - 1]
             sast, r = split_data_for_fqi(dataset, state_dim, action_dim,
@@ -109,40 +110,20 @@ if config['experiment_setting']['evaluation']['metric'] == 'n_episodes':
             fqi.fit(sast, r, **fit_params)
 
             experiment_results.append(evaluate(mdp, fqi, mdp.initial_states, args))
-        mean_results = np.mean(experiment_results, axis=0)
-        print('J: %f' % mean_results[0])
-        results.append(mean_results)
-elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
-    for e in range(
-            config['experiment_setting']['evaluation']['n_experiments']):
-        print('Experiment: %d' % (e + 1))
-
-        # Load FQI
-        fqi = FQI(estimator=regressor,
-                  state_dim=state_dim,
-                  action_dim=action_dim,
-                  discrete_actions=discrete_actions,
-                  gamma=config['fqi']['gamma'],
-                  horizon=config['fqi']['horizon'],
-                  verbose=config['fqi']['verbose'])
-        fit_params = config['fit_params']
-
+        results.append(experiment_results)
+    elif config['experiment_setting']['evaluation']['metric'] == 'fqi_iteration':
         sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
 
         fqi.partial_fit(sast, r, **fit_params)
 
-        experiment_results = list()
         for i in range(2, fqi.horizon + 1):
             fqi.partial_fit(None, None, **fit_params)
 
             if not i % config['experiment_setting']['evaluation']['n_steps_to_evaluate']:
-                values = evaluate(mdp, fqi, mdp.initial_states, args)
-                experiment_results.append(values)
-                print('J: %f' % values[0])
+                experiment_results.append(evaluate(mdp, fqi, mdp.initial_states, args))
         results.append(experiment_results)
-    results = (np.mean(results, axis=0), np.std(results, axis=0))
-else:
-    raise ValueError('unknown metric requested.')
+    else:
+        raise ValueError('unknown metric requested.')
 
 if not os.path.exists('results'):
     os.mkdir('results')
