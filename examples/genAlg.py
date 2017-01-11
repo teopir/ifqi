@@ -33,6 +33,7 @@ parser.add_argument("nPop", type=int, help="Provide the size of the population")
 parser.add_argument("nCore", type=int, help="Provides the number of core to use")
 parser.add_argument("outFile", type=str, help="Provides the name of the file")
 parser.add_argument("nDataset", type=int, help="Provides the number dataset to use",nargs="?", default=1)
+parser.add_argument("nIterMax", type=int, help="Provides the number dataset to use",nargs="?", default=1)
 parser.add_argument("-cont", action='store_const',
                     const=True, default=False,
                     help='Loads the epoch file if it exists')
@@ -47,6 +48,7 @@ nCore = args.nCore
 nPop = args.nPop
 outFile = args.outFile
 nDataset = args.nDataset
+nIterMax = args.nIterMax
 cont = args.cont
 extraTree = args.extra
 
@@ -67,7 +69,7 @@ if not extraTree:
     "patienceB": (0,3)
 }"""
 
-    ranges = [(20,21),(0,3),(2000,2001),(10,11),(2,3),(0,10),(3,16),(0,10),(0,3)]#,(0,2), (0,2)]
+    ranges = [(5000,5001),(0,3),(2000,2001),(10,11),(2,3),(0,10),(3,16),(0,10),(0,3)]#,(0,2), (0,2)]
 
     mutations = [0., 0.15, 0., 0., 0.,0.15,0.15,0.15,0.15]#, 0.4, 0.4]
 else:
@@ -140,7 +142,7 @@ def newPopulation():
     population = elite + [combine(bestPop[np.random.randint(nbPop)],bestPop[np.random.randint(nbPop)]) for i in range(nPop-nElite)]
 
 def evaluate():
-    global population,evaluation, nCore, configFile
+    global population,evaluation, nCore, configFile, nIter
 
     myPath = os.path.realpath(__file__)
     myPath = os.path.dirname(myPath)
@@ -157,7 +159,7 @@ def evaluate():
         for individual in population:
             population_process.append([])
             for ds in range(nDataset):
-                p = subprocess.Popen(["python", myPath, configFile] + [str(x) for x in individual] + [str(ds)], stdout=PIPE)
+                p = subprocess.Popen(["python", myPath, configFile] + [str(x) for x in individual] + [str(ds),nIter], stdout=PIPE)
                 population_process[-1].append(p)
                 processes.add(p)
                 while len(processes) >= nCore:
@@ -193,9 +195,12 @@ if os.path.isfile(outFile + ".epoch"):
 
 
 print(population)
+nIter = 1
 while True:
     evaluate()
     newPopulation()
     with open(outFile + ".epoch","w") as data_file:
         print (population)
         json.dump( {"population":population},data_file)
+    if nIter < nIterMax:
+        nIter += 1

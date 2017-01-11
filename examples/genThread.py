@@ -39,6 +39,7 @@ parser.add_argument("deltaMinB", type=int, help="Provides the y in xE10-y for de
 parser.add_argument("patienceA", type=int, help="Provides the x in xE10y for patience")
 parser.add_argument("patienceB", type=int, help="Provides the y in xE10y for patience")
 parser.add_argument("seed", type=int, help="Provides the seed of randomness")
+parser.add_argument("nIter", type=int, help="Provides number of iteration")
 #parser.add_argument("input_scaled", type=int, help="Provides the number of core to use")
 #parser.add_argument("output_scaled", type=int, help="Provides the number of core to use")
 
@@ -59,6 +60,7 @@ patienceB = args.patienceB
 input_scaled = True #args.input_scaled
 output_scaled = True #args.output_scaled
 seed = args.seed
+nIter = args.nIter
 
 act = "sigmoid"
 if activation==1:
@@ -158,7 +160,7 @@ fitParams = {
 }
 fqi.partial_fit(sastFirst[:], rFirst[:], **fitParams)
 
-iterations = 5
+iterations = nIter
 
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
