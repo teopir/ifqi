@@ -1,7 +1,7 @@
-from .environment import Environment
+from .gym import Gym
 
 
-class CartPole(Environment):
+class CartPole(Gym):
     """
     The openAI Gym environment.
 
