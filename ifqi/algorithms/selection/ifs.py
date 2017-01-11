@@ -300,7 +300,8 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
             # compute score and confidence interval
             score = r2_score(y_true=y, y_pred=y_hat, multioutput='uniform_average')  # np.mean(cv_scores)
-            print('r2: {}'.format(r2_score(y_true=y, y_pred=y_hat, multioutput='raw_values')))
+            if self.verbose > 0:
+                print('r2: {}'.format(r2_score(y_true=y, y_pred=y_hat, multioutput='raw_values')))
             # m2 = np.mean(cv_scores * cv_scores)
             SIGNIFICANCE = 0.0
             confidence_interval = SIGNIFICANCE  # * np.sqrt((m2 - score * score) / (n_splits - 1))

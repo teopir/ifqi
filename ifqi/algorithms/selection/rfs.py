@@ -15,6 +15,7 @@ from sklearn.base import clone
 from sklearn.feature_selection.base import SelectorMixin
 from sklearn.metrics import r2_score, mean_squared_error
 import sklearn
+
 if sklearn.__version__ == '0.17':
     from sklearn.cross_validation import cross_val_score, check_cv
 else:
@@ -58,7 +59,7 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         self.support_ = self._recursive_step(X, next_states, reward, support)
         return self
 
-    def _recursive_step(self, X, next_state, Y, curr_support):
+    def _recursive_step(self, X, next_state, Y, curr_support, Y_idx=None):
         """
         Recursively selects the features that explains the provided target
         (initially Y must be the reward)
@@ -68,11 +69,21 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             Y (numpy.array): target to fit (intially reward, than the state)
             curr_support (numpy.array): selected features of X (ie. selected state and action).
                 Boolean array of shape [state_dim + action_dim, 1]
+            Y_idx (int): index of the target variable
 
         Returns:
             support (numpy.array): updated support
 
         """
+        if self.verbose > 0:
+            print('')
+            print('=' * 20)
+            if Y_idx is None:
+                print('Explaining feature REWARD')
+            else:
+                print('Explaining feature {}'.format(self.features_names[Y_idx]))
+            print('Calling IFS...')
+
         n_states = next_state.shape[1]
         n_actions = X.shape[1] - n_states
 
@@ -92,9 +103,13 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         # new_support + old_support
         sa_support[curr_support] = True
 
+        if self.verbose > 0:
+            print('Selected features {}'.format(self.features_names[sa_support]))
+            print('Feature to explain {}'.format(self.features_names[idxs]))
+
         for idx in idxs:
             target = next_state[:, idx]
-            rfs_s_features = self._recursive_step(X, next_state, target, sa_support)
+            rfs_s_features = self._recursive_step(X, next_state, target, sa_support, idx)
             sa_support[rfs_s_features] = True
         return sa_support
 
