@@ -159,7 +159,7 @@ def evaluate():
         for individual in population:
             population_process.append([])
             for ds in range(nDataset):
-                p = subprocess.Popen(["python", myPath, configFile] + [str(x) for x in individual] + [str(ds),nIter], stdout=PIPE)
+                p = subprocess.Popen(["python", myPath, configFile] + [str(x) for x in individual] + [str(ds),str(nIter)], stdout=PIPE)
                 population_process[-1].append(p)
                 processes.add(p)
                 while len(processes) >= nCore:
