@@ -1,4 +1,4 @@
-import gym, pygame as pg, random, logging
+import gym, pygame as pg, random, logging, numpy as np
 from gym import spaces
 from gym.utils import seeding
 from PIL import Image
@@ -203,10 +203,29 @@ class Viewer:
     # HELPERS
     def _get_new_agent_pos(self, action):
         addendum = self.directions[action]
-        x = self.char_pos[0] + addendum[0]
-        y = self.char_pos[1] + addendum[1]
-        new_pos = (x, y)
-        if new_pos in self.wall_pos or x < 0 or x >= self.width * self.cell_size or y < 0 or y >= self.height * self.cell_size:
-            return self.char_pos
-        else:
-            return new_pos
+        x = self.char_pos[0]
+        y = self.char_pos[1]
+
+        # Compute new X coordinate (forbid movements outside of bounds)
+        new_x = x + addendum[0]
+        if new_x < 0 or new_x >= self.width * self.cell_size:
+            new_x = x
+
+        # Compute new Y coordinate (forbid movements outside of bounds)
+        new_y = y + addendum[1]
+        if new_y < 0 or new_y >= self.height * self.cell_size:
+            new_y = y
+
+        new_pos = (new_x, new_y)
+
+        allowed_pos = []
+        if new_pos in self.wall_pos:
+            if not (new_x, y) in self.wall_pos: # Agent can move horizontally
+                allowed_pos.append((new_x, y))
+            if not (x, new_y) in self.wall_pos: # Agent can move vertically
+                allowed_pos.append((x, new_y))
+            # There can be two allowed moves if the agent is on a corner of the wall and tries to move diagonally
+            # In that case, choose a random move
+            new_pos = random.choice(allowed_pos)
+
+        return new_pos

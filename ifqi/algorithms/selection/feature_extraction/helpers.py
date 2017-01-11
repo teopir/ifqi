@@ -39,7 +39,7 @@ def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
 def flat2gen(alist):
     """
     :param alist: a 2d list
-    :return: an iterator for the flattened list
+    :return: a generator for the flattened list
     """
     for item in alist:
         if isinstance(item, list) or isinstance(item, np.ndarray):
