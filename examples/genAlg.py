@@ -1,5 +1,5 @@
 """
-Genetic algoritm for choosing the best MLP
+Genetic algorithm for choosing the best MLP
 """
 
 from __future__ import print_function
@@ -67,9 +67,9 @@ if not extraTree:
     "patienceB": (0,3)
 }"""
 
-    ranges = [(500,501),(0,3),(2000,2001),(10,11),(2,3),(0,10),(3,16),(0,10),(0,3)]#,(0,2), (0,2)]
+    ranges = [(20,21),(0,3),(2000,2001),(10,11),(2,3),(0,10),(3,16),(0,10),(0,3)]#,(0,2), (0,2)]
 
-    mutations = [0., 0., 0., 0., 0.,0.25,0.25,0.25,0.25]#, 0.4, 0.4]
+    mutations = [0., 0.15, 0., 0., 0.,0.15,0.15,0.15,0.15]#, 0.4, 0.4]
 else:
     """ranges = {
         "n_estimators": (1,50),
@@ -173,9 +173,10 @@ def evaluate():
         for p in processes:
             p.kill()
             exit()
-
+    #print("x.communicate",[x.communicate() for x in population_process[0]])
     clean = lambda(x): float(str(x.communicate()[0]).split()[-1])
     evaluation = [np.mean(map(clean,p)) for p in population_process]
+    print("evaluation", evaluation)
 
 
 population = map(lambda(x): generates(), [None]*nPop)

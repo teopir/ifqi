@@ -158,7 +158,7 @@ fitParams = {
 }
 fqi.partial_fit(sastFirst[:], rFirst[:], **fitParams)
 
-iterations = 25
+iterations = 5
 
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
