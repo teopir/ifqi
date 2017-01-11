@@ -15,10 +15,9 @@
 #
 
 import numpy
+import gym
 from gym import spaces
 from gym.utils import seeding
-
-from .environment import Environment
 
 from builtins import range
 
@@ -27,7 +26,7 @@ TODO: to test
 """
 
 
-class Bicycle(Environment):
+class Bicycle(gym.Env):
     """Bicycle balancing/riding domain.
     From the paper:
     Learning to Drive a Bicycle using Reinforcement Learning and Shaping.

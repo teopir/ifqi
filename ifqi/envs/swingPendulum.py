@@ -7,16 +7,15 @@ Created on Fri Sep  9 09:25:48 2016
 Pendulum as described in Reinforcement Learning in Continuous Time and Space
 """
 
-
+import gym
 import numpy as np
 from gym import spaces
 from gym.utils import seeding
 
 import ifqi.utils.spaces as fqispaces
-from .environment import Environment
 
 
-class SwingPendulum(Environment):
+class SwingPendulum(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 15

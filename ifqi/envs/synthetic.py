@@ -1,12 +1,10 @@
 import numpy as np
+import gym
 from gym import spaces
 from gym.utils import seeding
-from gym.spaces import prng
-
-from .environment import Environment
 
 
-class SyntheticToyFS(Environment):
+class SyntheticToyFS(gym.Env):
     def __init__(self):
         self.horizon = 10
         self.gamma = 0.99

@@ -1,13 +1,11 @@
 """classic Linear Quadratic Gaussian Regulator task"""
 from numbers import Number
 
-# import gym
+import gym
 from gym import spaces
 from gym.utils import seeding
 from gym.spaces import prng
 import numpy as np
-
-from .environment import Environment
 
 """
 Linear quadratic gaussian regulator task.
@@ -34,7 +32,7 @@ register(
 )
 
 
-class LQG1D(Environment):
+class LQG1D(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 30

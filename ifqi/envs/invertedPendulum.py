@@ -1,12 +1,12 @@
 import numpy as np
+import gym
 from gym import spaces
 from gym.utils import seeding
 
 import ifqi.utils.spaces as fqispaces
-from .environment import Environment
 
 
-class InvPendulum(Environment):
+class InvPendulum(gym.Env):
     """
     The Inverted Pendulum environment.
 

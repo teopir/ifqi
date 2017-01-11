@@ -1,11 +1,10 @@
-# import gym
+import gym
 import numpy as np
 from gym import spaces
 from gym.utils import seeding
 from scipy.integrate import odeint
 
 from ifqi.utils import spaces as fqispaces
-from .environment import Environment
 
 """
 The Acrobot environment as presented in:
@@ -18,7 +17,7 @@ This problem has continuous state (4-dim) and discrete actions (by default).
 """
 
 
-class Acrobot(Environment):
+class Acrobot(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 15

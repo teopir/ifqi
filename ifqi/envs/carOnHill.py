@@ -1,14 +1,14 @@
 import numpy as np
+import gym
 from builtins import range
 from gym import spaces
 from gym.utils import seeding
 from scipy.integrate import odeint
 
 import ifqi.utils.spaces as fqispaces
-from .environment import Environment
 
 
-class CarOnHill(Environment):
+class CarOnHill(gym.Env):
     """
     The Car On Hill environment as presented in:
     "Tree-Based Batch Mode Reinforcement Learning, D. Ernst et. al."

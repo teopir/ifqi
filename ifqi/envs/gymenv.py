@@ -1,9 +1,8 @@
 import gym
 from gym.utils import seeding
-from .environment import Environment
 
 
-class Gym(Environment):
+class Gym(gym.Env):
     """
     The openAI Gym environment.
 
