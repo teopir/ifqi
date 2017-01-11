@@ -61,7 +61,7 @@ else:
 
 # Load environment
 mdp = get_MDP(config['mdp']['name'])
-mdp.set_seed(config['experiment_setting']['evaluation']['seed'])
+mdp.seed(config['experiment_setting']['evaluation']['seed'])
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 assert reward_dim == 1
 reward_idx = state_dim + action_dim
