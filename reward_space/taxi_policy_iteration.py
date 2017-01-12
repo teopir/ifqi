@@ -86,39 +86,3 @@ def compute_policy():
 
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Policy Iteration algorithm.')
-    parser.add_argument('--env', '-e', type=str, default='Taxi-v1', nargs='?',
-                        help='The environment to use')
-    parser.add_argument('--num_episodes', '-n', metavar='N', type=int, default=1000, nargs='?',
-                        help='Number of episodes')
-    parser.add_argument('--gamma', '-g', metavar='g', type=float, default=0.99, nargs='?',
-                        help='Gamma discount factor')
-    args = parser.parse_args()
-
-    env = gym.make(args.env)
-
-    value = ValueFuntion(env)
-    policy = TablePolicy(env)
-
-    policy_iteration(env, value, policy, gamma=args.gamma)
-    print(value)
-    print(policy)
-
-    env.monitor.start('%s-policy-iteration-1' % args.env, force=True)
-
-    ep_rewards = []
-    for ep in range(args.num_episodes):
-        done = False
-        R = 0
-        s = env.reset()
-        while not done:
-            # env.render()
-            action = policy.policy[s]
-            s, reward, done, info = env.step(action)
-            R += reward
-        ep_rewards.append(R)
-
-    env.monitor.close()
-    print("Avg rewards over {0} episodes: {1:.3f} +/-{2:.3f}".format(args.num_episodes, np.mean(ep_rewards),
-                                                                     np.std(ep_rewards)))

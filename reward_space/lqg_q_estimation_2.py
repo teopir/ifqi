@@ -166,9 +166,6 @@ error_rel = np.abs((Q_true - Q_hat)/Q_true)
 mare = np.mean(error_rel)
 
 W = np.diag(discounts)
-C_norm = 1.0/n_episodes * LA.multi_dot([C.T, W, C])
-Q_true_norm = 1.0/n_episodes * LA.multi_dot([Q_true.T, W, Q_true])
-Q_hat_norm = 1.0/n_episodes * LA.multi_dot([Q_hat.T, W, Q_hat])
 
 grad_J_true = 1.0/n_episodes * LA.multi_dot([C.T, W, Q_true])
 grad_J_hat = 1.0/n_episodes * LA.multi_dot([C.T, W, Q_hat])
@@ -177,11 +174,6 @@ print('Results of LS rmse = %s mae = %s mare = %s' % (rmse, mae, mare))
 print('True policy gradient %s' % grad_J_true)
 print('Estimated policy gradient %s' % grad_J_hat)
 print('Estimated expected return %s' % J_hat)
-
-norm_grad_J_true = grad_J_true/np.sqrt(C_norm*Q_true_norm)
-norm_grad_J_hat = grad_J_hat/np.sqrt(C_norm*Q_hat_norm)
-print('True normalized policy gradient %s' % norm_grad_J_true)
-print('Estimated normalized  policy gradient %s' % norm_grad_J_hat)
 
 #-------------------------Plot------------------------------------------------
 fig = plt.figure()

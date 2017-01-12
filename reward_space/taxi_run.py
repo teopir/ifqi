@@ -1,10 +1,11 @@
 from __future__ import print_function
 from ifqi.envs import TaxiEnv
-from policy import  TaxiEnvPolicy, TaxiEnvPolicyStateParameter, TaxiEnvPolicy2StateParameter
+from policy import  TaxiEnvPolicy, TaxiEnvPolicyStateParameter, TaxiEnvPolicy2StateParameter, TaxiEnvPolicyOneParameter, TaxiEnvPolicy2Parameter
 from ifqi.evaluation import evaluation
 import numpy as np
 import numpy.linalg as LA
 from rank_nullspace import nullspace
+import matplotlib.pyplot as plt
 
 def compute_mdp_parameters(mdp, fix_episodic=True):
     nS = mdp.observation_space.n
@@ -37,8 +38,6 @@ def fix_episodic(P, R_sas, R_sa, D, mu, PI):
     R_sa = (R_sas * P).sum(axis=1)
     PI = np.vstack([PI, np.zeros((1,PI.shape[1]))])
     mu = np.concatenate([mu, [0]])
-    print(PI.shape)
-    print(P.shape)
     return P, R_sas, R_sa, D, mu, PI
 
 
@@ -99,45 +98,81 @@ def estimate_Q(X, Q_true):
     Q_hat = X.dot(w)
     return Q_hat, w, rmse
 
+
+def compute(mdp, n_episodes, prox_policy, opt_policy):
+    dataset = evaluation.collect_episodes(mdp, prox_policy, n_episodes)
+
+    P, R_sas, R, D, mu, gamma, horizon = compute_mdp_parameters(mdp)
+    PI = prox_policy.get_distribution()
+    PI_opt = opt_policy.get_distribution()
+
+    P2, _, R2, D2, mu2, PI2 = fix_episodic(P, R_sas, R, D, mu, PI)
+    _, _, _, _, _, PI2_opt = fix_episodic(P, R_sas, R, D, mu, PI_opt)
+
+    d_s_hat, d_a_hat, d_sa_hat1 = compute_counts(dataset, 0, 1, 4, range(mdp.observation_space.n),
+                                                 range(mdp.action_space.n))
+    d_sa_hat2 = np.dot(PI.T, d_s_hat)
+    d_sa = compute_d_sa(P2, gamma, PI2, mu2)
+    Q_true = compute_Q_function(P2, R2, gamma, PI2)
+    C = prox_policy.gradient_log_pdf()
+
+    J_opt = compute_J(P2, R2, gamma, PI2_opt, mu2)
+    J_true = compute_J(P2, R2, gamma, PI2, mu2)
+    J_hat = 1.0 / n_episodes * np.sum(dataset[:, 2] * dataset[:, 4])
+
+    print('Optimal expected reward (deterministic policy) %g' % J_opt)
+    print('True expected reward (our policy) %g' % J_true)
+    print('Estimated expected reward (our policy) %g' % J_hat)
+
+    grad_J_hat = 1.0 / n_episodes * LA.multi_dot([C.T, np.diag(d_sa_hat2), Q_true])
+    grad_J_true = LA.multi_dot([C.T, np.diag(d_sa), Q_true])
+    print('Dimension of the subspace %s' % LA.matrix_rank(np.dot(C.T, np.diag(d_sa_hat2))))
+    print('True policy gradient %s' % LA.norm(grad_J_hat))
+    print('Estimated policy gradient %s' % LA.norm(grad_J_true))
+
+    X = nullspace(np.dot(C.T, np.diag(d_sa_hat2)))
+    X_true = nullspace(np.dot(C.T, np.diag(d_sa)))
+    print('Rank X %s' % LA.matrix_rank(X))
+
+
+    Q_hat, w, rmse = estimate_Q(X, Q_true)
+    error = np.abs(Q_true - Q_hat)
+    mae = np.mean(error)
+    error_rel = np.abs((Q_true - Q_hat) / (Q_true + 1e-8))
+    mare = np.mean(error_rel)
+    print('Results of LS rmse = %s mae = %s mare = %s' % (rmse, mae, mare))
+
+    # ------------------------------------Plots-------------------------------------------------------------------
+    '''
+    f, axarr = plt.subplots(2, sharex=True)
+    axarr[0].stem(np.arange(6), PI_opt[0][:6], '-.')
+    axarr[1].stem(np.arange(6), PI[0][:6], '-.')
+    plt.show()
+    '''
+
+    f, axarr = plt.subplots(6, sharex=True)
+    for i in range(6):
+        axarr[i].scatter(np.arange(500), Q_true[6 * np.arange(500) + i], c='b', marker='o')
+        axarr[i].scatter(np.arange(500), Q_hat[6 * np.arange(500) + i], c='r', marker='*')
+    plt.show()
+
 mdp = TaxiEnv()
-opt_policy = TaxiEnvPolicy()
-#prox_policy = TaxiEnvPolicyStateParameter(2.986, 0.5, 3)
-prox_policy = TaxiEnvPolicy2StateParameter(sigma=0.05)
-
 n_episodes = 1000
-dataset = evaluation.collect_episodes(mdp, prox_policy, n_episodes)
 
-P, R_sas, R, D, mu, gamma, horizon = compute_mdp_parameters(mdp)
-PI = prox_policy.get_distribution()
-PI_opt= opt_policy.get_distribution()
+opt_policy = TaxiEnvPolicy()
+'''
+print('1 GLOBAL PARAMETER')
+prox_policy = TaxiEnvPolicyOneParameter(3, 0.2, 3)
+compute(mdp, n_episodes, prox_policy, opt_policy)
 
-P2, _, R2, D2, mu2, PI2 = fix_episodic(P, R_sas, R, D, mu, PI)
+print('\n2 GLOBAL PARAMETERS')
+prox_policy = TaxiEnvPolicy2Parameter(sigma=0.02)
+compute(mdp, n_episodes, prox_policy, opt_policy)
 
-d_s_hat, d_a_hat, d_sa_hat1 = compute_counts(dataset, 0, 1, 4, range(mdp.observation_space.n), range(mdp.action_space.n))
-d_sa_hat2 = np.dot(PI.T, d_s_hat)
-d_sa = compute_d_sa(P2, gamma, PI2, mu2)
-Q_true = compute_Q_function(P2, R2, gamma, PI2)
-C = prox_policy.gradient_log_pdf()
-
-#J_opt = compute_J(P, R, gamma, PI_opt, mu)
-J_true = compute_J(P2, R2, gamma, PI2, mu2)
-J_hat = 1.0/n_episodes * np.sum(dataset[:,2] * dataset[:,4])
-
-#print('Optimal expected reward (deterministic policy) %g' % J_opt)
-print('True expected reward (our policy) %g' % J_true)
-print('Estimated expected reward (our policy) %g\n' % J_hat)
-
-grad_J_hat = 1.0/n_episodes * LA.multi_dot([C.T, np.diag(d_sa_hat2), Q_true])
-grad_J_true = LA.multi_dot([C.T, np.diag(d_sa), Q_true])
-print('True policy gradient %s' % LA.norm(grad_J_hat))
-print('Estimated policy gradient %s\n' % LA.norm(grad_J_true))
-
-X = nullspace(np.dot(C.T, np.diag(d_sa_hat2)))
-X_true = nullspace(np.dot(C.T, np.diag(d_sa)))
-
-Q_hat, w, rmse = estimate_Q(X, Q_true)
-error = np.abs(Q_true - Q_hat)
-mae = np.mean(error)
-error_rel = np.abs((Q_true - Q_hat)/(Q_true + 1e-10))
-mare = np.mean(error_rel)
-print('Results of LS rmse = %s mae = %s mare = %s' % (rmse, mae, mare))
+print('\n1 STATE PARAMETER')
+prox_policy = TaxiEnvPolicyStateParameter(3, 0.2, 3)
+compute(mdp, n_episodes, prox_policy, opt_policy)
+'''
+print('\n2 STATE PARAMETERS')
+prox_policy = TaxiEnvPolicy2StateParameter(sigma=0.02)
+compute(mdp, n_episodes, prox_policy, opt_policy)

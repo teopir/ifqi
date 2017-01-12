@@ -39,7 +39,7 @@ class LQG1D(Environment):
     }
 
     def __init__(self, discrete_reward=False):
-        self.horizon = 1000
+        self.horizon = 100
         self.gamma = 0.99
 
         self.discrete_reward = discrete_reward
@@ -83,11 +83,14 @@ class LQG1D(Environment):
         return [seed]
 
     def reset(self, state=None):
+        '''
         if state is None:
             self.state = np.array([prng.np_random.uniform(low=-self.max_pos,
                                                           high=self.max_pos)])
         else:
             self.state = np.array(state)
+        '''
+        self.state = np.array([4.])
 
         return self.get_state()
 
