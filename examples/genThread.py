@@ -40,6 +40,7 @@ parser.add_argument("patienceA", type=int, help="Provides the x in xE10y for pat
 parser.add_argument("patienceB", type=int, help="Provides the y in xE10y for patience")
 parser.add_argument("seed", type=int, help="Provides the seed of randomness")
 parser.add_argument("nIter", type=int, help="Provides number of iteration")
+parser.add_argument("nEval", type=int, help="Provides number of evaluations")
 #parser.add_argument("input_scaled", type=int, help="Provides the number of core to use")
 #parser.add_argument("output_scaled", type=int, help="Provides the number of core to use")
 
@@ -61,6 +62,7 @@ input_scaled = True #args.input_scaled
 output_scaled = True #args.output_scaled
 seed = args.seed
 nIter = args.nIter
+nEval = args.nEval
 
 act = "sigmoid"
 if activation==1:
@@ -168,20 +170,20 @@ for i in range(iterations - 1):
 if env_name == "LQG1D" or env_name == "LQG1DD":
     initial_states = np.zeros((5, 1))
     initial_states[:, 0] = np.linspace(-10,10,5)
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1,
+    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1*nEval,
                                                               initial_states=initial_states)
 elif env_name == "Acrobot":
     initial_states = np.zeros((5, 4))
     initial_states[:, 0] = np.linspace(-2, 2, 5)
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5,
+    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5*nEval,
                                                               initial_states=initial_states)
 elif env_name == "SwingPendulum":
     initial_states = np.zeros((5, 2))
     initial_states[:, 0] = np.linspace(-np.pi, np.pi, 5)
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5,
+    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5*nEval,
                                                               initial_states=initial_states)
 elif env_name == "Bicycle":
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1)
+    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
 
 print(score)
 

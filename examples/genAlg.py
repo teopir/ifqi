@@ -33,7 +33,10 @@ parser.add_argument("nPop", type=int, help="Provide the size of the population")
 parser.add_argument("nCore", type=int, help="Provides the number of core to use")
 parser.add_argument("outFile", type=str, help="Provides the name of the file")
 parser.add_argument("nDataset", type=int, help="Provides the number dataset to use",nargs="?", default=1)
-parser.add_argument("nIterMax", type=int, help="Provides the number dataset to use",nargs="?", default=1)
+parser.add_argument("nEval", type=int, help="Provides the number of evaluation to use",nargs="?", default=1)
+parser.add_argument("nIterMin", type=int, help="Provides the minimum number of iterations",nargs="?", default=1)
+parser.add_argument("nIterMax", type=int, help="Provides the maximum number of iterations",nargs="?", default=1)
+parser.add_argument("sSeed", type=int, help="Provides the starting seed",nargs="?", default=0)
 parser.add_argument("-cont", action='store_const',
                     const=True, default=False,
                     help='Loads the epoch file if it exists')
@@ -48,7 +51,10 @@ nCore = args.nCore
 nPop = args.nPop
 outFile = args.outFile
 nDataset = args.nDataset
+nEval = args.nEval
+nIterMin = args.nIterMin
 nIterMax = args.nIterMax
+sSed = args.sSeed
 cont = args.cont
 extraTree = args.extra
 
@@ -142,7 +148,7 @@ def newPopulation():
     population = elite + [combine(bestPop[np.random.randint(nbPop)],bestPop[np.random.randint(nbPop)]) for i in range(nPop-nElite)]
 
 def evaluate():
-    global population,evaluation, nCore, configFile, nIter
+    global population,evaluation, nCore, configFile, nIter, sSeed
 
     myPath = os.path.realpath(__file__)
     myPath = os.path.dirname(myPath)
@@ -159,7 +165,7 @@ def evaluate():
         for individual in population:
             population_process.append([])
             for ds in range(nDataset):
-                p = subprocess.Popen(["python", myPath, configFile] + [str(x) for x in individual] + [str(ds),str(nIter)], stdout=PIPE)
+                p = subprocess.Popen(["python", myPath, configFile] + [str(x) for x in individual] + [str(ds + sSeed),str(nIter), str(nEval)], stdout=PIPE)
                 population_process[-1].append(p)
                 processes.add(p)
                 while len(processes) >= nCore:
@@ -195,7 +201,7 @@ if os.path.isfile(outFile + ".epoch"):
 
 
 print(population)
-nIter = 1
+nIter = nIterMin
 while True:
     evaluate()
     newPopulation()
