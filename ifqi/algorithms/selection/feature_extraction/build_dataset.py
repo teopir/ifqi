@@ -28,12 +28,12 @@ if args.encode:
 
     AE = Autoencoder((1, 48, 48), load_path=args.path)
     # TODO header states must be automatically generated from the output length of AE.flat_encode
-    logger.to_csv('encoded' + output_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y,R,SS0,SS1,SS2,SS3,SS4,SS5,SS6,SS7,SS8')
+    logger.to_csv('encoded_' + output_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y,R,SS0,SS1,SS2,SS3,SS4,SS5,SS6,SS7,SS8')
     logger.to_csv(heatmap_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y')
 if args.images:
-    logger.to_csv('images' + output_csv, 'S,A,R,SS')
+    logger.to_csv('images_' + output_csv, 'S,A,R,SS')
 if args.coordinates:
-    logger.to_csv('coordinates' + output_csv, 'pos_X,pos_Y,pos_Wall,act_X,act_Y,R,next_X,next_Y,next_Wall')
+    logger.to_csv('coordinates_' + output_csv, 'pos_X,pos_Y,pos_Wall,act_X,act_Y,R,next_X,next_Y,next_Wall')
 
 
 def episode(episode_id):
@@ -77,21 +77,21 @@ def episode(episode_id):
         if args.encode:
             preprocessed_next_state = np.expand_dims(np.expand_dims(np.asarray(next_state), axis=0), axis=0)
             encoded_next_state = AE.flat_encode(preprocessed_next_state)
-            logger.to_csv('encoded' + output_csv, flat2list([encoded_state, env.encode_action(action), reward, encoded_next_state]))
+            logger.to_csv('encoded_' + output_csv, flat2list([encoded_state, env.encode_action(action), reward, encoded_next_state]))
             logger.to_csv(heatmap_csv, flat2list([encoded_state, env.viewer.char_pos[0], env.viewer.char_pos[1]]))
 
         # Save image of state
         if args.images:
             next_state_id = '%04d_%d' % (episode_id, frame_counter)
             next_state.save(logger.path + next_state_id + '.png')
-            logger.to_csv('images' + output_csv, [state_id, action, reward, next_state_id])
+            logger.to_csv('images_' + output_csv, [state_id, action, reward, next_state_id])
 
         # Save coordinates
         if args.coordinates:
             next_X = env.viewer.char_pos[0] / env.viewer.cell_size
             next_Y = env.viewer.char_pos[1] / env.viewer.cell_size
             next_Wall = list(env.viewer.wall_pos)[0][0] / env.viewer.cell_size
-            logger.to_csv('coordinates' + output_csv, flat2list([pos_X, pos_Y, pos_Wall, env.encode_action(action), reward, next_X, next_Y, next_Wall]))
+            logger.to_csv('coordinates_' + output_csv, flat2list([pos_X, pos_Y, pos_Wall, env.encode_action(action), reward, next_X, next_Y, next_Wall]))
 
         # Render environment
         if args.video:
