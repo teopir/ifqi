@@ -1,4 +1,5 @@
 import numpy as np
+from joblib import Parallel, delayed
 
 from ifqi.models.regressor import Regressor
 
@@ -7,6 +8,10 @@ Ensemble regressor.
 This class is supposed to be used in this package and it may not work
 properly outside.
 """
+
+
+def pred(x, m):
+    return m.predict(x).ravel().tolist()
 
 
 class Ensemble(object):
@@ -40,9 +45,19 @@ class Ensemble(object):
 
             return self._predict_sum[:, action_idx]
 
+        import time
+        a = time.time()
         prediction = np.zeros(x.shape[0])
         for model in self._models:
             prediction += model.predict(x).ravel()
+        print('For: ' + str(time.time() - a))
+
+        a = time.time()
+        with Parallel(n_jobs=-1,
+                      backend='threading') as parallel:
+            results = parallel(delayed(pred)(x, m) for m in self._models)
+            prediction = np.sum(np.asarray(results), axis=0)
+        print('Par: ' + str(time.time() - a))
 
         return prediction
 
