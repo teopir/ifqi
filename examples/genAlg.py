@@ -54,7 +54,7 @@ nDataset = args.nDataset
 nEval = args.nEval
 nIterMin = args.nIterMin
 nIterMax = args.nIterMax
-sSed = args.sSeed
+sSeed = args.sSeed
 cont = args.cont
 extraTree = args.extra
 
