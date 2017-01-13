@@ -439,9 +439,9 @@ class GradPBO(object):
         callbacks.on_train_end()
 
         # finally apply the bellman operator K-times to get the final point
-        print(theta[0])
+        theta = theta[0]
         for i in range(self.steps_ahead):
-            theta = self.apply_bop(theta[0])
+            theta = self.apply_bop(theta)
         self.learned_theta_value = theta
         if self.verbose > 1:
             print('learned theta: {}'.format(self.learned_theta_value))
@@ -459,6 +459,7 @@ class GradPBO(object):
 
         """
         if self.incremental:
+            print(self.bellman_model.predict(theta))
             return theta + self.bellman_model.predict(theta)
         else:
             return self.bellman_model.predict(theta)

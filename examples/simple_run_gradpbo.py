@@ -27,7 +27,7 @@ check_dataset(dataset, state_dim, action_dim, reward_dim)
 
 INCREMENTAL = True
 ACTIVATION = 'tanh'
-STEPS_AHEAD = 10
+STEPS_AHEAD = 5
 UPDATE_EVERY = 1000
 
 
