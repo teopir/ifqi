@@ -11,7 +11,7 @@ properly outside.
 
 
 def pred(x, m):
-    return m.predict(x).ravel().tolist()
+    return m.predict(x)
 
 
 class Ensemble(object):
@@ -52,11 +52,13 @@ class Ensemble(object):
             prediction += model.predict(x).ravel()
         print('For: ' + str(time.time() - a))
 
+
+
         a = time.time()
         with Parallel(n_jobs=-1,
                       backend='threading') as parallel:
             results = parallel(delayed(pred)(x, m) for m in self._models)
-            prediction = np.sum(np.asarray(results), axis=0)
+            parpred = np.sum(results).ravel()
         print('Par: ' + str(time.time() - a))
 
         return prediction
