@@ -38,7 +38,8 @@ class Atari(Environment):
         current_state = self.get_state()
         obs, reward, done, info = self.env.step(int(action))
         obs = self._preprocess_observation(obs)
-        return self._get_next_state(current_state, obs), reward, done, info
+        self.env.state = self._get_next_state(current_state, obs)
+        return self.get_state(), reward, done, info
 
     def get_state(self):
         return self.env.state
