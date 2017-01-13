@@ -135,7 +135,7 @@ class Viewer:
         # Initialize wall
         if self.draw_wall:
             if self.wall_random:
-                x = random.randrange(0, self.width - 1) * self.cell_size  # Wall is randomly placed
+                x = random.randrange(1, self.width - 1) * self.cell_size  # Wall is randomly placed
             else:
                 x = self.width / 2 * self.cell_size  # Wall is in the middle
             for y in range(self.height / 2):

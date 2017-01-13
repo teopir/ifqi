@@ -6,14 +6,13 @@ import keras.backend.tensorflow_backend as b
 
 
 class Autoencoder:
-    def __init__(self, input_shape, load_path=None, logger=None):
-        b.clear_session() # To avoid memory leaks when instantiating the network in a loop
+    def __init__(self, input_shape, encoding_dim=9, load_path=None, logger=None):
+        b.clear_session()  # To avoid memory leaks when instantiating the network in a loop
         self.dim_ordering = 'th'  # (samples, filters, rows, cols)
-
+        self.encoding_dim = encoding_dim
         self.logger = logger
 
         # Build network
-        # Input layer
         """
         self.inputs = Input(shape=input_shape)
 
@@ -35,11 +34,13 @@ class Autoencoder:
         self.decoded = Convolution2D(1, 3, 3, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
         """
 
-        self.inputs = Input(shape=(2304,))
+        self.inputs = Input(shape=input_shape)
+        self.encoded_input = Input(shape=(self.encoding_dim,))
+
         self.encoded = Dense(64, activation='relu')(self.inputs)
         self.encoded = Dense(32, activation='relu')(self.encoded)
         self.encoded = Dense(16, activation='relu')(self.encoded)
-        self.encoded = Dense(9, activation='relu')(self.encoded)
+        self.encoded = Dense(self.encoding_dim, activation='relu')(self.encoded)
         self.decoded = Dense(16, activation='relu')(self.encoded)
         self.decoded = Dense(32, activation='relu')(self.decoded)
         self.decoded = Dense(64, activation='relu')(self.decoded)
@@ -48,6 +49,13 @@ class Autoencoder:
         # Models
         self.autoencoder = Model(input=self.inputs, output=self.decoded)
         self.encoder = Model(input=self.inputs, output=self.encoded)
+
+        # Build decoder model
+        self.decoding_intermediate = self.autoencoder.layers[-4](self.encoded_input)
+        self.decoding_intermediate = self.autoencoder.layers[-3](self.decoding_intermediate)
+        self.decoding_intermediate = self.autoencoder.layers[-2](self.decoding_intermediate)
+        self.decoding_output = self.autoencoder.layers[-1](self.decoding_intermediate)
+        self.decoder = Model(input=self.encoded_input, output=self.decoding_output)
 
         # Optimization algorithm
         self.optimizer = Adadelta()
@@ -105,6 +113,18 @@ class Autoencoder:
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         x = x.reshape(x.shape[0], 2304)
         return self.encoder.predict_on_batch(x)
+
+    def decode(self, x):
+        """
+        Runs the given features through the second half of the autoencoder and returns the reconstructed images.
+        :param x: a batch of encoded samples.
+        :return: the encoded batch.
+        """
+        # Feed encoding to the model, return reconstructed images
+        x = np.asarray(x).astype('float32')
+        assert x.shape[1] == self.encoding_dim, \
+            'The number of features passed is different from the dimension of the encoding of the network'
+        return self.decoder.predict_on_batch(x) * 255
 
     def flat_encode(self, x):
         """
