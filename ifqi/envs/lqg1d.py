@@ -27,8 +27,7 @@ References
 from gym.envs.registration import register
 register(
     id='LQG1D-v0',
-    entry_point='ifqi.envs.lqg1d:LQG1D',
-    timestep_limit=300,
+    entry_point='ifqi.envs.lqg1d:LQG1D'
 )
 
 
