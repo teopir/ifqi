@@ -16,11 +16,9 @@ class Atari(Environment):
         'video.frames_per_second': 15
     }
 
-    def __init__(self, name='PongDeterministic-v3', grayscale=True):
+    def __init__(self, name='PongDeterministic-v3'):
         self.IMG_SIZE = (84, 110)
         self.gamma = 0.99
-
-        self.grayscale = grayscale
 
         self.env = gym.make(name)
         self.action_space = self.env.action_space
