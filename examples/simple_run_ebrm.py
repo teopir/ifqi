@@ -4,7 +4,7 @@ from ifqi import envs
 from ifqi.evaluation import evaluation
 from ifqi.evaluation.utils import check_dataset, split_dataset, split_data_for_fqi
 from ifqi.models.regressor import Regressor
-from ifqi.algorithms.pbo.pfpo import PFPO
+from ifqi.algorithms.pbo.ebrm import EmpiricalBellmanResidualMinimization
 
 from keras.models import Sequential
 from keras.layers import Dense
@@ -178,24 +178,24 @@ class LQG_NN(object):
 
 
 theta0 = np.array([6., 10.001], dtype=theano.config.floatX).reshape(1, -1)
-q_regressor = LQG_NN(2,1,layers=[4,4], activations=['tanh', 'tanh'])
-# q_regressor = LQG_Q(theta0)
+# q_regressor = LQG_NN(2,1,layers=[4,4], activations=['tanh', 'sigmoid'])
+q_regressor = LQG_Q(theta0)
 ##########################################
 
 ### PBO ##################################
-pfpo = PFPO(q_model=q_regressor,
-            discrete_actions=discrete_actions,
-            gamma=mdp.gamma,
-            optimizer="Nadam",
-            state_dim=state_dim,
-            action_dim=action_dim)
+pfpo = EmpiricalBellmanResidualMinimization(q_model=q_regressor,
+                                            discrete_actions=discrete_actions,
+                                            gamma=mdp.gamma,
+                                            optimizer="Nadam",
+                                            state_dim=state_dim,
+                                            action_dim=action_dim)
 state, actions, reward, next_states = split_dataset(dataset,
                                                     state_dim=state_dim,
                                                     action_dim=action_dim,
                                                     reward_dim=reward_dim)
 history = pfpo.fit(state.astype(theano.config.floatX), actions.astype(theano.config.floatX),
                    next_states.astype(theano.config.floatX), reward.astype(theano.config.floatX),
-                   batch_size=1, nb_epoch=2,
+                   batch_size=1, nb_epoch=3,
                    theta_metrics={'k': lambda theta: q_regressor.get_k(theta)})
 ##########################################
 # Evaluate the final solution
@@ -208,16 +208,27 @@ print(values)
 ks = np.array(history.hist['k']).squeeze()
 weights = np.array(history.hist['theta']).squeeze()
 
+states = discrete_states = np.linspace(-10, 10, 20)
+actions = discrete_actions = np.linspace(-8, 8, 20)
 
-S = np.linspace(-8, 8, 20).reshape(-1,1).astype(theano.config.floatX)
-A = discrete_actions.reshape(-1,1).astype(theano.config.floatX)
+initial_states = np.array([[1, 2, 5, 7, 10]]).T
+
+
+def make_grid(x, y):
+    m = np.meshgrid(x, y, copy=False, indexing='ij')
+    return np.vstack(m).reshape(2, -1).T
+
+
+SA = make_grid(states, actions).astype(theano.config.floatX)
+S, A = SA[:, 0].reshape(-1,1), SA[:, 1].reshape(-1,1)
+
 L = q_regressor.evaluate(S, A)
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
-ax.plot(S, A, L)
+ax.scatter(S, A, L)
 plt.show()
 
 plt.figure()

@@ -1,5 +1,5 @@
 from __future__ import print_function
-from ifqi.algorithms.pbo.pfpo import PFPO
+from ifqi.algorithms.pbo.ebrm import EmpiricalBellmanResidualMinimization
 import numpy as np
 import theano
 import theano.tensor as T
@@ -156,10 +156,10 @@ if __name__ == "__main__":
 
     q_model = LQRRegressor(theta)  # q-function
 
-    pfpo = PFPO(q_model=q_model,
-                discrete_actions=discrete_actions,
-                gamma=gamma, optimizer="adam",
-                state_dim=1, action_dim=1)
+    pfpo = EmpiricalBellmanResidualMinimization(q_model=q_model,
+                                                discrete_actions=discrete_actions,
+                                                gamma=gamma, optimizer="adam",
+                                                state_dim=1, action_dim=1)
     start = time()
     pfpo._make_additional_functions()
     print('compilation time: {}'.format(time() - start))
@@ -185,10 +185,10 @@ if __name__ == "__main__":
 
     q_model = LQG_NN(2, 1, layers=[], activations=[])  # q-function
 
-    pfpo = PFPO(q_model=q_model,
-                discrete_actions=discrete_actions,
-                gamma=gamma, optimizer="adam",
-                state_dim=1, action_dim=1)
+    pfpo = EmpiricalBellmanResidualMinimization(q_model=q_model,
+                                                discrete_actions=discrete_actions,
+                                                gamma=gamma, optimizer="adam",
+                                                state_dim=1, action_dim=1)
     start = time()
     pfpo._make_additional_functions()
     print('compilation time: {}'.format(time() - start))

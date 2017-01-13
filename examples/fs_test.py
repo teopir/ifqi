@@ -7,8 +7,6 @@ from ifqi.algorithms.selection import RFS, IFS
 from sklearn.ensemble import ExtraTreesRegressor
 import numpy as np
 
-from sklearn.feature_selection import RFE
-
 # np.random.seed(3452)
 
 mdp = env.SyntheticToyFS()

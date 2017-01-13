@@ -22,20 +22,8 @@ class PBOHistory(cbks.Callback):
                 self.hist.setdefault(k, []).append(logs[k])
 
 
-class PFPO(object):
-    """
-    Construct a GradPBO instance given the specified parameters
-
-    Args:
-        q_model (object): A class representing the Q-function approximation
-        gamma (float): discount factor
-        discrete_actions (numpy.array): discrete actions used to approximate the maximum (nactions, action_dim)
-        optimizer: str (name of optimizer) or optimizer object.
-                See [Keras optimizers](https://keras.io/optimizers/).
-        state_dim (None, int): state dimension (state_dim)
-        action_dim (None, int): action dimension (action_dim)
-        incremental (boolean): if true the incremental version of the Bellman operator is used:
-                                Incremental: theta' = theta + f(theta). Not incremental: theta' = f(theta).
+class EmpiricalBellmanResidualMinimization(object):
+    """EBRM
     """
 
     def __init__(self, q_model, gamma,
@@ -139,6 +127,7 @@ class PFPO(object):
         v = qbpo - r - gamma * qmat
         # compute error
         err = 0.5 * T.mean(v ** 2)
+        # err = T.max(T.abs_(v))
         return err
 
     def _make_train_function(self):
