@@ -14,6 +14,7 @@ class Autoencoder:
 
         # Build network
         # Input layer
+        """
         self.inputs = Input(shape=input_shape)
 
         # Encoding layers
@@ -32,6 +33,17 @@ class Autoencoder:
         self.decoded = Convolution2D(64, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = Convolution2D(1, 3, 3, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
+        """
+
+        self.inputs = Input(shape=(2304,))
+        self.encoded = Dense(64, activation='relu')(self.inputs)
+        self.encoded = Dense(32, activation='relu')(self.encoded)
+        self.encoded = Dense(16, activation='relu')(self.encoded)
+        self.encoded = Dense(9, activation='relu')(self.encoded)
+        self.decoded = Dense(16, activation='relu')(self.encoded)
+        self.decoded = Dense(32, activation='relu')(self.decoded)
+        self.decoded = Dense(64, activation='relu')(self.decoded)
+        self.decoded = Dense(2304, activation='sigmoid')(self.decoded)
 
         # Models
         self.autoencoder = Model(input=self.inputs, output=self.decoded)
@@ -59,6 +71,7 @@ class Autoencoder:
         :return: the metrics of interest as defined in the model (loss, accuracy, etc.)
         """
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        x = x.reshape(x.shape[0], 2304)
         return self.autoencoder.train_on_batch(x, x)
 
     def predict(self, x):
@@ -69,6 +82,7 @@ class Autoencoder:
         """
         # Feed input to the model, return encoded and re-decoded images
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        x = x.reshape(x.shape[0], 2304)
         return self.autoencoder.predict_on_batch(x) * 255  # Restore original scale
 
     def test(self, x):
@@ -78,6 +92,7 @@ class Autoencoder:
         :return: the metrics of interest as defined in the model (loss, accuracy, etc.)
         """
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        x = x.reshape(x.shape[0], 2304)
         return self.autoencoder.test_on_batch(x, x)
 
     def encode(self, x):
@@ -88,6 +103,7 @@ class Autoencoder:
         """
         # Feed input to the model, return encoded images
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        x = x.reshape(x.shape[0], 2304)
         return self.encoder.predict_on_batch(x)
 
     def flat_encode(self, x):
@@ -98,6 +114,7 @@ class Autoencoder:
         """
         # Feed input to the model, return encoded images flattened
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        x = x.reshape(x.shape[0], 2304)
         return np.asarray(self.encoder.predict_on_batch(x)).flatten()
 
     def save(self, filename=None, append=''):
