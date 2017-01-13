@@ -16,7 +16,7 @@ class Atari(Environment):
         'video.frames_per_second': 15
     }
 
-    def __init__(self, name='BreakoutDeterministic-v3', grayscale=True):
+    def __init__(self, name='PongDeterministic-v3', grayscale=True):
         self.IMG_SIZE = (84, 110)
         self.gamma = 0.99
 
@@ -38,8 +38,9 @@ class Atari(Environment):
 
     def step(self, action):
         current_state = self.get_state()
-        obs = self._preprocess_observation(self.env.step(int(action)))
-        return self._get_next_state(current_state, obs)
+        obs, reward, done, info = self.env.step(int(action))
+        obs = self._preprocess_observation(obs)
+        return self._get_next_state(current_state, obs), reward, done, info
 
     def get_state(self):
         return self.env.state

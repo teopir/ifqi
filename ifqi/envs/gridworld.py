@@ -1,3 +1,4 @@
+import numpy as np
 import pygame as pg, random, logging
 from gym import spaces
 from PIL import Image
@@ -185,7 +186,7 @@ class Viewer:
         """
         img_str = pg.image.tostring(self.surface, 'RGB')
         out = Image.frombytes('RGB', self.screen_size, img_str).convert('L')
-        return out
+        return np.asarray(out)
 
     def is_on_goal(self):
         """

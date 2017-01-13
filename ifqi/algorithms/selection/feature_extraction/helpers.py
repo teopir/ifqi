@@ -14,7 +14,7 @@ def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
 
     data = []
     for filename in os.listdir(dataset_folder):
-        if filename.endswith('.png') or filename.endswith('.jpg'):
+        if filename.endswith('.npy'):
             data.append(filename)
 
     data_size = len(data)
@@ -31,7 +31,7 @@ def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
             images[:] = []  # Empty the list to free up memory
             batch_data = data[batch_idx * batch_size: min((batch_idx + 1) * batch_size, data_size)]
             for _id in batch_data:
-                image = Image.open(dataset_folder + _id).convert('L')
+                image = np.load(dataset_folder + _id)
                 images.append(np.expand_dims(np.asarray(image), axis=0))
             yield images
 
@@ -68,20 +68,18 @@ def onehot_encode(value, nb_categories):
 
 
 def p_load(filename):
-    """Loads the pickle object stored as the given filename.
+    """Loads the numpy object stored as the given filename.
 
-    :param filename: relative path to pickle file.
+    :param filename: relative path to numpy file.
     :return: the loaded object.
     """
-    with open(filename, 'rb') as f:
-        out = pickle.load(f)
+    out = np.load(filename)
     return out
 
 
 def p_dump(obj, filename):
-    """Dumps an object to pickle file.
+    """Dumps an object to numpy file.
     :param obj: the object to dump.
     :param filename: the filename to which save the object.
     """
-    with open(filename, 'wb') as f:
-        pickle.dump(obj, f)
+    np.save(filename, obj)

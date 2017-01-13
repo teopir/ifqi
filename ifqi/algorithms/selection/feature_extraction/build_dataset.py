@@ -2,7 +2,7 @@ import random, argparse, numpy as np, progressbar
 from Logger import Logger
 from joblib import Parallel, delayed
 from helpers import flat2list
-from ifqi.envs.gridworld import GridWorldEnv
+from ifqi import envs
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--debug', action='store_true', help='run in debug mode (no output files)')
@@ -38,7 +38,8 @@ if args.coordinates:
 
 def episode(episode_id):
     global args
-    env = GridWorldEnv(width=6, height=6, cell_size=8, wall=True, wall_random=True)
+    # env = envs.GridWorldEnv(width=6, height=6, cell_size=8, wall=True, wall_random=True)
+    env = envs.Atari('PongDeterministic-v3')
     action_space = env.action_space.n
     frame_counter = 0
 
@@ -53,7 +54,7 @@ def episode(episode_id):
     # Save image of state
     if args.images:
         state_id = '%04d_%d' % (episode_id, frame_counter)
-        state.save(logger.path + state_id + '.png')
+        np.save(logger.path + state_id, state)
 
     # Save coordinates
     if args.coordinates:
@@ -83,7 +84,7 @@ def episode(episode_id):
         # Save image of state
         if args.images:
             next_state_id = '%04d_%d' % (episode_id, frame_counter)
-            next_state.save(logger.path + next_state_id + '.png')
+            np.save(logger.path + next_state_id, next_state)
             logger.to_csv('images_' + output_csv, [state_id, action, reward, next_state_id])
 
         # Save coordinates
