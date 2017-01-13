@@ -25,9 +25,10 @@ discrete_actions = np.linspace(-8, 8, 20)
 dataset = evaluation.collect_episodes(mdp, n_episodes=100)
 check_dataset(dataset, state_dim, action_dim, reward_dim)
 
-INCREMENTAL = False
+INCREMENTAL = True
 ACTIVATION = 'tanh'
-STEPS_AHEAD = 5
+STEPS_AHEAD = 10
+UPDATE_EVERY = 1000
 
 
 # sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
@@ -94,7 +95,10 @@ pbo = GradPBO(bellman_model=rho_regressor,
               gamma=mdp.gamma,
               optimizer="adam",
               state_dim=state_dim,
-              action_dim=action_dim, incremental=INCREMENTAL)
+              action_dim=action_dim,
+              incremental=INCREMENTAL,
+              update_every=UPDATE_EVERY,
+              verbose=1)
 state, actions, reward, next_states = split_dataset(dataset,
                                                     state_dim=state_dim,
                                                     action_dim=action_dim,
@@ -102,7 +106,7 @@ state, actions, reward, next_states = split_dataset(dataset,
 #theta0 = np.array([[-6., 10.001], [6, 8.]], dtype='float32')  # .reshape(1, -1)
 theta0 = np.array([-6., 10.001], dtype='float32').reshape(1, -1)
 history = pbo.fit(state, actions, next_states, reward, theta0,
-                  batch_size=10, nb_epoch=2,
+                  batch_size=10, nb_epoch=1,
                   theta_metrics={'k': lambda theta: q_regressor.get_k(theta)})
 ##########################################
 # Evaluate the final solution
@@ -136,7 +140,7 @@ plt.savefig(
 
 theta = theta0.copy()
 L = [np.array(theta)]
-for i in range(4000):
+for i in range(STEPS_AHEAD):
     theta = pbo.apply_bop(theta)
     L.append(np.array(theta))
 
