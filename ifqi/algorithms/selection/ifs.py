@@ -164,10 +164,10 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
         cv = self.cv
         cv = check_cv(cv, y, classifier=is_classifier(self.estimator))
-#        if sklearn.__version__ == '0.17':
-        n_splits = cv.n_folds
-#        else:
-#            n_splits = cv.get_n_splits(X, y)
+        if sklearn.__version__ == '0.17':
+            n_splits = cv.n_folds
+        else:
+            n_splits = cv.get_n_splits(X, y)
 
         if self.verbose > 0:
             print("Fitting {0} folds for each of iteration".format(n_splits))
@@ -218,7 +218,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 print()
 
             if self.scale:
-                target = StandardScaler().fit_transform(target)
+                target = StandardScaler().fit_transform(target.reshape(-1,1)).ravel()
 
             # Rank the remaining features
             rank_estimator = clone(self.estimator)
@@ -255,11 +255,11 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                     idx = n_features - i - 1
                     print('#{:6}\t{:6}\t{:6f}\t{}'.format(str(i), str(ranked_f[idx]), coefs[ranks[idx]], ranked_n[idx]))
 
-            if coefs[ranks][-1] < 1e-5:
-                if self.verbose > 0:
-                    import warnings
-                    warnings.warn('scores are too small to be used, please standardize inputs')
-                break
+            # if coefs[ranks][-1] < 1e-5:
+            #     if self.verbose > 0:
+            #         import warnings
+            #         warnings.warn('scores are too small to be used, please standardize inputs')
+            #     break
 
             # get the best features (ie, the latest one)
             # if the most ranked features is selected go on a select
