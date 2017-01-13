@@ -1,5 +1,4 @@
-import numpy as np, os, random, pickle
-from PIL import Image
+import numpy as np, os, random
 
 
 def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
