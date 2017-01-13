@@ -16,11 +16,9 @@ class Atari(Environment):
         'video.frames_per_second': 15
     }
 
-    def __init__(self, name='BreakoutDeterministic-v3', grayscale=True):
+    def __init__(self, name='PongDeterministic-v3'):
         self.IMG_SIZE = (84, 110)
         self.gamma = 0.99
-
-        self.grayscale = grayscale
 
         self.env = gym.make(name)
         self.action_space = self.env.action_space
@@ -38,8 +36,10 @@ class Atari(Environment):
 
     def step(self, action):
         current_state = self.get_state()
-        obs = self._preprocess_observation(self.env.step(int(action)))
-        return self._get_next_state(current_state, obs)
+        obs, reward, done, info = self.env.step(int(action))
+        obs = self._preprocess_observation(obs)
+        self.env.state = self._get_next_state(current_state, obs)
+        return self.get_state(), reward, done, info
 
     def get_state(self):
         return self.env.state
@@ -51,4 +51,4 @@ class Atari(Environment):
 
     def _get_next_state(self, current, obs):
         # Next state is composed by the last 3 images of the previous state and the new observation
-        return np.append(current[1:], [obs], axis=0)
+        return np.append(current[1:], [obs])

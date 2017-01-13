@@ -1,3 +1,4 @@
+import numpy as np
 import pygame as pg, random, logging
 from gym import spaces
 from PIL import Image
@@ -134,7 +135,7 @@ class Viewer:
         # Initialize wall
         if self.draw_wall:
             if self.wall_random:
-                x = random.randrange(0, self.width - 1) * self.cell_size  # Wall is randomly placed
+                x = random.randrange(1, self.width - 1) * self.cell_size  # Wall is randomly placed
             else:
                 x = self.width / 2 * self.cell_size  # Wall is in the middle
             for y in range(self.height / 2):
@@ -185,7 +186,7 @@ class Viewer:
         """
         img_str = pg.image.tostring(self.surface, 'RGB')
         out = Image.frombytes('RGB', self.screen_size, img_str).convert('L')
-        return out
+        return np.asarray(out)
 
     def is_on_goal(self):
         """
