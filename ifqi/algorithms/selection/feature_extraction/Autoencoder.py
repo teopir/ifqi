@@ -56,7 +56,9 @@ class Autoencoder:
         self.encoder = Model(input=self.inputs, output=self.encoded)
 
         # Build decoder model
-        self.decoding_intermediate = self.autoencoder.layers[-4](self.encoded_input)
+        self.decoding_intermediate = self.autoencoder.layers[-6](self.encoded_input)
+        self.decoding_intermediate = self.autoencoder.layers[-5](self.decoding_intermediate)
+        self.decoding_intermediate = self.autoencoder.layers[-4](self.decoding_intermediate)
         self.decoding_intermediate = self.autoencoder.layers[-3](self.decoding_intermediate)
         self.decoding_intermediate = self.autoencoder.layers[-2](self.decoding_intermediate)
         self.decoding_output = self.autoencoder.layers[-1](self.decoding_intermediate)
