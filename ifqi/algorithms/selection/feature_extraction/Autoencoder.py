@@ -11,30 +11,28 @@ class Autoencoder:
         self.dim_ordering = 'th'  # (samples, filters, rows, cols)
         self.input_shape = input_shape
         self.encoding_dim = encoding_dim
+        self.decoding_available = False
         self.logger = logger
 
         # Build network
-        """
-        self.inputs = Input(shape=input_shape)
+        self.inputs = Input(shape=self.input_shape[0])
 
         # Encoding layers
-        self.encoded = Convolution2D(64, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
-        self.encoded = Convolution2D(32, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
-        self.encoded = Convolution2D(16, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = Convolution2D(32, 2, 2, subsample=(4, 4), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
+        self.encoded = Convolution2D(16, 2, 2, subsample=(3, 3), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
         self.encoded = Convolution2D(1, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
 
         # Decoding layers
         self.decoded = Convolution2D(1, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
         self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = Convolution2D(16, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = UpSampling2D(size=(3, 3), dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = Convolution2D(32, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = Convolution2D(64, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = Convolution2D(1, 3, 3, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
-        """
+        self.decoded = UpSampling2D(size=(4, 4), dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = Convolution2D(self.input_shape[0], 3, 3, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
 
+        """
+        self.decoding_available = True
         self.inputs = Input(shape=self.input_shape)
         self.encoded_input = Input(shape=(self.encoding_dim,))
 
@@ -50,19 +48,21 @@ class Autoencoder:
         self.decoded = Dense(self.input_shape[0] / 16, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0] / 8, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0], activation='sigmoid')(self.decoded)
+        """
 
         # Models
         self.autoencoder = Model(input=self.inputs, output=self.decoded)
         self.encoder = Model(input=self.inputs, output=self.encoded)
 
         # Build decoder model
-        self.decoding_intermediate = self.autoencoder.layers[-6](self.encoded_input)
-        self.decoding_intermediate = self.autoencoder.layers[-5](self.decoding_intermediate)
-        self.decoding_intermediate = self.autoencoder.layers[-4](self.decoding_intermediate)
-        self.decoding_intermediate = self.autoencoder.layers[-3](self.decoding_intermediate)
-        self.decoding_intermediate = self.autoencoder.layers[-2](self.decoding_intermediate)
-        self.decoding_output = self.autoencoder.layers[-1](self.decoding_intermediate)
-        self.decoder = Model(input=self.encoded_input, output=self.decoding_output)
+        if self.decoding_available:
+            self.decoding_intermediate = self.autoencoder.layers[-6](self.encoded_input)
+            self.decoding_intermediate = self.autoencoder.layers[-5](self.decoding_intermediate)
+            self.decoding_intermediate = self.autoencoder.layers[-4](self.decoding_intermediate)
+            self.decoding_intermediate = self.autoencoder.layers[-3](self.decoding_intermediate)
+            self.decoding_intermediate = self.autoencoder.layers[-2](self.decoding_intermediate)
+            self.decoding_output = self.autoencoder.layers[-1](self.decoding_intermediate)
+            self.decoder = Model(input=self.encoded_input, output=self.decoding_output)
 
         # Optimization algorithm
         self.optimizer = Adadelta()
@@ -139,10 +139,13 @@ class Autoencoder:
         :return: the encoded batch.
         """
         # Feed encoding to the model, return reconstructed images
-        x = np.asarray(x).astype('float32')
-        assert x.shape[1] == self.encoding_dim, \
-            'The number of features passed is different from the dimension of the encoding of the network'
-        return self.decoder.predict_on_batch(x) * 255
+        if self.decoding_available:
+            x = np.asarray(x).astype('float32')
+            assert x.shape[1] == self.encoding_dim, \
+                'The number of features passed is different from the dimension of the encoding of the network'
+            return self.decoder.predict_on_batch(x) * 255
+        else:
+            print 'Decoding not yet available with this type of network'
 
     def save(self, filename=None, append=''):
         """

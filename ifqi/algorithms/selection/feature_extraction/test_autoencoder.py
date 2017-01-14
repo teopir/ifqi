@@ -10,7 +10,7 @@ parser.add_argument('--path', type=str, default='data/model/model.h5', help='pat
 args = parser.parse_args()
 
 env = GridWorldEnv(width=6, height=6, cell_size=8, wall=True, wall_random=True)
-AE = Autoencoder((4 * 110 * 84,), load_path=args.path)
+AE = Autoencoder((4, 72, 72), load_path=args.path)
 
 state = env.reset()
 preprocessed_state = np.expand_dims(np.expand_dims(np.asarray(state), axis=0), axis=0)

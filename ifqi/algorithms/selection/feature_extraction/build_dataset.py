@@ -4,6 +4,22 @@ from joblib import Parallel, delayed
 from helpers import flat2list
 from tqdm import tqdm
 from ifqi import envs
+from PIL import Image
+
+
+def resize_state(to_resize, new_size=(72,72)):
+    """Resizes every image in to_resize to new_size.
+    :param to_resize: a numpy array containing a sequence of greyscale images (theano dimension ordering (ch, rows, cols) is assumed)
+    :param new_size: the size to which resize the images
+    :return: a numpy array with the resized images
+    """
+    # Iterate over channels (theano dimension ordering (ch, rows, cols) is assumed)
+    resized = []
+    for image in to_resize:
+        data = Image.fromarray(image).resize(new_size)
+        resized.append(np.asarray(data))
+    return np.asarray(resized)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--debug', action='store_true', help='run in debug mode (no output files)')
@@ -25,7 +41,7 @@ heatmap_csv = 'heatmap.csv'
 
 if args.encode:
     from Autoencoder import Autoencoder
-    AE = Autoencoder((4 * 110 * 84,), load_path=args.path)
+    AE = Autoencoder((4, 72, 72), load_path=args.path)
     # TODO header states must be automatically generated from the output length of AE.flat_encode
     logger.to_csv('encoded_' + output_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y,R,SS0,SS1,SS2,SS3,SS4,SS5,SS6,SS7,SS8')
     logger.to_csv(heatmap_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y')
@@ -51,7 +67,7 @@ def episode(episode_id):
     # Save image of state
     if args.images:
         state_id = '%04d_%d' % (episode_id, frame_counter)
-        np.save(logger.path + state_id, state)
+        np.save(logger.path + state_id, resize_state(state))
 
     reward = 0
     done = False
@@ -75,7 +91,7 @@ def episode(episode_id):
         # Save image of state
         if args.images:
             next_state_id = '%04d_%d' % (episode_id, frame_counter)
-            np.save(logger.path + next_state_id, next_state)
+            np.save(logger.path + next_state_id, resize_state(next_state))
             logger.to_csv('images_' + output_csv, [state_id, action, reward, next_state_id])
 
         # Render environment
