@@ -14,7 +14,7 @@
     },
     "model": {
         "name": "ExtraTree",
-        "ensemble": 0,
+        "ensemble": 1,
         "fit_actions": 0,
         "params": {
             "n_estimators": 50,

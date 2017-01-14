@@ -38,17 +38,17 @@ class Autoencoder:
         self.inputs = Input(shape=self.input_shape)
         self.encoded_input = Input(shape=(self.encoding_dim,))
 
-        self.encoded = Dense(self.input_shape[0] / 4, activation='relu')(self.inputs)
-        self.encoded = Dense(self.input_shape[0] / 8, activation='relu')(self.encoded)
+        self.encoded = Dense(self.input_shape[0] / 8, activation='relu')(self.inputs)
         self.encoded = Dense(self.input_shape[0] / 16, activation='relu')(self.encoded)
         self.encoded = Dense(self.input_shape[0] / 32, activation='relu')(self.encoded)
         self.encoded = Dense(self.input_shape[0] / 64, activation='relu')(self.encoded)
+        self.encoded = Dense(self.input_shape[0] / 128, activation='relu')(self.encoded)
         self.encoded = Dense(self.encoding_dim, activation='relu')(self.encoded)
-        self.decoded = Dense(self.input_shape[0] / 64, activation='relu')(self.encoded)
+        self.decoded = Dense(self.input_shape[0] / 128, activation='relu')(self.encoded)
+        self.decoded = Dense(self.input_shape[0] / 64, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0] / 32, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0] / 16, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0] / 8, activation='relu')(self.decoded)
-        self.decoded = Dense(self.input_shape[0] / 4, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0], activation='sigmoid')(self.decoded)
 
         # Models
