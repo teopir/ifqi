@@ -25,7 +25,7 @@ heatmap_csv = 'heatmap.csv'
 
 if args.encode:
     from Autoencoder import Autoencoder
-    AE = Autoencoder((2304,), load_path=args.path)
+    AE = Autoencoder((4 * 110 * 84,), load_path=args.path)
     # TODO header states must be automatically generated from the output length of AE.flat_encode
     logger.to_csv('encoded_' + output_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y,R,SS0,SS1,SS2,SS3,SS4,SS5,SS6,SS7,SS8')
     logger.to_csv(heatmap_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y')
