@@ -51,4 +51,4 @@ class Atari(Environment):
 
     def _get_next_state(self, current, obs):
         # Next state is composed by the last 3 images of the previous state and the new observation
-        return np.append(current[1:], [obs])
+        return np.append(current[1:], [obs], axis=0)
