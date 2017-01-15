@@ -18,7 +18,7 @@ def resize_state(to_resize, new_size=(72,72)):
     for image in to_resize:
         data = Image.fromarray(image).resize(new_size)
         resized.append(np.asarray(data))
-    return np.asarray(resized)
+    return np.asarray(resized).squeeze()
 
 
 parser = argparse.ArgumentParser()
@@ -61,7 +61,7 @@ def episode(episode_id):
 
     # Get encoded features
     if args.encode:
-        preprocessed_state = np.expand_dims(np.expand_dims(np.asarray(state), axis=0), axis=0)
+        preprocessed_state = np.expand_dims(np.expand_dims(np.asarray(resize_state(state)), axis=0), axis=0)
         encoded_state = AE.flat_encode(preprocessed_state)
 
     # Save image of state
@@ -83,7 +83,7 @@ def episode(episode_id):
 
         # Get encoded features
         if args.encode:
-            preprocessed_next_state = np.expand_dims(np.expand_dims(np.asarray(next_state), axis=0), axis=0)
+            preprocessed_next_state = np.expand_dims(np.expand_dims(np.asarray(resize_state(next_state)), axis=0), axis=0)
             encoded_next_state = AE.flat_encode(preprocessed_next_state)
             logger.to_csv('encoded_' + output_csv, flat2list([encoded_state, env.encode_action(action), reward, encoded_next_state]))
             logger.to_csv(heatmap_csv, flat2list([encoded_state, env.viewer.char_pos[0], env.viewer.char_pos[1]]))

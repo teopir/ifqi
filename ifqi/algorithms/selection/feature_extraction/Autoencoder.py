@@ -15,7 +15,7 @@ class Autoencoder:
         self.logger = logger
 
         # Build network
-        self.inputs = Input(shape=self.input_shape[0])
+        self.inputs = Input(shape=self.input_shape)
 
         # Encoding layers
         self.encoded = Convolution2D(32, 2, 2, subsample=(4, 4), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
@@ -85,8 +85,8 @@ class Autoencoder:
         :param x: batch of samples on which to train.
         :return: the metrics of interest as defined in the model (loss, accuracy, etc.)
         """
-        x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
-        x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
+        x = np.asarray(x).astype('float32').squeeze() / 255  # Normalize pixels in 0-1 range
+        # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.train_on_batch(x, x)
 
     def predict(self, x):
@@ -97,7 +97,7 @@ class Autoencoder:
         """
         # Feed input to the model, return encoded and re-decoded images
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
-        x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
+        # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.predict_on_batch(x) * 255  # Restore original scale
 
     def test(self, x):
@@ -107,7 +107,7 @@ class Autoencoder:
         :return: the metrics of interest as defined in the model (loss, accuracy, etc.)
         """
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
-        x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
+        # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.test_on_batch(x, x)
 
     def encode(self, x):
@@ -118,7 +118,7 @@ class Autoencoder:
         """
         # Feed input to the model, return encoded images
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
-        x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
+        # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.encoder.predict_on_batch(x)
 
     def flat_encode(self, x):
@@ -129,7 +129,7 @@ class Autoencoder:
         """
         # Feed input to the model, return encoded images flattened
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
-        x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
+        # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return np.asarray(self.encoder.predict_on_batch(x)).flatten()
 
     def decode(self, x):
