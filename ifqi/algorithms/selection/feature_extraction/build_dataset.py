@@ -26,6 +26,7 @@ parser.add_argument('-d', '--debug', action='store_true', help='run in debug mod
 parser.add_argument('-v', '--video', action='store_true', help='display video output')
 parser.add_argument('--njobs', type=int, default=1,
                     help='number of processes to use, set -1 to use all available cores. Don\'t set this flag if running on GPU.')
+parser.add_argument('--env', type=str, default='PongDeterministic-v3', help='Atari environment to run')
 parser.add_argument('--episodes', type=int, default=1000, help='number of episodes to run')
 parser.add_argument('--path', type=str, default='data/model.h5', help='path to the hdf5 weights file for the autoencoder')
 parser.add_argument('-e', '--encode', action='store_true', help='save a SARS dataset with the encoded state features')
@@ -52,7 +53,7 @@ if args.images:
 def episode(episode_id):
     global args
     # env = envs.GridWorldEnv(width=6, height=6, cell_size=8, wall=True, wall_random=True)
-    env = envs.Atari('PongDeterministic-v3')
+    env = envs.Atari(args.env)
     action_space = env.action_space.n
     frame_counter = 0
 
