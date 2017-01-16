@@ -1,4 +1,4 @@
-from gymenv import Gym
+from .gymenv import Gym
 
 
 class CartPole(Gym):
