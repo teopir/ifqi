@@ -85,7 +85,7 @@ class Autoencoder:
         :param x: batch of samples on which to train.
         :return: the metrics of interest as defined in the model (loss, accuracy, etc.)
         """
-        x = np.asarray(x).astype('float32').squeeze() / 255  # Normalize pixels in 0-1 range
+        x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.train_on_batch(x, x)
 
@@ -96,7 +96,7 @@ class Autoencoder:
         :return: the encoded and decoded batch.
         """
         # Feed input to the model, return encoded and re-decoded images
-        x = np.asarray(x).astype('float32').squeeze() / 255  # Normalize pixels in 0-1 range
+        x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.predict_on_batch(x) * 255  # Restore original scale
 
@@ -106,7 +106,7 @@ class Autoencoder:
         :param x: batch of samples on which to train.
         :return: the metrics of interest as defined in the model (loss, accuracy, etc.)
         """
-        x = np.asarray(x).astype('float32').squeeze() / 255  # Normalize pixels in 0-1 range
+        x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.test_on_batch(x, x)
 
@@ -117,7 +117,7 @@ class Autoencoder:
         :return: the encoded batch.
         """
         # Feed input to the model, return encoded images
-        x = np.asarray(x).astype('float32').squeeze() / 255  # Normalize pixels in 0-1 range
+        x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.encoder.predict_on_batch(x)
 
@@ -128,7 +128,7 @@ class Autoencoder:
         :return: the encoded batch (with flattened features).
         """
         # Feed input to the model, return encoded images flattened
-        x = np.asarray(x).astype('float32').squeeze() / 255  # Normalize pixels in 0-1 range
+        x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return np.asarray(self.encoder.predict_on_batch(x)).flatten()
 
