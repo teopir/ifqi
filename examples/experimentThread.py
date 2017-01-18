@@ -41,6 +41,7 @@ parser.add_argument("size", type=int, help="Provide the index of the size listed
 parser.add_argument("dataset", type=int, help="Provide the index of the dataset")
 parser.add_argument("-c","--cont", action="store_true", help="Provide the index of the dataset")
 parser.add_argument("-s","--loss", action="store_true", help="Provide info on the loss / ect. Valid only for MLP")
+parser.add_argument("-r","--screen", action="store_true", help="Screen at the last iteration")
 args = parser.parse_args()
 
 experimentName = args.experimentName
@@ -56,6 +57,8 @@ datasetN = args.dataset
 continue_ = args.cont
 
 haveLoss = args.loss
+
+screen = args.screen
 
 print("Started experiment with regressor " + str(regressorN)+ " dataset " + str(datasetN) + ", size " + str(sizeN))
 
@@ -88,10 +91,23 @@ if "easyReplicability" in exp.config['experimentSetting']:
 
 
 experienceReplay = False
+experienceEveryNIteration = False
+replace = False
+mBias = False
 if "experienceReplay" in exp.config['experimentSetting']:
+    print("expRepl=True")
     experienceReplay = True
-    nExperience = exp.config['rlAlgorithm']["experienceReplay"]['nExperience']
+    #nExperience = exp.config['rlAlgorithm']["experienceReplay"]['nExperience']
     experienceEveryNIteration = exp.config['rlAlgorithm']["experienceReplay"]['everyNIterations']
+    epsilon = exp.config['rlAlgorithm']["experienceReplay"]['epsilon']
+    if "replace" in exp.config['rlAlgorithm']["experienceReplay"]:
+        replace = exp.config['rlAlgorithm']["experienceReplay"]["replace"]
+    if "mBias" in exp.config['rlAlgorithm']["experienceReplay"]:
+        mBias = exp.config['rlAlgorithm']["experienceReplay"]["mBias"]
+
+firstReplay = False
+if "firstReplay" in exp.config['experimentSetting']:
+    firstReplay = exp.config["experimentSetting"]["firstReplay"]
 
 # Here I take the right size
 size = exp.config['experimentSetting']['sizes'][sizeN]
@@ -125,6 +141,14 @@ dataset = evaluate.collect_episodes(environment,policy=None,n_episodes=size)
 sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
 sastFirst, rFirst = sast, dataset[:, reward_idx]
 
+
+if "experienceReplay" in exp.config['experimentSetting']:
+    if "mBias" in exp.config['rlAlgorithm']["experienceReplay"]:
+        nEstDS = exp.config["regressors"][0]["nEstimators"] * 1. / sast.shape[0]
+
+print("Do we have rFirst> 100? ", np.argwhere(rFirst>=100).shape[0])
+initial_size = sast.shape[0]
+print("n rows:",sast.shape[0])
 print(sast[:10])
 print(rFirst[:10])
 
@@ -177,16 +201,72 @@ for repetition in range(actualRepetition, repetitions):
             fqi = fqi_
         else:
 
+
+
             if iteration==1:
                 fqi = exp.getFQI(regressorN)
                 ret_fit = fqi.partial_fit(sastFirst[:], rFirst[:], **fit_params)[2]
+
+                ####################################################################
+                # First Experience replay, just for study
+                ####################################################################
+                if firstReplay:
+                    print("first replay")
+                    dataset = evaluate.collect_episodes(environment, policy=fqi, n_episodes=500, epsilon=0.1)
+                    fqi = exp.getFQI(regressorN)
+                    sast_ = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
+                    sastFirst_, rFirst_ = sast_, dataset[:, reward_idx]
+                    sast = np.append(sast,sast_,axis=0)
+                    rFirst = np.append(rFirst,rFirst_,axis=0)
+                    print("new dataset rows: ", sast.shape[0])
+                    #raw_input("press any key and then enter")
+                    ret_fit = fqi.partial_fit(sast[:], rFirst[:], **fit_params)[2]
+                ####################################################################
+                # End study
+                ####################################################################
+
             else:
-                if replay_experience:
-                    #TODO:understand what's wrong
-                    ret_fit = fqi.partial_fit(sast[:], r[:], **fit_params)[2]
-                    replay_experience = False
+                if iteration > 1 and experienceReplay and iteration% experienceEveryNIteration ==0:
+                    print("experience replay")
+                    collectionT1 = time.time()
+                    dataset = evaluate.collect_episodes(environment, policy=fqi, n_episodes=250, epsilon=epsilon)
+                    collectionT2 = time.time()
+                    print("episodes collected in: ", collectionT2 - collectionT1 )
+
+
+                    sast_ = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
+                    sastFirst_, rFirst_ = sast_, dataset[:, reward_idx]
+
+                    n_good = np.argwhere(rFirst_ >= 100).shape[0]
+
+                    varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "nGoal", n_good)
+
+                    print("Do we have new> 100? ", n_good)
+                    sast = np.append(sast, sast_, axis=0)
+                    rFirst = np.append(rFirst, rFirst_, axis=0)
+                    if replace:
+                        print("--repace")
+                        p = np.random.permutation(sast.shape[0])
+                        sast = sast[p][:initial_size,:]
+                        rFirst = rFirst[p][:initial_size]
+
+                    n_tot_good = np.argwhere(rFirst_ >= 100).shape[0]
+                    print("percentage of goals: ", n_tot_good *100. / sast.shape[0] )
+
+                    varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "pGoal",n_tot_good *100. / sast.shape[0]  )
+                    print("new dataset rows: ", sast.shape[0])
+
+                    #raw_input("press any key and then enter")
+                    if mBias:
+                        exp.config["regressors"][0]["nEstimators"] = int(round(nEstDS * sast.shape[0]))
+                        print("number of estimators: ", exp.config["regressors"][0]["nEstimators"])
+
+                    fqi = exp.getFQI(regressorN)
+                    ret_fit = fqi.partial_fit(sast[:], rFirst[:], **fit_params)[2]
+
                 else:
                     ret_fit = fqi.partial_fit(None, None, **fit_params)[2]
+
 
             if haveLoss:
                 print ("ret_fit:", ret_fit)
@@ -218,8 +298,21 @@ for repetition in range(actualRepetition, repetitions):
                 initial_states[:, 0] = np.linspace(-np.pi, np.pi, 21)
                 score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, 21*nEvaluation,
                                                                           initial_states=initial_states)
+            elif exp.config["mdp"]["mdpName"] == "CarOnHill":
+                # evaluation initial states
+                initial_states = np.zeros((289, 2))
+                cont = 0
+                for i in range(-8, 9):
+                    for j in range(-8, 9):
+                        initial_states[cont, :] = [0.125 * i, 0.375 * j]
+                        cont += 1
+                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, 289*nEvaluation,
+                                                                          initial_states=initial_states)
             else:
-                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation)
+                if screen:
+                    score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation, render=True)
+                else:
+                    score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation)
             end_eval = time.time()
 
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "score", score)
@@ -228,6 +321,9 @@ for repetition in range(actualRepetition, repetitions):
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "evalTime", end_eval- start_eval)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "fitTime", end_fit - start_fit)
 
+            """if screen:
+                raw_input("Type something: ")
+                evaluate.evaluate_policy(environment, fqi, nEvaluation, render=True)"""
             # ---------------------------------------------------------------------------
             # Q-Value
             # ---------------------------------------------------------------------------
@@ -257,7 +353,6 @@ for repetition in range(actualRepetition, repetitions):
                              open(pkl_filename, "wb"))
                 dataset.save(ds_filename)
 
-
-
     actualIteration = 0
+
 
