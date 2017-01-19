@@ -81,7 +81,7 @@ class LQG1D(Environment):
 
     def reset(self, state=None):
         if state is None:
-            self.state = np.array([prng.np_random.uniform(low=-self.max_pos,
+            self.state = np.array([self.np_random.uniform(low=-self.max_pos,
                                                           high=self.max_pos)])
         else:
             self.state = np.array(state)
@@ -250,8 +250,8 @@ class LQG1D(Environment):
         P = self._computeP2(K)
         Qfun = 0
         for i in range(n_random_xn):
-            noise = np.random.randn() * self.sigma_noise
-            action_noise = np.random.multivariate_normal(
+            noise = self.np_random.randn() * self.sigma_noise
+            action_noise = self.np_random.multivariate_normal(
                 np.zeros(Sigma.shape[0]), Sigma, 1)
             nextstate = np.dot(self.A, x) + np.dot(self.B,
                                                    u + action_noise) + noise
