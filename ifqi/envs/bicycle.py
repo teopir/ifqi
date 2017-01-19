@@ -21,14 +21,12 @@ from gym.utils import seeding
 
 from builtins import range
 
-from .environment import Environment
-
 """
 TODO: to test
 """
 
 
-class Bicycle(Environment):
+class Bicycle(gym.Env):
     """Bicycle balancing/riding domain.
     From the paper:
     Learning to Drive a Bicycle using Reinforcement Learning and Shaping.

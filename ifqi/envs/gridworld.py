@@ -1,14 +1,13 @@
+import gym
 import numpy as np
 import pygame as pg, random, logging
 from gym import spaces
 from PIL import Image
 
-from .environment import Environment
-
 logger = logging.getLogger(__name__)
 
 
-class GridWorldEnv(Environment):
+class GridWorldEnv(gym.Env):
     metadata = {
         'render.modes': ['human']
     }

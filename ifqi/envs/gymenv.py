@@ -1,7 +1,7 @@
-from .environment import Environment
+import gym
 
 
-class Gym(Environment):
+class Gym(gym.Env):
     """
     The openAI Gym environment.
 

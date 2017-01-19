@@ -10,7 +10,6 @@ from .synthetic import SyntheticToyFS
 from .utils import get_space_info
 from .gridworld import GridWorldEnv
 from .atari import Atari
-from .environment import Environment
 
-__all__ = ['Acrobot', 'Atari', 'Bicycle', 'CarOnHill', 'CartPole', 'Environment', 'GridWorldEnv', 'Gym', 'InvPendulum',
+__all__ = ['Acrobot', 'Atari', 'Bicycle', 'CarOnHill', 'CartPole', 'GridWorldEnv', 'Gym', 'InvPendulum',
            'LQG1D', 'SwingPendulum', 'SyntheticToyFS']
