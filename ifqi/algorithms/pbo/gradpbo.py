@@ -47,6 +47,7 @@ class GradPBO(object):
         incremental (boolean): if true the incremental version of the Bellman operator is used:
                                 Incremental: theta' = theta + f(theta). Not incremental: theta' = f(theta).
     """
+
     def __init__(self, bellman_model, q_model, steps_ahead,
                  gamma, discrete_actions,
                  optimizer,
@@ -83,22 +84,25 @@ class GradPBO(object):
         theta = bellman_model.inputs[0]
 
         # construct (theano) Bellman error
+        self.theta_list = [bellman_model.inputs[0]]
         if not independent:
-            self.T_bellman_err, self.evolved_theta = self.k_step_bellman_error(T_s, T_a, T_s_next, T_r, theta,
-                                                           gamma, T_discrete_actions, steps_ahead)
-            # self.T_bellman_err, self.evolved_theta = self.bellman_error(T_s, T_a, T_s_next, T_r, theta, self.gamma, T_discrete_actions)
-
+            self.T_bellman_err, _ = self.k_step_bellman_error(T_s, T_a, T_s_next, T_r,
+                                                              self.theta_list[0],
+                                                              gamma, T_discrete_actions, steps_ahead)
+            # self.T_bellman_err, _ = self.bellman_error(T_s, T_a, T_s_next, T_r, theta, self.gamma, T_discrete_actions)
+            assert len(self.theta_list) == 1
         else:
-            self.theta_vectors = [bellman_model.inputs[0]] + [T.fmatrix(str(ll)) for ll in range(steps_ahead - 1)]
+            self.theta_list += [T.fmatrix(str(ll)) for ll in
+                                range(steps_ahead - 1)]  # theta_0, theta_1, ..., theta_steps
             T_bellman_err = None
-            for theta in self.theta_vectors:
+            for theta in self.theta_list:
                 if T_bellman_err is None:
-                    T_bellman_err = self.bellman_error(T_s, T_a, T_s_next, T_r, theta, gamma,
-                                                                       T_discrete_actions)[0]
+                    T_bellman_err = self.bellman_error(T_s, T_a, T_s_next, T_r, theta, gamma, T_discrete_actions)[0]
                 else:
-                    T_bellman_err = T_bellman_err + self.bellman_error(T_s, T_a, T_s_next, T_r, theta, gamma, T_discrete_actions)[0]
-            print(T_bellman_err)
+                    T_bellman_err = T_bellman_err + \
+                                    self.bellman_error(T_s, T_a, T_s_next, T_r, theta, gamma, T_discrete_actions)[0]
             self.T_bellman_err = T_bellman_err
+            assert len(self.theta_list) == steps_ahead
 
         # define function to be used for train and drawing actions
         self.train_function = None
@@ -194,7 +198,7 @@ class GradPBO(object):
     def k_step_bellman_error(self, s, a, nexts, r, theta, gamma, discrete_actions, steps):
         steps = max(1, steps)
         loss, theta_k = self.bellman_error(s, a, nexts, r, theta, gamma, discrete_actions)
-        for _ in range(steps-1):
+        for _ in range(steps - 1):
             err_k, theta_k = self.bellman_error(s, a, nexts, r, theta_k, gamma, discrete_actions)
             loss += err_k
         return loss, theta_k
@@ -208,17 +212,14 @@ class GradPBO(object):
         if self.train_function is None:
             print('compiling train function...')
             start = time.time()
-            theta = [self.bellman_model.inputs[0]]
-            if self.independent:
-                theta = self.theta_vectors
-            inputs = [self.T_s, self.T_a, self.T_s_next, self.T_r] + theta + [self.T_discrete_actions]
+            inputs = [self.T_s, self.T_a, self.T_s_next, self.T_r] + self.theta_list + [self.T_discrete_actions]
 
             training_updates = self.optimizer.get_updates(self.bellman_model.trainable_weights,
                                                           {}, self.T_bellman_err)
 
             # returns loss and metrics. Updates weights at each call.
             self.train_function = theano.function(inputs, [self.T_bellman_err], updates=training_updates)
-            print('compiled in {}s'.format(time.time()-start))
+            print('compiled in {}s'.format(time.time() - start))
 
     def _standardize_user_data(self, s, a, s_next, r, theta, check_batch_dim=False):
         """
@@ -390,19 +391,13 @@ class GradPBO(object):
 
         n_updates = 0
 
-        if self.independent:
+        # append evolution of theta for independent case
+        for _ in range(len(self.theta_list) - 1):
             if self.incremental:
-                t0 = theta[0]
-                theta = [t0]
-                for _ in range(self.steps_ahead - 1):
-                    t0 = t0 + self.bellman_model.predict(t0)
-                    theta += [t0]
+                tmp = theta[-1] + self.bellman_model.predict(theta[-1])
             else:
-                t0 = theta[0]
-                theta = [t0]
-                for _ in range(self.steps_ahead - 1):
-                    t0 = self.bellman_model.predict(t0)
-                    theta += [t0]
+                tmp = self.bellman_model.predict(theta[-1])
+            theta += [tmp]
 
         for epoch in range(nb_epoch):
             callbacks.on_epoch_begin(epoch)
@@ -431,7 +426,7 @@ class GradPBO(object):
                 batch_logs['size'] = len(batch_ids)
                 batch_logs['theta'] = [theta[0]]
                 for k in theta_metrics.keys():
-                    batch_logs[k] = theta_metrics[k](theta[0])
+                    batch_logs[k] = theta_metrics[k](theta)
                 callbacks.on_batch_begin(batch_index, batch_logs)
 
                 inp = ins_batch + theta + discrete_actions
@@ -444,24 +439,14 @@ class GradPBO(object):
                     batch_logs[l] = o
 
                 if self.update_every > 0 and n_updates % self.update_every == 0:
-                    if not self.independent:
+                    tmp = theta[0]
+                    theta = []
+                    for _ in range(len(self.theta_list)):
                         if self.incremental:
-                             theta = [theta[0] + self.bellman_model.predict(theta)]
+                            tmp = tmp + self.bellman_model.predict(tmp)
                         else:
-                             theta = [self.bellman_model.predict(theta)]
-                    else:
-                        if self.incremental:
-                            t0 = theta[0]
-                            theta = []
-                            for _ in range(self.steps_ahead):
-                                t0 = t0 + self.bellman_model.predict(t0)
-                                theta += [t0]
-                        else:
-                            t0 = theta[0]
-                            theta = []
-                            for _ in range(self.steps_ahead):
-                                t0 = self.bellman_model.predict(t0)
-                                theta += [t0]
+                            tmp = self.bellman_model.predict(tmp)
+                        theta += [tmp]
 
                 callbacks.on_batch_end(batch_index, batch_logs)
 
@@ -483,16 +468,13 @@ class GradPBO(object):
         callbacks.on_train_end()
 
         # finally apply the bellman operator K-times to get the final point
-        theta = theta[0]
-        for i in range(self.steps_ahead):
-            theta = self.apply_bop(theta)
-        self.learned_theta_value = theta
+        self.learned_theta_value = self.apply_bop(theta[0], n_times=100)
         if self.verbose > 1:
             print('learned theta: {}'.format(self.learned_theta_value))
 
         return history
 
-    def apply_bop(self, theta):
+    def apply_bop(self, theta, n_times=1):
         """
         Applies the Bellman operator to the provided Q-function parameters
         Args:
@@ -502,11 +484,12 @@ class GradPBO(object):
             The updated parameters
 
         """
-        if self.incremental:
-            print(self.bellman_model.predict(theta))
-            return theta + self.bellman_model.predict(theta)
-        else:
-            return self.bellman_model.predict(theta)
+        for _ in range(n_times):
+            if self.incremental:
+                theta = theta + self.bellman_model.predict(theta)
+            else:
+                theta = self.bellman_model.predict(theta)
+        return theta
 
     def _make_draw_action_function(self):
         """
@@ -540,7 +523,6 @@ class GradPBO(object):
         return self.draw_action_function(state[0], self.learned_theta_value, self.discrete_actions[
             0])  # we take index zero since they are lists of numpy matrices
 
-
     def _make_additional_functions(self):
         # get trainable parameters
         params = self.bellman_model.trainable_weights
@@ -551,6 +533,8 @@ class GradPBO(object):
         # self.F_bellman_operator = theano.function([theta], self.bellman_model.outputs[0])
         self.F_bellman_operator = theano.function([theta], self.bellman_model._model_evaluation(theta))
         self.F_q = theano.function([self.T_s, self.T_a, theta], self.q_model.model(self.T_s, self.T_a, theta))
-        self.F_bellman_err = theano.function([self.T_s, self.T_a, self.T_s_next, self.T_r, theta, self.T_discrete_actions], self.T_bellman_err)
-        self.F_grad_bellman_berr = theano.function([self.T_s, self.T_a, self.T_s_next, self.T_r, theta, self.T_discrete_actions],
-                                                   self.T_grad_bellman_err)
+        self.F_bellman_err = theano.function(
+            [self.T_s, self.T_a, self.T_s_next, self.T_r, theta, self.T_discrete_actions], self.T_bellman_err)
+        self.F_grad_bellman_berr = theano.function(
+            [self.T_s, self.T_a, self.T_s_next, self.T_r, theta, self.T_discrete_actions],
+            self.T_grad_bellman_err)
