@@ -50,6 +50,18 @@ def resize_state(to_resize, new_size=(72,72)):
     return np.asarray(resized).squeeze()
 
 
+def crop_state(to_crop, keep_top=False):
+    """Crops every image in to_crop to a square.
+    :param to_crop: a numpy array containing a sequence of greyscale images to crop along axis 1.
+    :param keep_top: crop the images keeping the top part.
+    :return:
+    """
+    if keep_top:
+        return np.split(to_crop, [to_crop.shape[2]], axis=1)[0]
+    else:
+        return np.split(to_crop, [to_crop.shape[1] - to_crop.shape[2]], axis=1)[1]
+
+
 def flat2gen(alist):
     """
     :param alist: a 2d list
