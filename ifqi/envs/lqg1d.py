@@ -1,11 +1,10 @@
 """classic Linear Quadratic Gaussian Regulator task"""
 from numbers import Number
 
+import gym
 from gym import spaces
-from gym.spaces import prng
+from gym.utils import seeding
 import numpy as np
-
-from .environment import Environment
 
 """
 Linear quadratic gaussian regulator task.
@@ -31,7 +30,7 @@ register(
 )
 
 
-class LQG1D(Environment):
+class LQG1D(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 30
@@ -81,7 +80,7 @@ class LQG1D(Environment):
 
     def reset(self, state=None):
         if state is None:
-            self.state = np.array([prng.np_random.uniform(low=-self.max_pos,
+            self.state = np.array([self.np_random.uniform(low=-self.max_pos,
                                                           high=self.max_pos)])
         else:
             self.state = np.array(state)
@@ -90,6 +89,10 @@ class LQG1D(Environment):
 
     def get_state(self):
         return np.array(self.state)
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def _render(self, mode='human', close=False):
         if close:
@@ -250,8 +253,8 @@ class LQG1D(Environment):
         P = self._computeP2(K)
         Qfun = 0
         for i in range(n_random_xn):
-            noise = np.random.randn() * self.sigma_noise
-            action_noise = np.random.multivariate_normal(
+            noise = self.np_random.randn() * self.sigma_noise
+            action_noise = self.np_random.multivariate_normal(
                 np.zeros(Sigma.shape[0]), Sigma, 1)
             nextstate = np.dot(self.A, x) + np.dot(self.B,
                                                    u + action_noise) + noise

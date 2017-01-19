@@ -3,10 +3,8 @@ import numpy as np
 from gym.utils import seeding
 from PIL import Image
 
-from .environment import Environment
 
-
-class Atari(Environment):
+class Atari(gym.Env):
     """
     The Atari environment.
 

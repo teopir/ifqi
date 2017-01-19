@@ -80,7 +80,8 @@ class PBO(Algorithm):
         q regressor with the last best one found.
         """
         self._iteration += 1
-        print('Iteration: %d' % self._iteration)
+        if self._verbose:
+            print('Iteration: %d' % self._iteration)
         self._q_weights_list.append(self._get_q_weights())
         new_q_weights = self._f(self.iteration_best_rho)
         if self._incremental:
