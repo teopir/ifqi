@@ -27,8 +27,9 @@ check_dataset(dataset, state_dim, action_dim, reward_dim)
 
 INCREMENTAL = True
 ACTIVATION = 'tanh'
-STEPS_AHEAD = 5
-UPDATE_EVERY = 1000
+STEPS_AHEAD = 6
+UPDATE_EVERY = -1
+INDEPENDENT = True
 
 
 # sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
@@ -98,7 +99,8 @@ pbo = GradPBO(bellman_model=rho_regressor,
               action_dim=action_dim,
               incremental=INCREMENTAL,
               update_every=UPDATE_EVERY,
-              verbose=1)
+              verbose=1,
+              independent=INDEPENDENT)
 state, actions, reward, next_states = split_dataset(dataset,
                                                     state_dim=state_dim,
                                                     action_dim=action_dim,
