@@ -1,6 +1,6 @@
 from ifqi.algorithms.selection.feature_extraction.Autoencoder import Autoencoder
 from ifqi.envs.gridworld import GridWorldEnv
-from helpers import resize_state
+from helpers import crop_state
 from PIL import Image
 from ifqi import envs
 import argparse
@@ -12,14 +12,14 @@ parser.add_argument('--path', type=str, default='data/breakout/model.h5', help='
 args = parser.parse_args()
 
 env = envs.Atari('BreakoutDeterministic-v3')
-AE = Autoencoder((4, 72, 72), load_path=args.path)
+AE = Autoencoder((4, 84, 84), load_path=args.path)
 
 state = env.reset()
-preprocessed_state = np.expand_dims(np.asarray(resize_state(state)), axis=0)
+preprocessed_state = np.expand_dims(np.asarray(crop_state(state)), axis=0)
 encoded_state = AE.encode(preprocessed_state)
 flat_encoded_state = AE.flat_encode(preprocessed_state)
 predicted_state = AE.predict(preprocessed_state)
-predicted_state = predicted_state.reshape(4, 72, 72)
+predicted_state = predicted_state.reshape(4, 84, 84)
 state_img = Image.fromarray(state[0]).convert('L')
 pred_img = Image.fromarray(predicted_state[0]).convert('L')
 

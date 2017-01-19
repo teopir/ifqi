@@ -50,7 +50,7 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         check_array(state, accept_sparse=True)
         check_array(actions, accept_sparse=True)
         check_array(next_states, accept_sparse=True)
-        check_array(reward, accept_sparse=True)
+        check_array(reward.reshape(-1,1), accept_sparse=True)
         return self._fit(state, actions, next_states, reward)
 
     def _fit(self, states, actions, next_states, reward):

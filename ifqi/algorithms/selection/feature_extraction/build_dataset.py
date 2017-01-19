@@ -1,7 +1,7 @@
 import random, argparse, numpy as np
 from Logger import Logger
 from joblib import Parallel, delayed
-from helpers import flat2list, resize_state
+from helpers import flat2list, crop_state
 from tqdm import tqdm
 from ifqi import envs
 
@@ -11,7 +11,7 @@ parser.add_argument('-d', '--debug', action='store_true', help='run in debug mod
 parser.add_argument('-v', '--video', action='store_true', help='display video output')
 parser.add_argument('--njobs', type=int, default=1,
                     help='number of processes to use, set -1 to use all available cores. Don\'t set this flag if running on GPU.')
-parser.add_argument('--env', type=str, default='PongDeterministic-v3', help='Atari environment to run')
+parser.add_argument('--env', type=str, default='BreakoutDeterministic-v3', help='Atari environment to run')
 parser.add_argument('--episodes', type=int, default=1000, help='number of episodes to run')
 parser.add_argument('--path', type=str, default='data/model.h5', help='path to the hdf5 weights file for the autoencoder')
 parser.add_argument('-e', '--encode', action='store_true', help='save a SARS dataset with the encoded state features')
@@ -27,10 +27,14 @@ heatmap_csv = 'heatmap.csv'
 
 if args.encode:
     from Autoencoder import Autoencoder
-    AE = Autoencoder((4, 72, 72), load_path=args.path)
-    # TODO header states must be automatically generated from the output length of AE.flat_encode
-    logger.to_csv('encoded_' + output_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y,R,SS0,SS1,SS2,SS3,SS4,SS5,SS6,SS7,SS8')
-    logger.to_csv(heatmap_csv, 'S0,S1,S2,S3,S4,S5,S6,S7,S8,X,Y')
+    AE = Autoencoder((4, 84, 84), load_path=args.path)
+    # Automatically generate headers from the output length of AE.flat_encode
+    nb_states = AE.flat_encode(np.expand_dims(np.ones(AE.input_shape), axis=0)).shape[0]
+    output_header = ','.join(['S%s' % i for i in xrange(nb_states)] + ['X,Y,R'] + ['SS%s' % i for i in xrange(nb_states)])
+    heatmap_header = ','.join(['S%s' % i for i in xrange(nb_states)] + ['X,Y'])
+    # Initialize output csv with headers
+    logger.to_csv('encoded_' + output_csv, output_header)
+    logger.to_csv(heatmap_csv, heatmap_header)
 if args.images:
     logger.to_csv('images_' + output_csv, 'S,A,R,SS')
 
@@ -47,13 +51,13 @@ def episode(episode_id):
 
     # Get encoded features
     if args.encode:
-        preprocessed_state = np.expand_dims(np.expand_dims(np.asarray(resize_state(state)), axis=0), axis=0)
+        preprocessed_state = np.expand_dims(np.expand_dims(np.asarray(crop_state(state)), axis=0), axis=0)
         encoded_state = AE.flat_encode(preprocessed_state)
 
     # Save image of state
     if args.images:
         state_id = '%04d_%d' % (episode_id, frame_counter)
-        np.save(logger.path + state_id, resize_state(state))
+        np.save(logger.path + state_id, crop_state(state))
 
     reward = 0
     done = False
@@ -69,7 +73,7 @@ def episode(episode_id):
 
         # Get encoded features
         if args.encode:
-            preprocessed_next_state = np.expand_dims(np.expand_dims(np.asarray(resize_state(next_state)), axis=0), axis=0)
+            preprocessed_next_state = np.expand_dims(np.expand_dims(np.asarray(crop_state(next_state)), axis=0), axis=0)
             encoded_next_state = AE.flat_encode(preprocessed_next_state)
             logger.to_csv('encoded_' + output_csv, flat2list([encoded_state, env.encode_action(action), reward, encoded_next_state]))
             logger.to_csv(heatmap_csv, flat2list([encoded_state, env.viewer.char_pos[0], env.viewer.char_pos[1]]))
@@ -77,7 +81,7 @@ def episode(episode_id):
         # Save image of state
         if args.images:
             next_state_id = '%04d_%d' % (episode_id, frame_counter)
-            np.save(logger.path + next_state_id, resize_state(next_state))
+            np.save(logger.path + next_state_id, crop_state(next_state))
             logger.to_csv('images_' + output_csv, [state_id, action, reward, next_state_id])
 
         # Render environment
