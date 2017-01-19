@@ -3,7 +3,7 @@ from numbers import Number
 
 import gym
 from gym import spaces
-from gym.spaces import prng
+from gym.utils import seeding
 import numpy as np
 
 """
@@ -89,6 +89,10 @@ class LQG1D(gym.Env):
 
     def get_state(self):
         return np.array(self.state)
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def _render(self, mode='human', close=False):
         if close:
