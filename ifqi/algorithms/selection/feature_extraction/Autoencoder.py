@@ -65,7 +65,7 @@ class Autoencoder:
             self.decoder = Model(input=self.encoded_input, output=self.decoding_output)
 
         # Optimization algorithm
-        self.optimizer = Adadelta()
+        self.optimizer = Adam()
 
         # Load the network from saved model
         if load_path is not None:
