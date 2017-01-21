@@ -295,8 +295,10 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             start_t = time.time()
             rank_estimator = clone(self.estimator)
             rank_estimator.fit(X, target)
+            end_fit = time.time() - start_t
 
             # Get coefs
+            start_t = time.time()
             if hasattr(rank_estimator, 'coef_'):
                 coefs = rank_estimator.coef_
             elif hasattr(rank_estimator, 'feature_importances_'):
@@ -305,6 +307,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 raise RuntimeError('The classifier does not expose '
                                    '"coef_" or "feature_importances_" '
                                    'attributes')
+            end_rank = time.time() - start_t
 
             # Get ranks by ordering in ascending way
             if coefs.ndim > 1:
@@ -315,7 +318,6 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
             # for sparse case ranks is matrix
             ranks = np.ravel(ranks)
-            end_t = time.time() - start_t
 
             if self.verbose > 0:
                 ranked_f = features[ranks]
@@ -327,7 +329,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 for i in range(n_features):
                     idx = n_features - i - 1
                     print('#{:6}\t{:6}\t{:6f}\t{}'.format(str(i), str(ranked_f[idx]), coefs[ranks[idx]], ranked_n[idx]))
-                print("\n Fit and rank done in {} s".format(end_t))
+                print("\n Fit done in {} s and rank done in {} s".format(end_fit, end_rank))
 
             # if coefs[ranks][-1] < 1e-5:
             #     if self.verbose > 0:
