@@ -95,9 +95,9 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
         start_t = time.time()
         fs.fit(X, Y)
-        end_t = start_t - time.time()
+        end_t = time.time() - start_t
         if self.verbose > 0:
-            print('Feature selection done in {}s'.format(end_t))
+            print('IFS done in {}s'.format(end_t))
 
         sa_support = fs.get_support()  # get selected features of X
         new_state_support = sa_support[:n_states]  # get only state features

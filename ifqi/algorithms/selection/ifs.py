@@ -29,6 +29,7 @@ else:
     from sklearn.utils.validation import _num_samples
 from sklearn.preprocessing import StandardScaler
 import scipy.sparse as sp
+import time
 
 
 def _my_fit_and_predict(estimator, X, y, train, test, verbose, fit_params,
@@ -291,6 +292,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 target = StandardScaler().fit_transform(target.reshape(-1, 1)).ravel()
 
             # Rank the remaining features
+            start_t = time.time()
             rank_estimator = clone(self.estimator)
             rank_estimator.fit(X, target)
 
@@ -313,6 +315,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
             # for sparse case ranks is matrix
             ranks = np.ravel(ranks)
+            end_t = time.time() - start_t
 
             if self.verbose > 0:
                 ranked_f = features[ranks]
@@ -324,6 +327,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 for i in range(n_features):
                     idx = n_features - i - 1
                     print('#{:6}\t{:6}\t{:6f}\t{}'.format(str(i), str(ranked_f[idx]), coefs[ranks[idx]], ranked_n[idx]))
+                print("\n Fit and rank done in {} s".format(end_t))
 
             # if coefs[ranks][-1] < 1e-5:
             #     if self.verbose > 0:
@@ -361,6 +365,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             # get the selected features
             X_selected = X[:, features[tentative_support_]]
 
+            start_t = time.time()
             # cross validates to obtain the scores
             y_hat, cv_scores = my_cross_val_predict(clone(self.estimator), X_selected, y, cv=cv)
             # y_hat = cross_val_predict(clone(self.estimator), X_selected, y, cv=cv)
@@ -379,6 +384,8 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             m2 = np.mean(cv_scores * cv_scores)
             confidence_interval = np.sqrt((m2 - score * score) / (n_splits - 1))
 
+            end_t = time.time() - start_t
+
             if self.verbose > 0:
                 # if features_names is not None:
                 print("Selected features: {} {}".format(features_names[step_features], step_features))
@@ -388,6 +395,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 #     print("Selected features: {}".format(step_features))
                 #     print("Total features: {}".format(features[tentative_support_]))
                 print("R2= {} +- {}".format(score, confidence_interval))
+                print("\n Crossvalidation done in {} s".format(end_t))
 
             self.scores_.append(score)
             self.scores_confidences_.append(confidence_interval)
