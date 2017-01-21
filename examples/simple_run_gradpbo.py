@@ -27,8 +27,9 @@ check_dataset(dataset, state_dim, action_dim, reward_dim)
 
 INCREMENTAL = True
 ACTIVATION = 'tanh'
-STEPS_AHEAD = 5
-UPDATE_EVERY = 1000
+STEPS_AHEAD = 2
+UPDATE_EVERY = 1
+INDEPENDENT = False
 
 
 # sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
@@ -98,21 +99,31 @@ pbo = GradPBO(bellman_model=rho_regressor,
               action_dim=action_dim,
               incremental=INCREMENTAL,
               update_every=UPDATE_EVERY,
-              verbose=1)
+              verbose=1,
+              independent=INDEPENDENT)
+
+
+def tmetric(theta):
+    t = pbo.apply_bop(theta[0], n_times=STEPS_AHEAD)
+    return q_regressor.get_k(t)
+
+
 state, actions, reward, next_states = split_dataset(dataset,
                                                     state_dim=state_dim,
                                                     action_dim=action_dim,
                                                     reward_dim=reward_dim)
-#theta0 = np.array([[-6., 10.001], [6, 8.]], dtype='float32')  # .reshape(1, -1)
-theta0 = np.array([-6., 10.001], dtype='float32').reshape(1, -1)
+
+theta0 = np.array([6., 10.001], dtype='float32').reshape(1, -1)
+theta0 = np.array([16., 10.001], dtype='float32').reshape(1, -1)
 history = pbo.fit(state, actions, next_states, reward, theta0,
-                  batch_size=10, nb_epoch=1,
-                  theta_metrics={'k': lambda theta: q_regressor.get_k(theta)})
+                  batch_size=10, nb_epoch=5,
+                  theta_metrics={'k': tmetric})
 ##########################################
 # Evaluate the final solution
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
-print(values)
+print('Learned theta: {}'.format(pbo.learned_theta_value))
+print('Final performance of PBO: {}'.format(values))
 
 ##########################################
 # Some plot
@@ -127,7 +138,8 @@ plt.xlabel('b')
 plt.ylabel('k')
 plt.colorbar()
 plt.savefig(
-    'LQG_MLP_{}_evaluated_weights_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION, STEPS_AHEAD),
+    'LQG_MLP_{}_evaluated_weights_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL,
+                                                                                    ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
 
 plt.figure()
@@ -135,12 +147,13 @@ plt.plot(ks[30:-1])
 plt.xlabel('iteration')
 plt.ylabel('coefficient of max action (opt ~0.6)')
 plt.savefig(
-    'LQG_MLP_{}_max_coeff_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION, STEPS_AHEAD),
+    'LQG_MLP_{}_max_coeff_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION,
+                                                                            STEPS_AHEAD),
     bbox_inches='tight')
 
 theta = theta0.copy()
 L = [np.array(theta)]
-for i in range(STEPS_AHEAD):
+for i in range(STEPS_AHEAD * 200):
     theta = pbo.apply_bop(theta)
     L.append(np.array(theta))
 
@@ -149,6 +162,9 @@ print(L.shape)
 
 print(theta)
 print('K: {}'.format(q_regressor.get_k(theta)))
+pbo.learned_theta_value = theta
+values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
+print('Performance: {}'.format(values))
 
 plt.figure()
 plt.scatter(L[:, 0], L[:, 1])
@@ -156,10 +172,9 @@ plt.title('Application of Bellman operator')
 plt.xlabel('b')
 plt.ylabel('k')
 plt.savefig(
-    'LQG_MLP_{}_bpo_application_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION, STEPS_AHEAD),
+    'LQG_MLP_{}_bpo_application_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL,
+                                                                                  ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
-# plt.show()
-plt.close('all')
 
 B_i, K_i = np.mgrid[-6:6:40j, -5:35:40j]
 theta = np.column_stack((B_i.ravel(), K_i.ravel()))
@@ -169,11 +184,14 @@ fig = plt.figure(figsize=(15, 10))
 Q = plt.quiver(theta[:, 0], theta[:, 1], theta_p[:, 0] - theta[:, 0], theta_p[:, 1] - theta[:, 1], angles='xy')
 plt.xlabel('b')
 plt.ylabel('k')
+plt.scatter(L[:, 0], L[:, 1], c='b')
 plt.title('Gradient field - Act: {}, Inc: {}'.format(ACTIVATION, INCREMENTAL))
 plt.savefig(
-    'LQG_MLP_{}_grad_field_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION, STEPS_AHEAD),
+    'LQG_MLP_{}_grad_field_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL,
+                                                                             ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
 plt.show()
+plt.close('all')
 
 
 # best_rhos = pbo._rho_values[-1]

@@ -15,11 +15,91 @@ from sklearn.base import clone
 from sklearn.feature_selection.base import SelectorMixin
 from sklearn.metrics import r2_score, mean_squared_error
 import sklearn
+
 if sklearn.__version__ == '0.17':
     from sklearn.cross_validation import cross_val_score, check_cv, cross_val_predict
 else:
-    from sklearn.model_selection import cross_val_score, check_cv, cross_val_predict
+    from sklearn.model_selection import cross_val_score, check_cv, \
+        cross_val_predict
+    from sklearn.model_selection._validation import \
+        _index_param_value, _safe_split, _check_is_permutation
+    from sklearn.preprocessing import LabelEncoder
+    from sklearn.utils import indexable
+    from sklearn.externals.joblib import Parallel, delayed
+    from sklearn.utils.validation import _num_samples
 from sklearn.preprocessing import StandardScaler
+import scipy.sparse as sp
+
+
+def _my_fit_and_predict(estimator, X, y, train, test, verbose, fit_params,
+                        method):
+    fit_params = fit_params if fit_params is not None else {}
+    fit_params = dict([(k, _index_param_value(X, v, train))
+                       for k, v in fit_params.items()])
+
+    X_train, y_train = _safe_split(estimator, X, y, train)
+    X_test, Y_test = _safe_split(estimator, X, y, test, train)
+
+    if y_train is None:
+        estimator.fit(X_train, **fit_params)
+    else:
+        estimator.fit(X_train, y_train, **fit_params)
+    func = getattr(estimator, method)
+    predictions = func(X_test)
+    if method in ['decision_function', 'predict_proba', 'predict_log_proba']:
+        n_classes = len(set(y))
+        predictions_ = np.zeros((X_test.shape[0], n_classes))
+        if method == 'decision_function' and len(estimator.classes_) == 2:
+            predictions_[:, estimator.classes_[-1]] = predictions
+        else:
+            predictions_[:, estimator.classes_] = predictions
+        predictions = predictions_
+    scores = r2_score(y_true=Y_test, y_pred=predictions, multioutput='raw_values')
+    return predictions, test, scores
+
+
+def my_cross_val_predict(estimator, X, y=None, groups=None, cv=None, n_jobs=1,
+                         verbose=0, fit_params=None, pre_dispatch='2*n_jobs',
+                         method='predict'):
+    X, y, groups = indexable(X, y, groups)
+
+    cv = check_cv(cv, y, classifier=is_classifier(estimator))
+
+    # Ensure the estimator has implemented the passed decision function
+    if not callable(getattr(estimator, method)):
+        raise AttributeError('{} not implemented in estimator'
+                             .format(method))
+
+    if method in ['decision_function', 'predict_proba', 'predict_log_proba']:
+        le = LabelEncoder()
+        y = le.fit_transform(y)
+
+    # We clone the estimator to make sure that all the folds are
+    # independent, and that it is pickle-able.
+    parallel = Parallel(n_jobs=n_jobs, verbose=verbose,
+                        pre_dispatch=pre_dispatch)
+    prediction_blocks = parallel(delayed(_my_fit_and_predict)(
+        clone(estimator), X, y, train, test, verbose, fit_params, method)
+                                 for train, test in cv.split(X, y, groups))
+
+    # Concatenate the predictions
+    predictions = [pred_block_i for pred_block_i, _, _ in prediction_blocks]
+    test_indices = np.concatenate([indices_i
+                                   for _, indices_i, _ in prediction_blocks])
+    scores = np.concatenate([score_i for _, _, score_i in prediction_blocks])
+
+    if not _check_is_permutation(test_indices, _num_samples(X)):
+        raise ValueError('cross_val_predict only works for partitions')
+
+    inv_test_indices = np.empty(len(test_indices), dtype=int)
+    inv_test_indices[test_indices] = np.arange(len(test_indices))
+
+    # Check for sparse predictions
+    if sp.issparse(predictions[0]):
+        predictions = sp.vstack(predictions, format=predictions[0].format)
+    else:
+        predictions = np.concatenate(predictions)
+    return predictions[inv_test_indices], scores
 
 
 class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
@@ -122,18 +202,15 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
     """
 
     def __init__(self, estimator, n_features_step=1,
-                 cv=None,
-                 scale=True,
-                 force_iterations=None,
-                 features_names=None,
-                 verbose=0):
+                 cv=None, scale=True, features_names=None,
+                 verbose=0, significance=0.1):
         self.estimator = estimator
-        assert n_features_step == 1,\
+        assert n_features_step == 1, \
             'currently only one features per iteration is supported'
         self.n_features_step = n_features_step
         self.cv = cv
         self.scale = scale
-        self.force_iterations = force_iterations
+        self.significance = significance
         self.features_names = features_names
         self.verbose = verbose
 
@@ -179,26 +256,19 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         if step <= 0:
             raise ValueError("Step must be >0")
 
-        # if self.force_iterations is None:
-        #     force_iteration = False
-        # else:
-        #     force_iteration = self.force_iterations
-
-        # if step_score is None:
-        #     step_score = r2_score
-
         if features_names is not None:
             features_names = np.array(features_names)
         else:
             if self.features_names is not None:
                 features_names = self.features_names
             else:
-                features_names = np.arange(n_features) # use indices
+                features_names = np.arange(n_features)  # use indices
 
         tentative_support_ = np.zeros(n_features, dtype=np.bool)
         current_support_ = np.zeros(n_features, dtype=np.bool)
 
         self.scores_ = []
+        self.scores_confidences_ = []
         self.features_per_it_ = []
 
         target = y
@@ -218,7 +288,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 print()
 
             if self.scale:
-                target = StandardScaler().fit_transform(target.reshape(-1,1)).ravel()
+                target = StandardScaler().fit_transform(target.reshape(-1, 1)).ravel()
 
             # Rank the remaining features
             rank_estimator = clone(self.estimator)
@@ -292,19 +362,22 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             X_selected = X[:, features[tentative_support_]]
 
             # cross validates to obtain the scores
-            # cv_scores = cross_val_score(clone(self.estimator), X_selected, y, cv=cv, scoring='r2')
-            y_hat = cross_val_predict(clone(self.estimator), X_selected, y, cv=cv)
+            y_hat, cv_scores = my_cross_val_predict(clone(self.estimator), X_selected, y, cv=cv)
+            # y_hat = cross_val_predict(clone(self.estimator), X_selected, y, cv=cv)
 
             # compute new target
             target = y - y_hat
 
             # compute score and confidence interval
-            score = r2_score(y_true=y, y_pred=y_hat, multioutput='uniform_average')  # np.mean(cv_scores)
+            # score = r2_score(y_true=y, y_pred=y_hat, multioutput='uniform_average')  # np.mean(cv_scores)
             if self.verbose > 0:
-                print('r2: {}'.format(r2_score(y_true=y, y_pred=y_hat, multioutput='raw_values')))
-            # m2 = np.mean(cv_scores * cv_scores)
-            SIGNIFICANCE = 0.0
-            confidence_interval = SIGNIFICANCE  # * np.sqrt((m2 - score * score) / (n_splits - 1))
+                print('r2: {}'.format(np.mean(cv_scores, axis=0)))
+
+            score = np.mean(cv_scores)
+            if len(cv_scores.shape) > 1:
+                cv_scores = np.mean(cv_scores, axis=1)
+            m2 = np.mean(cv_scores * cv_scores)
+            confidence_interval = np.sqrt((m2 - score * score) / (n_splits - 1))
 
             if self.verbose > 0:
                 # if features_names is not None:
@@ -317,7 +390,9 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 print("R2= {} +- {}".format(score, confidence_interval))
 
             self.scores_.append(score)
+            self.scores_confidences_.append(confidence_interval)
             self.features_per_it_.append(features_names[tentative_support_])
+            confidence_interval *= self.significance  # do not trust confidence interval completely
 
             # check terminal condition
             proceed = score - old_score > old_confidence_interval + confidence_interval
