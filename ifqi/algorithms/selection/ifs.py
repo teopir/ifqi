@@ -99,7 +99,6 @@ def my_cross_val_predict(estimator, X, y=None, groups=None, cv=None, n_jobs=1,
         predictions = sp.vstack(predictions, format=predictions[0].format)
     else:
         predictions = np.concatenate(predictions)
-    print(scores)
     return predictions[inv_test_indices], scores
 
 
