@@ -2,10 +2,18 @@ import gym
 import numpy as np
 from builtins import range
 from gym import spaces
+from gym.envs.registration import register
 from gym.utils import seeding
 from scipy.integrate import odeint
 
 import ifqi.utils.spaces as fqispaces
+
+
+
+register(
+    id='CarOnHill-v0',
+    entry_point='ifqi.envs.carOnHill:CarOnHill'
+)
 
 
 class CarOnHill(gym.Env):
@@ -96,3 +104,6 @@ class CarOnHill(gym.Env):
               diff_hill * diff_2_hill) / (self._m * (1 + diff_hill ** 2))
 
         return dp, ds, 0.
+
+    def _render(self, mode=None, close=None):
+        pass
