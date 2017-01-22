@@ -15,6 +15,7 @@ from sklearn.base import clone
 from sklearn.feature_selection.base import SelectorMixin
 from sklearn.metrics import r2_score, mean_squared_error
 import sklearn
+import time
 
 if sklearn.__version__ == '0.17':
     from sklearn.cross_validation import cross_val_score, check_cv
@@ -92,7 +93,11 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         if hasattr(fs, 'set_feature_names'):
             fs.set_feature_names(self.features_names)
 
+        start_t = time.time()
         fs.fit(X, Y)
+        end_t = time.time() - start_t
+        if self.verbose > 0:
+            print('IFS done in {}s'.format(end_t))
 
         sa_support = fs.get_support()  # get selected features of X
         new_state_support = sa_support[:n_states]  # get only state features
