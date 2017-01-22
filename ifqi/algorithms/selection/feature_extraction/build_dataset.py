@@ -18,7 +18,6 @@ parser.add_argument('-e', '--encode', action='store_true', help='save a SARS dat
 parser.add_argument('-i', '--images', action='store_true', help='save images of states and a SARS csv with the images\' ids')
 args = parser.parse_args()
 
-assert not args.heatmap or (args.heatmap and args.encode), 'Heatmaps can only be generated when the -e flag is set'
 
 logger = Logger(debug=args.debug)
 output_csv = 'dataset.csv'
@@ -28,7 +27,7 @@ if args.encode:
     AE = Autoencoder((4, 84, 84), load_path=args.path)
     # Automatically generate headers from the output length of AE.flat_encode
     nb_states = AE.flat_encode(np.expand_dims(np.ones(AE.input_shape), axis=0)).shape[0]
-    nb_actions = envs.Atari(args.env).action_space
+    nb_actions = envs.Atari(args.env).action_space.n
     output_header = ','.join(
         ['S%s' % i for i in xrange(nb_states)] + ['A%s' % i for i in xrange(nb_actions)] + ['R'] + ['SS%s' % i for i in xrange(nb_states)]
     )
