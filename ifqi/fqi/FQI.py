@@ -144,9 +144,9 @@ class FQI:
 
             y = self._r + self.gamma * maxq
 
-        if self._reset_regressor:
-            if hasattr(self._estimator,'reset'):
-                self._estimator.reset()
+            if self._reset_regressor:
+                if hasattr(self._estimator,'reset'):
+                    self._estimator.reset()
 
         ret_fit = self._estimator.fit(self._sa, y.ravel(), **kwargs)
 
