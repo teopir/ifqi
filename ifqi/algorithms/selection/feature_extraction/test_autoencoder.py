@@ -3,7 +3,7 @@ from ifqi.envs.gridworld import GridWorldEnv
 from helpers import crop_state
 from PIL import Image
 from ifqi import envs
-import argparse
+import argparse, random
 
 import numpy as np
 
@@ -15,6 +15,8 @@ env = envs.Atari('BreakoutDeterministic-v3')
 AE = Autoencoder((4, 84, 84), load_path=args.path)
 
 state = env.reset()
+for i in range(10):
+    state, reward, done, info = env.step(i%6)
 preprocessed_state = np.expand_dims(np.asarray(crop_state(state)), axis=0)
 encoded_state = AE.encode(preprocessed_state)
 flat_encoded_state = AE.flat_encode(preprocessed_state)

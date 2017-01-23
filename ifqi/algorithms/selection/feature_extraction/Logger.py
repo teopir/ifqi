@@ -2,11 +2,10 @@ import os, time
 
 
 class Logger:
-	def __init__(self, debug = False, append=None, custom_run_name=None):
+	def __init__(self, output_folder='./output/', debug = False, append=None, custom_run_name=None):
 		self.debug = debug
 		if self.debug: return
 
-		output_folder = './output/'
 		run_folder = 'run%Y%m%d-%H%M%S' if custom_run_name is None else custom_run_name
 		if not os.path.exists(output_folder):
 			os.makedirs(output_folder)

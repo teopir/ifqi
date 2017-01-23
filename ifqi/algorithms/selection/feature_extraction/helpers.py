@@ -54,7 +54,7 @@ def crop_state(to_crop, keep_top=False):
     """Crops every image in to_crop to a square.
     :param to_crop: a numpy array containing a sequence of greyscale images to crop along axis 1.
     :param keep_top: crop the images keeping the top part.
-    :return:
+    :return: the cropped array
     """
     if keep_top:
         return np.split(to_crop, [to_crop.shape[2]], axis=1)[0]
@@ -74,12 +74,21 @@ def flat2gen(alist):
             yield item
 
 
-def flat2list(alist):
+def flat2list(alist, as_tuple=False, as_set=False):
     """
+    :param as_tuple: return a tuple instead of a list
+    :param as_tuple: return a set instead of a list
     :param alist: a 2d list
     :return: a flattened version of the list
     """
-    return [i for i in flat2gen(alist)]
+    output = [i for i in flat2gen(alist)]
+    if as_tuple:
+        return tuple(output)
+    elif as_set:
+        return set(output)
+    else:
+        return output
+
 
 
 def onehot_encode(value, nb_categories):
