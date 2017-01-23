@@ -40,6 +40,10 @@ class MLP(object):
         else:
             return self.model.fit(X, y,**kwargs)
 
+    def reset(self):
+        print ("Reset MLP")
+        self.model = self.init_model()
+
     def predict(self, x, **kwargs):
         predictions = self.model.predict(x, **kwargs)
         return predictions.ravel()

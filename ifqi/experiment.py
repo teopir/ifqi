@@ -2,6 +2,7 @@ import json
 
 from gym import spaces
 from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.tree import DecisionTreeRegressor
 from models.mlp import MLP
 from sklearn.linear_model import LinearRegression
 from models.ensemble import Ensemble
@@ -14,6 +15,7 @@ from envs.bicycle import Bicycle
 from envs.swingPendulum import SwingPendulum
 from envs.cartPole import CartPole
 from envs.lqg1d import LQG1D
+from envs.lunarLander import LunarLander
 import ifqi.envs as envs
 import envs.utils as spaceInfo
 from ifqi.fqi.FQI import FQI
@@ -59,7 +61,6 @@ class Experiment(object):
         This function loads the mdp required in the configuration file.
         Returns:
             the required mdp.
-
         """
         if self.config['mdp']['mdpName'] == 'CarOnHill':
             return CarOnHill()
@@ -83,6 +84,8 @@ class Experiment(object):
             mdp = LQG1D()
             mdp.discreteReward = True
             return mdp
+        elif self.config["mdp"]["mdpName"] == "LunarLander":
+            return LunarLander()
         else:
             raise ValueError('Unknown mdp type.')
 
@@ -108,6 +111,14 @@ class Experiment(object):
                                               ['criterion'],
                       'min_samples_split': modelConfig['minSamplesSplit'],
                       'min_samples_leaf': modelConfig['minSamplesLeaf']}
+        elif modelConfig['modelName'] == 'DecisionTree':
+            model = Ensemble
+            params = {'ens_regressor_class': Regressor, 'regressor_class': DecisionTreeRegressor,
+                      #'criterion': self.config["regressors"][index]['supervisedAlgorithm']
+                      #['criterion'],
+                      #'min_samples_split': modelConfig['minSamplesSplit'],
+                      #'min_samples_leaf': modelConfig['minSamplesLeaf']}
+                      }
         elif modelConfig['modelName'] == 'ExtraTreeEnsemble':
             model = Ensemble
             params = {'ens_regressor_class':Regressor,'regressor_class':ExtraTreesRegressor, 'n_estimators': modelConfig['nEstimators'],
@@ -142,7 +153,7 @@ class Experiment(object):
         else:
             raise ValueError('Unknown estimator type.')
 
-        if modelConfig['modelName'] in ["ExtraTree", "ExtraTreeEnsemble"]:
+        if modelConfig['modelName'] in ["ExtraTree", "ExtraTreeEnsemble", "DecisionTree"]:
             if "max_depth" in modelConfig: params["max_depth"] = modelConfig["max_depth"]
             if "min_weight_fraction_leaf" in modelConfig: params["min_weight_fraction_leaf"] = modelConfig["min_weight_fraction_leaf"]
         if modelConfig['modelName'] in ["MLP", "MLPEnsemble"]:
@@ -182,7 +193,11 @@ class Experiment(object):
             features = self.config['regressors'][regressorIndex]['features']
         else:
             features = None
-            
+
+        reset=False
+        if "reset" in self.config["rlAlgorithm"]:
+            reset = self.config["rlAlgorithm"]["reset"]
+
         state_dim = self.mdp.observation_space.shape[0]
 
         if(isinstance(self.mdp.action_space, spaces.Box)):
@@ -198,6 +213,7 @@ class Experiment(object):
           gamma=gamma,
           horizon=horizon,
           verbose=verbose,
-          features=features)
+          features=features,
+            reset_regressor=reset)
           
         return fqi 

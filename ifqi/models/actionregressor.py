@@ -109,6 +109,11 @@ class ActionRegressor(object):
     def has_ensembles(self):
         return isinstance(self._models[0], Ensemble)
 
+    def reset(self):
+        for model in self._models:
+            if hasattr(model,"reset"):
+                model.reset()
+
     def _init_model(self, model, **params):
         """
         Initialize a new estimator for each discrete action.

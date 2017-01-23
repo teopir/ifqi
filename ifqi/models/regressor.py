@@ -35,3 +35,7 @@ class Regressor:
             y = self._pre_y.inverse_transform(y).ravel()
 
         return y
+
+    def reset(self):
+        if hasattr(self.regressor, "reset"):
+            self.regressor.reset()

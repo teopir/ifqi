@@ -12,7 +12,7 @@ This class implements the functions to run Fitted Q-Iteration algorithm.
 
 class FQI:
     def __init__(self, estimator, state_dim, action_dim,
-                 discrete_actions, gamma, horizon, features=None, verbose=False):
+                 discrete_actions, gamma, horizon, reset_regressor=False, features=None, verbose=False):
         """
         Constructor.
         Args:
@@ -56,6 +56,7 @@ class FQI:
         self._iteration = 0
         self._features = select_features(features)
         self._verbose = verbose
+        self._reset_regressor = reset_regressor
 
     def _check_states(self, X):
         """
@@ -142,6 +143,10 @@ class FQI:
                     self._estimator.adapt(iteration=self._iteration)
 
             y = self._r + self.gamma * maxq
+
+        if self._reset_regressor:
+            if hasattr(self._estimator,'reset'):
+                self._estimator.reset()
 
         ret_fit = self._estimator.fit(self._sa, y.ravel(), **kwargs)
 
