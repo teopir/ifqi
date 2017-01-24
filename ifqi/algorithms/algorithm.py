@@ -82,7 +82,7 @@ class Algorithm(object):
             actions = np.matlib.repmat(self._actions[action_idx], n_states, 1)
 
             # concatenate [new_state, action] and scalarize them
-            samples = np.concatenate((new_state, actions), axis=1)
+            samples = np.column_stack((new_state, actions))
 
             # predict Q-function
             if not evaluation \
@@ -99,7 +99,7 @@ class Algorithm(object):
         amax = np.argmax(Q, axis=1)
 
         # store Q-value and action for each state
-        rQ, rA = np.zeros(n_states), np.zeros(n_states)
+        rQ, rA = np.zeros(n_states), np.zeros((n_states, self.action_dim))
         for idx in range(n_states):
             rQ[idx] = Q[idx, amax[idx]]
             rA[idx] = self._actions[amax[idx]]
