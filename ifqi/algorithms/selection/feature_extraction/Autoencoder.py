@@ -18,7 +18,7 @@ class Autoencoder:
         self.inputs = Input(shape=self.input_shape)
 
         # Encoding layers
-        self.encoded = Convolution2D(32, 2, 2, subsample=(3, 3), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
+        self.encoded = Convolution2D(32, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
         self.encoded = Convolution2D(16, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
         self.encoded = Convolution2D(1, 2, 2, subsample=(1, 1), border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
 
@@ -28,8 +28,8 @@ class Autoencoder:
         self.decoded = Convolution2D(16, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = Convolution2D(32, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = UpSampling2D(size=(3, 3), dim_ordering=self.dim_ordering)(self.decoded)
-        self.decoded = Convolution2D(self.input_shape[0], 3, 3, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = Convolution2D(self.input_shape[0], 2, 2, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
 
         """
         self.decoding_available = True
@@ -65,7 +65,7 @@ class Autoencoder:
             self.decoder = Model(input=self.encoded_input, output=self.decoding_output)
 
         # Optimization algorithm
-        self.optimizer = Adam()
+        self.optimizer = RMSprop()
 
         # Load the network from saved model
         if load_path is not None:
@@ -86,6 +86,8 @@ class Autoencoder:
         :return: the metrics of interest as defined in the model (loss, accuracy, etc.)
         """
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        x[x < 0.1] = 0
+        x[x >= 0.1] = 1
         # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.train_on_batch(x, x)
 
@@ -97,6 +99,8 @@ class Autoencoder:
         """
         # Feed input to the model, return encoded and re-decoded images
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        x[x < 0.1] = 0
+        x[x >= 0.1] = 1
         # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.predict_on_batch(x) * 255  # Restore original scale
 
@@ -107,6 +111,8 @@ class Autoencoder:
         :return: the metrics of interest as defined in the model (loss, accuracy, etc.)
         """
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        x[x < 0.1] = 0
+        x[x >= 0.1] = 1
         # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.test_on_batch(x, x)
 
@@ -118,6 +124,8 @@ class Autoencoder:
         """
         # Feed input to the model, return encoded images
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        x[x < 0.1] = 0
+        x[x >= 0.1] = 1
         # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.encoder.predict_on_batch(x)
 
@@ -129,6 +137,8 @@ class Autoencoder:
         """
         # Feed input to the model, return encoded images flattened
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        x[x < 0.1] = 0
+        x[x >= 0.1] = 1
         # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return np.asarray(self.encoder.predict_on_batch(x)).flatten()
 
