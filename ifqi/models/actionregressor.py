@@ -15,7 +15,7 @@ class ActionRegressor(object):
     exploit spatial correlation along action space.
     """
 
-    def __init__(self, model, discrete_actions, decimals, **params):
+    def __init__(self, model, discrete_actions, tol, **params):
         """
         Initialization of the class.
 
@@ -25,16 +25,16 @@ class ActionRegressor(object):
                 represents the number of discrete actions to be used
                 [0, 1, 2, discrete_actions - 1]. Otherwise the values
                 contained in the list are used.
-            decimals (int): precision for float actions
+            tol (float): tolerance used for comparisons
             **params: additional parameters that are used to init the model
         """
         if isinstance(discrete_actions, (int, float)):
             discrete_actions = np.arange(int(discrete_actions))
-            self._decimals = 0
+            is_int = True
         else:
-            # fix number of decimals (i.e., precision)
-            discrete_actions = np.around(discrete_actions, decimals=decimals)
-            self._decimals = decimals
+            discrete_actions = np.array(discrete_actions)
+            print(discrete_actions)
+            is_int = False
 
         # transform discrete actions into a matrix
         dim = len(discrete_actions.shape)
@@ -50,11 +50,13 @@ class ActionRegressor(object):
         self._actions = np.unique(b).view(
             discrete_actions.dtype).reshape(-1, discrete_actions.shape[1])
         # actions is a #action x #variables. Ie each row is an action
-        if self._decimals == 0:
+        if is_int:
             self._actions = self._actions.astype('int')
-        self._actions = np.sort(self._actions.ravel())
 
         self._models = self._init_model(model, **params)
+        self.action_dim = self._actions.shape[1]
+
+        self.tol = tol
 
     def fit(self, X, y, **kwargs):
         """
@@ -72,7 +74,8 @@ class ActionRegressor(object):
 
         for i in range(len(self._models)):
             action = self._actions[i]
-            idxs = np.all(X[:, -1:] == action, axis=1)
+            filter = (np.abs(X[:, -self.action_dim:] - action) <= self.tol)
+            idxs = np.all(filter, axis=1)
 
             self._models[i].fit(X[idxs, :], y[idxs], **kwargs)
 
@@ -97,7 +100,8 @@ class ActionRegressor(object):
         predictions = np.zeros(x.shape[0])
         for i in range(self._actions.shape[0]):
             action = self._actions[i]
-            idxs = np.all(x[:, -1:] == action, axis=1)
+            filter = (np.abs(x[:, -self.action_dim:] - action) <= self.tol)
+            idxs = np.all(filter, axis=1)
 
             if np.any(idxs):
                 p = self._models[i].predict(x[idxs, :], **kwargs)
