@@ -46,22 +46,34 @@ class GradPBO(object):
         action_dim (None, int): action dimension (action_dim)
         incremental (boolean): if true the incremental version of the Bellman operator is used:
                                 Incremental: theta' = theta + f(theta). Not incremental: theta' = f(theta).
+        norm_value (np.inf, int): defines the norm used to compute the error
+        update_theta_every (int): is the number of steps of the gradient before to update theta.
+                                  =1 it means that theta is updated at every gradient step (default 1)
+        steps_per_theta_update (None, int): number of steps of projected Bellman operator to apply to theta when
+                                        it is updateds. If None it is equal to steps_ahead
+        independent (boolean): if True, the gradient over K steps is computed without considering the sequentiality
+                            (ie it is approximated without computing the derivative of the maximum). Default False
+        verbose (int): verbosity level
     """
 
     def __init__(self, bellman_model, q_model, steps_ahead,
                  gamma, discrete_actions,
                  optimizer,
                  state_dim=None, action_dim=None, incremental=True,
-                 norm_value=np.inf, update_every=-1, verbose=0, independent=False):
+                 norm_value=np.inf, update_theta_every=1,
+                 steps_per_theta_update=None,
+                 independent=False,
+                 verbose=0):
         # save MDP information
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.incremental = incremental
         self.gamma = gamma
         self.norm_value = norm_value
-        self.update_every = update_every
+        self.update_theta_every = update_theta_every if update_theta_every > 0 else -1
         self.verbose = verbose
         self.independent = independent
+        self.steps_per_theta_update =  steps_ahead if steps_per_theta_update is None else max(1, steps_per_theta_update)
 
         # create theano variables
         T_s = T.dmatrix()
@@ -438,8 +450,8 @@ class GradPBO(object):
                 for l, o in zip(out_labels, outs):
                     batch_logs[l] = o
 
-                if self.update_every > 0 and n_updates % self.update_every == 0:
-                    tmp = theta[0]
+                if self.update_theta_every > 0 and n_updates % self.update_theta_every == 0:
+                    tmp = self.apply_bop(theta[0], n_times=self.steps_per_theta_update)
                     theta = []
                     for _ in range(len(self.theta_list)):
                         if self.incremental:
