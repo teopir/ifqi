@@ -24,6 +24,23 @@ else:
 from sklearn.preprocessing import StandardScaler
 
 
+class rfs_node(object):
+    def __init__(self, id, fs_index, fs_name=''):
+        self.id = id
+        self.feature_index = fs_index
+        self.feature_name = fs_name
+        self.children = []
+        self.data = {}
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return "N[id: {}, feat: ({}, {}), children: {}, data: {}]".format(self.id, self.feature_index,
+                                                                          self.feature_name,
+                                                                          self.children, self.data)
+
+
 class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
     def __init__(self, feature_selector, features_names=None, verbose=0):
         self.feature_selector = feature_selector
@@ -51,16 +68,26 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         check_array(state, accept_sparse=True)
         check_array(actions, accept_sparse=True)
         check_array(next_states, accept_sparse=True)
-        check_array(reward.reshape(-1,1), accept_sparse=True)
+        check_array(reward.reshape(-1, 1), accept_sparse=True)
         return self._fit(state, actions, next_states, reward)
 
     def _fit(self, states, actions, next_states, reward):
         X = np.column_stack((states, actions))
-        support = np.zeros(X.shape[1], dtype=np.bool)
-        self.support_ = self._recursive_step(X, next_states, reward, support)
+        # support = np.zeros(X.shape[1], dtype=np.bool)
+        support = []
+        self.n_features = X.shape[1]
+
+        # start building the tree of dependences
+        node = rfs_node(0, -1, 'Reward')
+        self.nodes = [node]
+
+        self.index_support_ = self._recursive_step(X, next_states, reward, support, node.id)
+        print()
+        print('Fit ended')
+        print()
         return self
 
-    def _recursive_step(self, X, next_state, Y, curr_support, Y_idx=None):
+    def _recursive_step(self, X, next_state, Y, curr_support, parent_node_id, Y_idx=None):
         """
         Recursively selects the features that explains the provided target
         (initially Y must be the reward)
@@ -86,7 +113,7 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             print('Calling IFS...')
 
         n_states = next_state.shape[1]
-        n_actions = X.shape[1] - n_states
+        # n_actions = X.shape[1] - n_states
 
         fs = clone(self.feature_selector)
 
@@ -99,24 +126,47 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         if self.verbose > 0:
             print('IFS done in {}s'.format(end_t))
 
-        sa_support = fs.get_support()  # get selected features of X
-        new_state_support = sa_support[:n_states]  # get only state features
-        new_state_support[curr_support[:n_states]] = False  # remove state features already selected
-        idxs = np.where(new_state_support)[0]  # get numerical index
+        # sa_support = fs.get_support()  # get selected features of X
+
+        # update the tree of dependences
+        sa_indexes = fs.get_support(indices=True)
+        parent_node = self.nodes[parent_node_id]
+        parent_node.data.update({'r2score': fs.scores_})
+        parent_node.data.update({'ordered_features': fs.features_per_it_})
+        new_node_id = len(self.nodes)
+        for k in sa_indexes:
+            node = rfs_node(new_node_id, k, self.features_names[k])
+            parent_node.children.append(new_node_id)
+            self.nodes.append(node)
+            new_node_id += 1
+
+        # new_state_support = sa_support[:n_states]  # get only state features
+        new_state_indexes = sa_indexes[sa_indexes < n_states]  # get only state features
+        # new_state_support[curr_support[:n_states]] = False  # remove state features already selected
+        # idxs = np.where(new_state_support)[0]  # get numerical index
+        idxs = np.setdiff1d(new_state_indexes, curr_support)  # remove already selected features
 
         # update support with features already selected
         # new_support + old_support
-        sa_support[curr_support] = True
+        # sa_support[curr_support] = True
+        sa_indexes = np.union1d(sa_indexes, curr_support).astype(int)
 
         if self.verbose > 0:
-            print('Selected features {}'.format(self.features_names[sa_support]))
+            # print('Selected features {}'.format(self.features_names[sa_support]))
+            print('Selected features {}'.format(self.features_names[sa_indexes]))
             print('Feature to explain {}'.format(self.features_names[idxs]))
 
-        for idx in idxs:
-            target = next_state[:, idx]
-            rfs_s_features = self._recursive_step(X, next_state, target, sa_support, idx)
-            sa_support[rfs_s_features] = True
-        return sa_support
+        for feat_id in idxs:
+            v = [self.nodes[el].id for el in parent_node.children if self.nodes[el].feature_index == feat_id]
+            assert len(v) == 1
+            pnode_id = v[0]
+            target = next_state[:, feat_id]
+            rfs_s_features = self._recursive_step(X, next_state, target,
+                                                  sa_indexes, pnode_id, feat_id)
+            # sa_support[rfs_s_features] = True
+            sa_indexes = np.union1d(sa_indexes, rfs_s_features)
+        # return sa_support
+        return sa_indexes
 
     def _get_support_mask(self):
         """
@@ -125,4 +175,37 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             support (numpy.array): the selected features of
                 state and action
         """
-        return self.support_
+        # return self.support_
+        sup = np.zeros(self.n_features, dtype=np.bool)
+        sup[self.index_support_] = True
+        return sup
+
+    def export_graphviz(self, filename='rfstree.gv'):
+        if not hasattr(self, 'nodes'):
+            raise ValueError('Model must be trained.')
+
+        from graphviz import Digraph
+
+        g = Digraph('G', filename=filename)
+        g.body.extend(['rankdir=BT'])
+        g.attr('node', shape='circle')
+        # BFS
+        S = set()
+        Q = [0]
+        g.node('0', label='{}\nr2={:.4f}'.format(self.nodes[0].feature_name, self.nodes[0].data['r2score'][-1]))
+        while len(Q) > 0:
+            current_id = Q[0]
+            current = self.nodes[current_id]
+            Q = [Q[i] for i in range(1, len(Q))]
+            for node_id in current.children:
+                if node_id not in S:
+                    if 'r2score' in self.nodes[node_id].data.keys():
+                        g.node(str(node_id), label='{}\nr2={:.4f}'.format(self.nodes[node_id].feature_name,
+                                                                       self.nodes[node_id].data['r2score'][-1]))
+                    else:
+                        g.node(str(node_id), label='{}'.format(self.nodes[node_id].feature_name))
+                    g.edge(str(node_id), str(current.id))
+                    S.add(node_id)
+                    Q.append(node_id)
+
+        g.view()

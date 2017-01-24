@@ -401,7 +401,6 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
             self.scores_.append(score)
             self.scores_confidences_.append(confidence_interval)
-            self.features_per_it_.append(features_names[tentative_support_])
             confidence_interval *= self.significance  # do not trust confidence interval completely
 
             # check terminal condition
@@ -411,6 +410,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 # last feature set proved to be informative
                 # we need to take into account of the new features (update current support)
                 current_support_[step_features] = True
+                self.features_per_it_.append(features_names[step_features])
 
                 # all the features are selected, stop
                 if np.sum(current_support_) == n_features:
