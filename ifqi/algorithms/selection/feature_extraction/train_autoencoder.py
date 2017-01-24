@@ -19,7 +19,7 @@ parser.add_argument('-d', '--debug', action='store_true', help='run in debug mod
 parser.add_argument('--batch-size', type=int, default=64, help='')
 parser.add_argument('--nb-epochs', type=int, default=3, help='')
 args = parser.parse_args()
-logger = Logger(args.debug)
+logger = Logger(debug=args.debug)
 
 AE = Autoencoder((4, 84, 84), logger=logger)
 
