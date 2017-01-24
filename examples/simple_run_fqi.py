@@ -37,7 +37,7 @@ regressor = Regressor(ExtraTreesRegressor, **regressor_params)
 # Action regressor of Ensemble of ExtraTreesEnsemble
 # regressor = Ensemble(ExtraTreesRegressor, **regressor_params)
 regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
-                            decimals=5, **regressor_params)
+                            tol=5, **regressor_params)
 
 dataset = evaluation.collect_episodes(mdp, n_episodes=1000)
 check_dataset(dataset, state_dim, action_dim, reward_dim) # this is just a

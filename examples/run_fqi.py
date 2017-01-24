@@ -80,7 +80,7 @@ else:
     regressor = Regressor(regressor_class, **regressor_params)
 if not config['model']['fit_actions']:
     regressor = ActionRegressor(regressor, discrete_actions=discrete_actions,
-                                decimals=5, **regressor_params)
+                                tol=5, **regressor_params)
 
 results = list()
 # Run

@@ -21,9 +21,6 @@ class Ensemble(object):
         self._models = self._init_model()
 
     def fit(self, X, y, **kwargs):
-        if 'exclude_action' in kwargs:
-            X = X[:, :-1]
-            kwargs.pop('exclude_action')
         if not hasattr(self, '_target_sum'):
             self._target_sum = np.zeros(y.shape)
         delta = y - self._target_sum
@@ -31,9 +28,6 @@ class Ensemble(object):
         self._target_sum += self._models[-1].predict(X).ravel()
 
     def predict(self, x, **kwargs):
-        if 'exclude_action' in kwargs:
-            x = x[:, :-1]
-            kwargs.pop('exclude_action')
         if 'action_idx' in kwargs:
             action_idx = kwargs['action_idx']
             n_actions = kwargs['n_actions']
@@ -45,21 +39,9 @@ class Ensemble(object):
 
             return self._predict_sum[:, action_idx]
 
-        import time
-        a = time.time()
         prediction = np.zeros(x.shape[0])
         for model in self._models:
             prediction += model.predict(x).ravel()
-        print('For: ' + str(time.time() - a))
-
-
-
-        a = time.time()
-        with Parallel(n_jobs=-1,
-                      backend='threading') as parallel:
-            results = parallel(delayed(pred)(x, m) for m in self._models)
-            parpred = np.sum(results).ravel()
-        print('Par: ' + str(time.time() - a))
 
         return prediction
 

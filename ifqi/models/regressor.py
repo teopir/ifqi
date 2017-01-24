@@ -12,10 +12,6 @@ class Regressor(object):
         self._regressor = regressor_class(**kwargs)
 
     def fit(self, X, y, **kwargs):
-        if 'exclude_action' in kwargs:
-            X = X[:, :-1]
-            kwargs.pop('exclude_action')
-
         if self.features:
             X = self.features.fit_transform(X)
 
@@ -30,10 +26,6 @@ class Regressor(object):
         return self._regressor.fit(X, y, **kwargs)
 
     def predict(self, X, **kwargs):
-        if 'exclude_action' in kwargs:
-            X = X[:, :-1]
-            kwargs.pop('exclude_action')
-
         if self.features:
             X = self.features.transform(X)
 
