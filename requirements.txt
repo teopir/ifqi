@@ -8,3 +8,4 @@ pybrain>=0.3
 keras>=1.1.0
 pygame
 pillow>=4.0.0
+graphviz
