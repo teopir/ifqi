@@ -319,7 +319,7 @@ for repetition in range(actualRepetition, repetitions):
             end_eval = time.time()
 
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "score", score)
-            varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "goalen", score)
+            varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "goal", goal)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "stdScore", stdScore)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "step", step)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "evalTime", end_eval- start_eval)
