@@ -166,7 +166,7 @@ class Autoencoder:
         # Save the DQN weights to disk
         f = ('model%s.h5' % append) if filename is None else filename
         if self.logger is not None:
-            self.logger.log('Saving model as %s' % f)
+            self.logger.log('Saving model as %s' % self.logger.path + f)
             self.autoencoder.save_weights(self.logger.path + f)
         else:
             self.autoencoder.save_weights(f)

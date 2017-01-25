@@ -39,9 +39,10 @@ mdp = envs.Atari(name=args.env)
 # Read or collect dataset
 if args.dataset is not None:
     # Load from disk if dataset was provided
+    print('Loading dataset at %s' % args.dataset)
     dataset = np.loadtxt(args.dataset, skiprows=1, delimiter=',')
 else:
-    print('Collecting episodes...')
+    print('Collecting episodes using model at %s' % args.path)
     AE = Autoencoder((4, 84, 84), load_path=args.path)
     collection_params = {'episodes': args.episodes,
                          'env_name': args.env,
@@ -54,7 +55,6 @@ else:
 ### RFS ###
 # Datset parameters for RFS
 action_dim = mdp.action_space.n
-#action_dim = 2
 reward_dim = 1
 state_dim = (len(dataset[0][:]) - action_dim - reward_dim - 2) / 2
 

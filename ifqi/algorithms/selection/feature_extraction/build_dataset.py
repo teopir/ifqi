@@ -154,19 +154,22 @@ if __name__ == '__main__':
                         ['SS%s' % i for i in xrange(nb_states)] + ['Absorbing', 'Finished']
 
         # Collect episodes
-        collect_encoded_dataset(AE,
+        dataset = collect_encoded_dataset(AE,
                                 episodes=args.episodes,
                                 env_name=args.env,
                                 header=header,
                                 video=args.video,
                                 n_jobs=args.njobs)
+        output_file = 'encoded_dataset.csv'
 
     if args.images:
         header = ['S','A','R','SS']
         # Collect episodes
-        collect_images_dataset(logger,
+        dataset = collect_images_dataset(logger,
                                episodes=args.episodes,
                                env_name=args.env,
                                header=header,
                                video=args.video,
                                n_jobs=args.njobs)
+        output_file = 'images_dataset.csv'
+    np.savetxt(logger.path + output_file, dataset)
