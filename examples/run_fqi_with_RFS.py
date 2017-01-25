@@ -39,9 +39,10 @@ mdp = envs.Atari(name=args.env)
 # Read or collect dataset
 if args.dataset is not None:
     # Load from disk if dataset was provided
-    dataset = np.loadtxt(args.dataset, skiprows=1, delimiter=',')
+    print('Loading dataset at %s' % args.dataset)
+    dataset = np.loadtxt(args.dataset, skiprows=1, delimiter=' ')
 else:
-    print('Collecting episodes...')
+    print('Collecting episodes using model at %s' % args.path)
     AE = Autoencoder((4, 84, 84), load_path=args.path)
     collection_params = {'episodes': args.episodes,
                          'env_name': args.env,
@@ -54,7 +55,6 @@ else:
 ### RFS ###
 # Datset parameters for RFS
 action_dim = mdp.action_space.n
-#action_dim = 2
 reward_dim = 1
 state_dim = (len(dataset[0][:]) - action_dim - reward_dim - 2) / 2
 
@@ -81,28 +81,36 @@ fs.fit(state, actions, next_states, reward)
 print(fs.get_support())  # These are the selected features
 
 # Reduce the dataset for FQI
-support = list(features_names[np.where(fs.get_support())])
 selected_states = []
 selected_actions = []
-for f in support:
+for f in features_names[np.where(fs.get_support())]:
     if f.startswith('S'):
-        selected_states.append('S' + f)
+        selected_states.append(f)
     if f.startswith('A'):
-        selected_actions.append(f)
-support.append('R')
-support.extend(selected_states)
-support.extend(['Absorbing', 'Finished'])
+        selected_actions.append(int(f.lstrip('A')))
 
+if len(selected_actions) == 0:
+    selected_actions.extend([1,2])
+
+# Build dataframe for easy dataset reduction
 header = ['S%s' % i for i in xrange(state_dim)] + ['A%s' % i for i in xrange(action_dim)] + \
          ['R'] + ['SS%s' % i for i in xrange(state_dim)] + ['Absorbing', 'Finished']
 dataframe = pd.DataFrame(dataset, columns=header)
-reduced_dataset = dataframe[support].as_matrix()
+# Convert actions from onehot to original discrete space
+reverse_onehot_actions = [np.where(dataset[i][state_dim:state_dim+action_dim] == 1)[0][0] for i in xrange(len(dataset))]
+dataframe['A'] = pd.Series(reverse_onehot_actions)
+
+# Reduce dataset
+support = selected_states + ['A', 'R'] + ['S' + s for s in selected_states] + ['Absorbing', 'Finished']
+reduced_dataset = dataframe[support]  # Remove useless states and one-hot encoding
+reduced_dataset = reduced_dataset[reduced_dataset['A'].isin(selected_actions)]  # Remove useless actions
+reduced_dataset = reduced_dataset.as_matrix()
 
 
 ### FQI ###
 # Dataset parameters for FQI
-selected_action_dim = len(selected_actions)
-selected_discrete_actions = np.array([[0,1] for a in selected_actions])
+selected_action_dim = 1
+selected_discrete_actions = np.array(selected_actions)
 selected_state_dim = len(selected_states)
 
 # Split dataset for FQI
@@ -116,8 +124,8 @@ regressor_params = {'n_estimators': 50,
                     'input_scaled': False,
                     'output_scaled': False,
                     'n_jobs': args.njobs}
-regressor = Regressor(ExtraTreesRegressor, **regressor_params)
-regressor = ActionRegressor(regressor, discrete_actions=selected_discrete_actions, decimals=5, **regressor_params)
+regressor = Regressor(regressor_class=ExtraTreesRegressor, **regressor_params)
+regressor = ActionRegressor(regressor, discrete_actions=selected_discrete_actions, tol=0.5, **regressor_params)
 
 # Create FQI model
 fqi = FQI(estimator=regressor,
