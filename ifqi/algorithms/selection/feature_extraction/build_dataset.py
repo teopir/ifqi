@@ -172,4 +172,4 @@ if __name__ == '__main__':
                                video=args.video,
                                n_jobs=args.njobs)
         output_file = 'images_dataset.csv'
-    np.savetxt(logger.path + output_file, dataset)
+    np.savetxt(logger.path + output_file, dataset, fmt='%s')
