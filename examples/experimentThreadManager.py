@@ -9,6 +9,13 @@ from ifqi.experiment import Experiment
 import subprocess
 from random import shuffle
 
+# Import smtplib for the actual sending function
+import smtplib
+
+# Import the email modules we'll need
+from email.mime.text import MIMEText
+
+
 # Python 2 and 3: forward-compatible
 #from builtins import range
 
@@ -67,6 +74,7 @@ if __name__ == '__main__':
     parser.add_argument("-l", "--addLast", help="The experiment will be merged with the last one present in the diary", action="store_true")
     parser.add_argument("-c", "--cont", help="continue the experiment made", action="store_true")
     parser.add_argument("-s", "--loss", help="continue the experiment made", action="store_true")
+    parser.add_argument("-r", "--screen", help="screen at the last iteration", action="store_true")
     parser.add_argument("nThread", type=int, help="Set the number of cores")
 
     args = parser.parse_args()
@@ -78,6 +86,7 @@ if __name__ == '__main__':
     addLast = args.addLast
     continue_ = args.cont
     have_loss = args.loss
+    screen = args.screen
     exp = Experiment(configFile)
 
     commands = []
@@ -93,6 +102,8 @@ if __name__ == '__main__':
                     last.append("--cont")
                 if have_loss:
                     last.append("--loss")
+                if screen and dataset==0:
+                    last.append("--screen")
                 commands.append(["python", myPath, experimentName, configFile, str(regressor), str(size), str(dataset)] + last)
     
     execute(commands,nThread,0.5)
@@ -130,4 +141,16 @@ if __name__ == '__main__':
             json.dump(diary,fp)
     
     
-    
+msg = experimentName + " has finished"
+
+# me == the sender's email address
+# you == the recipient's email address
+msg['Subject'] = "Experiment alert"
+msg['From'] = "experiment@samuele.com"
+msg['To'] = "samuele.tosatto@gmail.com"
+
+# Send the message via our own SMTP server, but don't include the
+# envelope header.
+s = smtplib.SMTP('localhost')
+s.sendmail("experiment@samuele.com", ["samuele.tosatto@gmail.com"], msg.as_string())
+s.quit()

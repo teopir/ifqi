@@ -308,6 +308,9 @@ for repetition in range(actualRepetition, repetitions):
                         cont += 1
                 score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, 289*nEvaluation,
                                                                           initial_states=initial_states)
+            elif exp.config["mdp"]["mdpName"] == "BicycleNavigate":
+                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation)
+                goal = environment._isAtGoal()
             else:
                 if screen:
                     score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation, render=True)
@@ -316,6 +319,7 @@ for repetition in range(actualRepetition, repetitions):
             end_eval = time.time()
 
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "score", score)
+            varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "goalen", score)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "stdScore", stdScore)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "step", step)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "evalTime", end_eval- start_eval)

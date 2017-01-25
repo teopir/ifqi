@@ -73,7 +73,8 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
 
         done = False
         if render:
-            mdp.render(mode='human')
+            #mdp.render(mode='human')
+            mdp.render()
         state = mdp.reset(initial_states[e % n_initial_states, :] if initial_states is not None
                           else None)
         while t < H and not done:
@@ -86,8 +87,9 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
             if render:
                 mdp.render()
                 time.sleep(1.0 / fps)
-        if gamma == 1:
-            ep_performance /= t
+        #if gamma == 1:
+        #    ep_performance /= t
+        print("last_reward = ", r)
         values[e] = ep_performance
         steps[e] = t
 
@@ -149,7 +151,7 @@ def evaluate_policy(mdp, policy, n_episodes=1,
                               initial_states, n_jobs, n_episodes_per_job)
 
 
-def collect_episodes(mdp, policy=None, n_episodes=1, n_jobs=1):
+def collect_episodes(mdp, policy=None, n_episodes=1, n_jobs=1,epsilon=0.1):
     """
     if hasattr(mdp, 'spec') and mdp.spec is not None:
         out = Parallel(n_jobs=n_jobs, verbose=2,)(
@@ -164,12 +166,12 @@ def collect_episodes(mdp, policy=None, n_episodes=1, n_jobs=1):
     """
     data = np.array(collect_episode(mdp, policy))
     for i in range(1, n_episodes):
-        data = np.append(data, collect_episode(mdp, policy), axis=0)
+        data = np.append(data, collect_episode(mdp, policy,epsilon=epsilon), axis=0)
 
     return data
 
 
-def collect_episode(mdp, policy=None):
+def collect_episode(mdp, policy=None,epsilon=0.1):
     """
     This function can be used to collect a dataset running an episode
     from the environment using a given policy.
@@ -196,7 +198,10 @@ def collect_episode(mdp, policy=None):
 
     while t < horizon and not done:
         if policy is not None:
-            action = policy.draw_action(state, done)
+            if np.random.random() < epsilon:
+                action = mdp.action_space.sample()
+            else:
+                action = policy.draw_action(state, done)
         else:
             action = mdp.action_space.sample()
         action = np.array([action]).ravel()
