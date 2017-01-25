@@ -15,19 +15,21 @@ env = envs.Atari('BreakoutDeterministic-v3')
 AE = Autoencoder((4, 84, 84), load_path=args.path)
 
 state = env.reset()
-for i in range(10):
+for i in range(12):
     state, reward, done, info = env.step(i%6)
+
 preprocessed_state = np.expand_dims(np.asarray(crop_state(state)), axis=0)
 encoded_state = AE.encode(preprocessed_state)
 flat_encoded_state = AE.flat_encode(preprocessed_state)
 predicted_state = AE.predict(preprocessed_state)
 predicted_state = predicted_state.reshape(4, 84, 84)
-state_img = Image.fromarray(state[0]).convert('L')
-pred_img = Image.fromarray(predicted_state[0]).convert('L')
 
-state_img.show()
-pred_img.show()
-print encoded_state
+for i in range(predicted_state.shape[0]):
+    state_img = Image.fromarray(state[i]).convert('L')
+    pred_img = Image.fromarray(predicted_state[i]).convert('L')
+    state_img.show(title=i)
+    pred_img.show(title=i)
+
 
 ''' Run this to reconstruct an image from a feature vector
 rebuilt = AE.decode(encoded_state)
