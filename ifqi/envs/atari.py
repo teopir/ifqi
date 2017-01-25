@@ -27,7 +27,7 @@ class Atari(gym.Env):
         self.seed()
         self.reset()
 
-    def reset(self):
+    def reset(self, state=None):
         state = self._preprocess_observation(self.env.reset())
         self.env.state = np.array([state, state, state, state])
         return self.get_state()
