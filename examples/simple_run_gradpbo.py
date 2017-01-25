@@ -15,6 +15,31 @@ Simple script to quickly run pbo. It solves the LQG environment.
 
 """
 
+from optparse import OptionParser
+
+# Input parameters by CLI
+op = OptionParser(usage="usage: %prog input_file [options]",
+                  version="%prog 1.0")
+op.add_option("-f", action="store_false",
+              dest="INCREMENTAL", default=True,
+              help="Fixed version (non incremental).")
+op.add_option("-T", default=1,
+              dest="STEPS_HEAD", type="int",
+              help="Step Heads")
+op.add_option("-e", default=4,
+              dest="EPOCH", type="int",
+              help="Epochs")
+op.add_option("-u", default=1,
+              dest="UPDATE_EVERY", type="int",
+              help="Update every.")
+op.add_option("--indep", action="store_true",
+              dest="INDEPENDENT", default=False,
+              help="Independent.")
+op.add_option("--activ", default="tanh",
+              dest="ACTIVATION", type="str",
+              help="NN activation")
+(opts, args) = op.parse_args()
+
 np.random.seed(6652)
 
 mdp = envs.LQG1D()
@@ -25,12 +50,18 @@ discrete_actions = np.linspace(-8, 8, 20)
 dataset = evaluation.collect_episodes(mdp, n_episodes=100)
 check_dataset(dataset, state_dim, action_dim, reward_dim)
 
-INCREMENTAL = True
-ACTIVATION = 'tanh'
-STEPS_AHEAD = 2
-UPDATE_EVERY = 1
-INDEPENDENT = False
+INCREMENTAL = opts.INCREMENTAL
+ACTIVATION = opts.ACTIVATION
+STEPS_AHEAD = opts.STEPS_HEAD
+UPDATE_EVERY = opts.UPDATE_EVERY
+INDEPENDENT = opts.INDEPENDENT
+EPOCH = opts.EPOCH
 
+print('INCREMENTAL:  {}'.format(INCREMENTAL))
+print('ACTIVATION:   {}'.format(ACTIVATION))
+print('STEPS_AHEAD:  {}'.format(STEPS_AHEAD))
+print('UPDATE_EVERY: {}'.format(UPDATE_EVERY))
+print('INDEPENDENT:  {}'.format(INDEPENDENT))
 
 # sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
 
@@ -98,7 +129,7 @@ pbo = GradPBO(bellman_model=rho_regressor,
               state_dim=state_dim,
               action_dim=action_dim,
               incremental=INCREMENTAL,
-              update_every=UPDATE_EVERY,
+              update_theta_every=UPDATE_EVERY,
               verbose=1,
               independent=INDEPENDENT)
 
@@ -114,9 +145,9 @@ state, actions, reward, next_states = split_dataset(dataset,
                                                     reward_dim=reward_dim)
 
 theta0 = np.array([6., 10.001], dtype='float32').reshape(1, -1)
-theta0 = np.array([16., 10.001], dtype='float32').reshape(1, -1)
+#theta0 = np.array([16., 10.001], dtype='float32').reshape(1, -1)
 history = pbo.fit(state, actions, next_states, reward, theta0,
-                  batch_size=10, nb_epoch=5,
+                  batch_size=10, nb_epoch=EPOCH,
                   theta_metrics={'k': tmetric})
 ##########################################
 # Evaluate the final solution
@@ -166,6 +197,8 @@ pbo.learned_theta_value = theta
 values = evaluation.evaluate_policy(mdp, pbo, initial_states=initial_states)
 print('Performance: {}'.format(values))
 
+print('weights: {}'.format(rho_regressor.get_weights()))
+
 plt.figure()
 plt.scatter(L[:, 0], L[:, 1])
 plt.title('Application of Bellman operator')
@@ -192,6 +225,8 @@ plt.savefig(
     bbox_inches='tight')
 plt.show()
 plt.close('all')
+
+
 
 
 # best_rhos = pbo._rho_values[-1]

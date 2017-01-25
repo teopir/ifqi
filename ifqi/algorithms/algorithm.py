@@ -12,7 +12,7 @@ Interface for algorithm.
 
 class Algorithm(object):
     def __init__(self, estimator, state_dim, action_dim,
-                 discrete_actions, gamma, horizon, verbose=False):
+                 discrete_actions, gamma, horizon, verbose=0):
         """
         Constructor.
         Args:
