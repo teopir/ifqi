@@ -8,12 +8,10 @@
 from __future__ import print_function
 import numpy as np
 from sklearn.utils import check_array
-from sklearn.utils.metaestimators import if_delegate_has_method
-from sklearn.base import BaseEstimator, is_classifier
+from sklearn.base import BaseEstimator
 from sklearn.base import MetaEstimatorMixin
 from sklearn.base import clone
 from sklearn.feature_selection.base import SelectorMixin
-from sklearn.metrics import r2_score, mean_squared_error
 import sklearn
 import time
 
@@ -21,7 +19,6 @@ if sklearn.__version__ == '0.17':
     from sklearn.cross_validation import cross_val_score, check_cv
 else:
     from sklearn.model_selection import cross_val_score, check_cv
-from sklearn.preprocessing import StandardScaler
 
 
 class rfs_node(object):
@@ -181,6 +178,17 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         return sup
 
     def export_graphviz(self, filename='rfstree.gv'):
+        """
+        Export the dependency graph built in the fir phase
+        as a graphviz document. It returns an object g representing the
+        graph (e.g., you can visualize it by g.view())
+        Args:
+            filename (str): output file
+
+        Returns:
+            g (graphviz.Digraph): an object representing the graph
+
+        """
         if not hasattr(self, 'nodes'):
             raise ValueError('Model must be trained.')
 
@@ -201,11 +209,11 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 if node_id not in S:
                     if 'r2score' in self.nodes[node_id].data.keys():
                         g.node(str(node_id), label='{}\nr2={:.4f}'.format(self.nodes[node_id].feature_name,
-                                                                       self.nodes[node_id].data['r2score'][-1]))
+                                                                          self.nodes[node_id].data['r2score'][-1]))
                     else:
                         g.node(str(node_id), label='{}'.format(self.nodes[node_id].feature_name))
                     g.edge(str(node_id), str(current.id))
                     S.add(node_id)
                     Q.append(node_id)
-
-        g.view()
+        # g.view()
+        return g

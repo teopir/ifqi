@@ -93,7 +93,6 @@ class GradPBO(object):
         assert len(bellman_model.inputs) == 1
         assert isinstance(bellman_model.outputs, list)
         assert len(bellman_model.outputs) == 1
-        theta = bellman_model.inputs[0]
 
         # construct (theano) Bellman error
         self.theta_list = [bellman_model.inputs[0]]
