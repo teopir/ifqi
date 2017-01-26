@@ -1,6 +1,12 @@
 from __future__ import print_function
 from builtins import range
 import time
+from math import ceil
+import sys
+if sys.version_info[0] < 3:
+    from inspect import getargspec
+else:
+    from inspect import signature
 
 import gym
 import numpy as np
@@ -11,7 +17,7 @@ from ..envs.utils import get_space_info
 from joblib import Parallel, delayed
 
 
-def _eval_and_render(mdp, policy, metric='discounted',
+def _eval_and_render(mdp, policy, horizon=None, gamma=None, metric='discounted',
                      initial_states=None, render=True):
     """
     This function evaluate a policy on the specified metric by executing
@@ -30,15 +36,16 @@ def _eval_and_render(mdp, policy, metric='discounted',
         step (float): average number of step before finish
         step_confidence (float):  95% confidence level for step average
     """
-    n_episodes = initial_states.shape[0]
-    values, steps = _eval_and_render_vectorial(mdp, policy, metric,
-                                               initial_states, render)
-
+    values, steps = _eval_and_render_vectorial(mdp, policy,
+                                               horizon=horizon,
+                                               gamma=gamma, metric=metric,
+                                               initial_states=initial_states, render=render)
+    n_episodes = len(values)
     return values.mean(), 2 * values.std() / np.sqrt(n_episodes), \
            steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
 
 
-def _eval_and_render_vectorial(mdp, policy, metric='discounted',
+def _eval_and_render_vectorial(mdp, policy, horizon=None, gamma=None, metric='discounted',
                                initial_states=None, n_episodes=1, render=True):
     """
     This function evaluate a policy on the specified metric by executing
@@ -60,15 +67,23 @@ def _eval_and_render_vectorial(mdp, policy, metric='discounted',
     fps = mdp.metadata.get('video.frames_per_second') or 100
 
     if initial_states is not None:
-        n_episodes = initial_states.shape[0] \
-            if len(initial_states.shape) > 1 else 1
+        if isinstance(initial_states, int):
+            n_episodes = initial_states
+        else:
+            n_episodes = initial_states.shape[0] \
+                if len(initial_states.shape) > 1 else 1
     values = np.zeros(n_episodes)
     steps = np.zeros(n_episodes)
-    gamma = mdp.gamma
+    if hasattr(mdp, 'horizon'):
+        gamma = mdp.gamma
+    else:
+        gamma = gamma
     if hasattr(mdp, 'horizon'):
         H = mdp.horizon
     else:
-        H = np.inf
+        H = horizon
+    assert H is not None
+    assert gamma is not None
     if metric == 'average':
         gamma = 1
     for e in range(n_episodes):
@@ -77,10 +92,22 @@ def _eval_and_render_vectorial(mdp, policy, metric='discounted',
         t = 0
 
         done = False
+
+        if sys.version_info[0] < 3:
+            args = getargspec(mdp.reset)
+            npin = len(args.args)
+        else:
+            sig = signature(mdp.reset)
+            npin = len(sig.parameters )
+        if npin > 1:
+            state = mdp.reset(initial_states[e, :]
+                          if initial_states is not None else None)
+        else:
+            state = mdp.reset()
+
         if render:
             mdp.render(mode='human')
-        state = mdp.reset(initial_states[e, :]
-                          if initial_states is not None else None)
+
         while t < H and not done:
             action = policy.draw_action(state, done, True)
             state, r, done, _ = mdp.step(action)
@@ -91,7 +118,7 @@ def _eval_and_render_vectorial(mdp, policy, metric='discounted',
             if render:
                 mdp.render()
                 time.sleep(1.0 / fps)
-        if gamma == 1:
+        if metric == "average":
             ep_performance /= t
         values[e] = ep_performance
         steps[e] = t
@@ -99,31 +126,43 @@ def _eval_and_render_vectorial(mdp, policy, metric='discounted',
     return values, steps
 
 
-def _parallel_eval(mdp, policy, metric, initial_states, n_episodes,
+def _parallel_eval(mdp, policy, horizon, gamma, metric, initial_states, n_episodes,
                    n_jobs, n_episodes_per_job):
     if initial_states is not None:
         n_episodes = initial_states.shape[0] \
             if len(initial_states.shape) > 1 else 1
 
     if hasattr(mdp, 'spec') and mdp.spec is not None:
-        how_many = int(round(n_episodes / n_episodes_per_job))
+        if n_episodes < n_episodes_per_job:
+            how_many = n_episodes
+            n_episodes_per_job = 1
+        else:
+            how_many = int(ceil(float(n_episodes) / n_episodes_per_job))
         out = Parallel(
-            n_jobs=n_jobs, verbose=2,
+            n_jobs=2, verbose=2,
         )(
-            delayed(_eval_and_render)(gym.make(mdp.spec.id), policy,
-                                      n_episodes_per_job, metric,
-                                      initial_states)
+            delayed(_eval_and_render_vectorial)(gym.make(mdp.spec.id), policy,
+                                      horizon=horizon,
+                                      gamma=gamma,
+                                      metric=metric,
+                                      initial_states=n_episodes_per_job if initial_states is None else initial_states,
+                                      render=False)
             for _ in range(how_many))
 
-        # out is a list of quadruplet: mean J, 95% conf lev J, mean steps,
-        # 95% conf lev steps
-        # (confidence level should be 0 or NaN)
-        values, steps = np.array(out)
+        values = []
+        steps = []
+        n_episodes = 0
+        for el in out:
+            v, s = el
+            n_episodes += v.shape[0]
+            values.append(v)
+            steps.append(s)
+
     else:
-        values, steps = _eval_and_render_vectorial(mdp, policy, metric,
-                                                   initial_states, n_episodes, False)
-    return values.mean(), 2 * values.std() / np.sqrt(n_episodes), \
-           steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
+        values, steps = _eval_and_render_vectorial(mdp, policy, horizon, gamma, metric,
+                                                   initial_states, n_episodes, render=False)
+    return np.mean(values), 2. * np.std(values) / np.sqrt(n_episodes), \
+           np.mean(steps), 2. * np.std(steps) / np.sqrt(n_episodes)
 
 
 def _eval_with_FE(mdp, policy, AE, metric, selected_states=None, max_ep_len=np.inf, render=False):
@@ -175,7 +214,8 @@ def _eval_with_FE(mdp, policy, AE, metric, selected_states=None, max_ep_len=np.i
 
     return ep_performance, frame_counter
 
-def evaluate_policy(mdp, policy, metric='discounted', initial_states=None,
+
+def evaluate_policy(mdp, policy, horizon=None, gamma=None, metric='discounted', initial_states=None,
                     n_episodes=1, render=False, n_jobs=-1, n_episodes_per_job=10):
     """
     This function evaluate a policy on the given environment w.r.t.
@@ -196,9 +236,9 @@ def evaluate_policy(mdp, policy, metric='discounted', initial_states=None,
     """
     assert metric in ['discounted', 'average'], "unsupported metric"
     if render:
-        return _eval_and_render(mdp, policy, metric, initial_states, True)
+        return _eval_and_render(mdp, policy, horizon, gamma, metric, initial_states, True)
     else:
-        return _parallel_eval(mdp, policy, metric, initial_states,
+        return _parallel_eval(mdp, policy, horizon, gamma, metric, initial_states,
                               n_episodes, n_jobs, n_episodes_per_job)
 
 
@@ -229,7 +269,7 @@ def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
     """
 
     assert metric in ['discounted', 'average'], "unsupported metric"
-    out =  Parallel(n_jobs=n_jobs)(
+    out = Parallel(n_jobs=n_jobs)(
         delayed(_eval_with_FE)(
             mdp, policy, AE, metric, selected_states=selected_states, max_ep_len=max_ep_len, render=render
         )
@@ -242,7 +282,7 @@ def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
            steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
 
 
-def collect_episodes(mdp, policy=None, n_episodes=1, n_jobs=1):
+def collect_episodes(mdp, policy=None, horizon=None, n_episodes=1, n_jobs=1):
     """
     if hasattr(mdp, 'spec') and mdp.spec is not None:
         out = Parallel(n_jobs=n_jobs, verbose=2,)(
@@ -255,14 +295,15 @@ def collect_episodes(mdp, policy=None, n_episodes=1, n_jobs=1):
     else:
         raise ValueError('collect_episodes must be implemented')
     """
-    data = np.array(collect_episode(mdp, policy))
+    assert n_episodes > 0
+    data = np.array(collect_episode(mdp, policy, horizon))
     for i in range(1, n_episodes):
-        data = np.append(data, collect_episode(mdp, policy), axis=0)
+        data = np.append(data, collect_episode(mdp, policy, horizon), axis=0)
 
     return data
 
 
-def collect_episode(mdp, policy=None):
+def collect_episode(mdp, policy=None, horizon=None):
     """
     This function can be used to collect a dataset running an episode
     from the environment using a given policy.
@@ -285,7 +326,8 @@ def collect_episode(mdp, policy=None):
     done = False
     t = 0
     data = list()
-    horizon = mdp.horizon
+    if horizon is None:
+        horizon = mdp.horizon
     state = mdp.reset()
     # state_dim, action_dim, reward_dim = get_space_info(mdp)
 
