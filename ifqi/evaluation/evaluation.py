@@ -4,6 +4,8 @@ import time
 
 import gym
 import numpy as np
+from ifqi.algorithms.selection.feature_extraction.helpers import crop_state
+
 from ..envs.utils import get_space_info
 from joblib import Parallel, delayed
 
@@ -123,6 +125,46 @@ def _parallel_eval(mdp, policy, metric, initial_states, n_episodes,
            steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
 
 
+def _eval_with_FE(mdp, policy, AE, metric, render=False):
+    gamma = mdp.gamma if metric == 'discounted' else 1
+    ep_performance = 0.0
+    df = 1.0  # Discount factor
+
+    # Start episode
+    reward = 0
+    done = False
+    state = mdp.reset()
+    # Get encoded features
+    preprocessed_state = np.expand_dims(np.asarray(crop_state(state)), axis=0)
+    encoded_state = AE.flat_encode(preprocessed_state)
+    frame_counter = 0
+    while not done:
+        frame_counter += 1
+
+        # Select an action
+        action = policy.draw_action(encoded_state, done, evaluation=True)
+        # Execute the action, get next state and reward
+        next_state, reward, done, info = mdp.step(action)
+        ep_performance += df * reward  # Update performance
+        df *= gamma  # Update discount factor
+
+        # Get encoded features
+        preprocessed_next_state = np.expand_dims(crop_state(next_state), axis=0)
+        encoded_next_state = AE.flat_encode(preprocessed_next_state)
+
+        # Render environment
+        if render:
+            mdp.render(mode='human')
+
+        # Update state
+        state = next_state
+        encoded_state = encoded_next_state
+
+    if gamma == 1:
+        ep_performance /= frame_counter
+
+    return ep_performance, frame_counter
+
 def evaluate_policy(mdp, policy, metric='discounted', initial_states=None,
                     n_episodes=1, render=False, n_jobs=-1, n_episodes_per_job=10):
     """
@@ -139,6 +181,8 @@ def evaluate_policy(mdp, policy, metric='discounted', initial_states=None,
     Return:
         metric (float): the selected evaluation metric
         confidence (float): 95% confidence level for the provided metric
+        step (float): average number of step before finish
+        step_confidence (float):  95% confidence level for step average
     """
     assert metric in ['discounted', 'average'], "unsupported metric"
     if render:
@@ -146,6 +190,40 @@ def evaluate_policy(mdp, policy, metric='discounted', initial_states=None,
     else:
         return _parallel_eval(mdp, policy, metric, initial_states,
                               n_episodes, n_jobs, n_episodes_per_job)
+
+
+def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
+                            render=False, n_jobs=1):
+    """
+        This function evaluate a policy on the given environment w.r.t.
+        the specified metric by executing multiple episode, using the provided
+        feature extraction model to encode states.
+        Params:
+            mdp (object): the environment to solve
+            policy (object): a policy object (method draw_action is expected)
+            AE (object): the feature extraction model (method flat_encode is
+                expected)
+            metric (string, 'discounted'): the evaluation metric ['discounted',
+                'average']
+            render (bool, False): whether to render the step of the environment
+            n_jobs (int, 1): the number of processes to use for evaluation
+                (leave default value if the feature extraction model - AE - runs
+                on GPU)
+        Return:
+            metric (float): the selected evaluation metric
+            confidence (float): 95% confidence level for the provided metric
+    """
+
+    assert metric in ['discounted', 'average'], "unsupported metric"
+    out =  Parallel(n_jobs=n_jobs)(
+        delayed(_eval_with_FE)(mdp, policy, AE, metric, render=render)
+        for ep in range(n_episodes)
+    )
+
+    values, steps = zip(*out)
+
+    return values.mean(), 2 * values.std() / np.sqrt(n_episodes), \
+           steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
 
 
 def collect_episodes(mdp, policy=None, n_episodes=1, n_jobs=1):

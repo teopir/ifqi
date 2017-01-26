@@ -19,16 +19,16 @@ class Autoencoder:
         self.inputs = Input(shape=self.input_shape)
 
         # Encoding layers
-        self.encoded = Convolution2D(32, 3, 3, subsample=(3, 3), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering,
-                                     W_regularizer=l2())(self.inputs)
-        self.encoded = Convolution2D(16, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering,
-                                     W_regularizer=l2())(self.encoded)
-        self.encoded = Convolution2D(1, 2, 2, subsample=(1, 1), border_mode='same', activation='relu', dim_ordering=self.dim_ordering,
-                                     activity_regularizer=activity_l1())(self.encoded)
+        self.encoded = Convolution2D(32, 3, 3, subsample=(3, 3), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
+        self.encoded = Convolution2D(16, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = Convolution2D(8, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = Convolution2D(1, 2, 2, subsample=(1, 1), border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
 
         # Decoding layers
         self.decoded = Convolution2D(1, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
         self.decoded = UpSampling2D(size=(1, 1), dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = Convolution2D(8, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
+        self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = Convolution2D(16, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = Convolution2D(32, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)

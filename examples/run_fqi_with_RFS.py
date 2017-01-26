@@ -24,12 +24,12 @@ This script was specifically created to test the feature extraction module on At
 
 ### SETUP ###
 parser = argparse.ArgumentParser()
+parser.add_argument('path', type=str, default='../ifqi/algorithms/selection/feature_extraction/output/breakout/model/model.h5',
+                    help='path to the hdf5 weights file for the autoencoder')
 parser.add_argument('-d', '--debug', action='store_true', help='run in debug mode (no output files)')
 parser.add_argument('--njobs', type=int, default=-1,
                     help='number of processes to use, set -1 to use all available cores.')
 parser.add_argument('--env', type=str, default='BreakoutDeterministic-v3', help='Atari environment to run')
-parser.add_argument('--path', type=str, default='../ifqi/algorithms/selection/feature_extraction/output/breakout/model/model.h5',
-                    help='path to the hdf5 weights file for the autoencoder')
 parser.add_argument('--episodes', type=int, default=100, help='number of episodes to run to collect the dataset')
 parser.add_argument('--dataset', type=str, default=None, help='path to SARS dataset with encoded features')
 parser.add_argument('--rfs', action='store_true', help='perform RFS on the dataset')
@@ -41,6 +41,9 @@ logger = Logger(debug=args.debug, output_folder='../ifqi/algorithms/selection/fe
 # Create environment
 mdp = envs.Atari(name=args.env)
 
+# Feature extraction model (used for collecting episodes and evaluation)
+AE = Autoencoder((4, 84, 84), load_path=args.path)
+
 # Read or collect dataset
 if args.dataset is not None:
     # Load from disk if dataset was provided
@@ -48,14 +51,12 @@ if args.dataset is not None:
     dataset = np.loadtxt(args.dataset, delimiter=',')
 else:
     print('Collecting episodes using model at %s' % args.path)
-    AE = Autoencoder((4, 84, 84), load_path=args.path)
     collection_params = {'episodes': args.episodes,
                          'env_name': args.env,
                          'header': None,
                          'video': False,
                          'n_jobs':1}  # n_jobs forced to 1 because AE runs on GPU
     dataset = collect_encoded_dataset(AE, **collection_params)
-
 
 ### RFS ###
 reward_dim = 1 # Reward has fixed size of 1
@@ -116,7 +117,8 @@ if args.rfs:
     reduced_dataset = reduced_dataset.as_matrix()
 
     # Save RFS tree
-    fs.export_graphviz(filename=logger.path + 'rfs_tree.gv')
+    tree = fs.export_graphviz(filename=logger.path + 'rfs_tree.gv')
+    tree.save()
 
     # Save RFS dataset
     if args.save_rfs:
@@ -175,8 +177,8 @@ for i in range(args.iterations - 1):
     fqi.partial_fit(None, None, **fit_params)
 
     # Evaluate policy
-    print('Evaluating policy...')
-    values = evaluation.evaluate_policy(mdp, fqi)
+    print('Evaluating policy using model at %s' % args.path)
+    values = evaluation.evaluate_policy_with_FE(mdp, fqi, AE, metric='average', n_episodes=32)
     print(values)
     iteration_values.append(values[0])
 
