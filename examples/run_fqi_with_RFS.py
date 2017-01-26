@@ -1,4 +1,6 @@
 from __future__ import print_function
+import matplotlib
+matplotlib.use('Agg')
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
@@ -77,7 +79,7 @@ if args.rfs:
                    cv=None,
                    scale=True,
                    verbose=1,
-                   significance=0.1)
+                   significance=0.05)
     features_names = np.array(['S%s' % i for i in xrange(state_dim)] + ['A%s' % i for i in xrange(action_dim)])
     fs = RFS(feature_selector=selector,
              features_names=features_names,
@@ -100,7 +102,7 @@ if args.rfs:
 
     # Remove this during experiments
     if len(selected_actions) == 0:
-        selected_actions.extend([1,2])
+        selected_actions.extend(range(action_dim))
 
     # Build dataframe for easy dataset reduction
     header = ['S%s' % i for i in xrange(state_dim)] + ['A%s' % i for i in xrange(action_dim)] + \
@@ -174,32 +176,30 @@ iteration_values = []
 fit_params = {}
 fqi.partial_fit(sast, r, **fit_params) # Initial fit (see documentation in FQI.fit for more info)
 for i in range(args.iterations - 1):
-    print('Iteration %d' % i)
+    # print('Iteration %d' % i)
     fqi.partial_fit(None, None, **fit_params)
 
     # Evaluate policy
     print('Evaluating policy using model at %s' % args.path)
-    values = evaluation.evaluate_policy_with_FE(mdp, fqi, AE, metric='average', n_episodes=32,
+    values = evaluation.evaluate_policy_with_FE(mdp, fqi, AE, metric='average', n_episodes=1,
                                                 selected_states=selected_states,
                                                 max_ep_len=2 * average_episode_duration)
     print(values)
     iteration_values.append(values[0])
 
-    # Plot results
-    if i == 1:
-        fig1 = plt.figure(1)
-        ax = fig1.add_subplot(1, 1, 1)
-        h = ax.plot(range(i + 1), iteration_values, 'ro-')
-        plt.ylim(min(iteration_values), max(iteration_values))
-        plt.xlim(0, i + 1)
-        plt.ion()  # Turns on interactive mode
-        plt.savefig(logger.path + 'fqi_%s.png' % i)
-    elif i > 1:
-        h[0].set_data(range(i + 1), iteration_values)
-        ax.figure.canvas.draw()
-        plt.ylim(min(iteration_values), max(iteration_values))
-        plt.xlim(0, i + 1)
-        # plt.show()
-        plt.savefig(logger.path + 'fqi_%s.png' % i)
+# Plot results
+fig1 = plt.figure(1)
+ax = fig1.add_subplot(1, 1, 1)
+x = np.array(range(args.interactions - 1))
+y = np.array(iteration_values)
+print(x)
+print(y)
+print(x.shape)
+print(y.shape)
+h = ax.plot(x, y, 'ro-')
+plt.ylim(min(iteration_values), max(iteration_values))
+plt.xlim(0, i + 1)
+plt.ion()  # Turns on interactive mode
+plt.savefig(logger.path + 'fqi_%s.png' % i)
 
 print('Done FQI. Elapsed time: %s' % (time.time() - t))

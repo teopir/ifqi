@@ -319,7 +319,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             # for sparse case ranks is matrix
             ranks = np.ravel(ranks)
 
-            if self.verbose > 1:
+            if self.verbose > 0:
                 ranked_f = features[ranks]
                 if features_names is not None:
                     ranked_n = features_names[ranks]
