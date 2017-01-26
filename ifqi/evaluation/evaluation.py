@@ -331,11 +331,13 @@ def collect_episode(mdp, policy=None, horizon=None):
     state = mdp.reset()
     # state_dim, action_dim, reward_dim = get_space_info(mdp)
 
+    from ..utils.spaces.sampler import space_sampler
+    sampler = space_sampler(mdp.action_space)
     while t < horizon and not done:
         if policy is not None:
             action = policy.draw_action(state, done)
         else:
-            action = mdp.action_space.sample()
+            action = sampler()
         action = np.array([action]).ravel()
         next_state, reward, done, _ = mdp.step(action)
         new_el = state.tolist() + action.tolist() + [reward] + \
