@@ -38,3 +38,8 @@ def split_data_for_fqi(dataset, state_dim, action_dim, reward_dim, last=None):
                      axis=1)
     r = dataset[:last, reward_idx]
     return sast, r
+
+
+def filter_state_with_RFS(state, selected_states):
+    indexes = [int(s.lstrip('S')) for s in selected_states if s.startswith('S')]
+    return np.array(state)[indexes]

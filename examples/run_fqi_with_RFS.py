@@ -178,7 +178,8 @@ for i in range(args.iterations - 1):
 
     # Evaluate policy
     print('Evaluating policy using model at %s' % args.path)
-    values = evaluation.evaluate_policy_with_FE(mdp, fqi, AE, metric='average', n_episodes=32)
+    values = evaluation.evaluate_policy_with_FE(mdp, fqi, AE, metric='average', n_episodes=32,
+                                                selected_states=selected_states)
     print(values)
     iteration_values.append(values[0])
 

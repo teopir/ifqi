@@ -5,6 +5,7 @@ import time
 import gym
 import numpy as np
 from ifqi.algorithms.selection.feature_extraction.helpers import crop_state
+from ifqi.evaluation.utils import filter_state_with_RFS
 
 from ..envs.utils import get_space_info
 from joblib import Parallel, delayed
@@ -125,7 +126,7 @@ def _parallel_eval(mdp, policy, metric, initial_states, n_episodes,
            steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
 
 
-def _eval_with_FE(mdp, policy, AE, metric, render=False):
+def _eval_with_FE(mdp, policy, AE, metric, selected_states=None, render=False):
     gamma = mdp.gamma if metric == 'discounted' else 1
     ep_performance = 0.0
     df = 1.0  # Discount factor
@@ -137,12 +138,17 @@ def _eval_with_FE(mdp, policy, AE, metric, render=False):
     # Get encoded features
     preprocessed_state = np.expand_dims(np.asarray(crop_state(state)), axis=0)
     encoded_state = AE.flat_encode(preprocessed_state)
+    if selected_states is not None:
+        filtered_state = filter_state_with_RFS(encoded_state, selected_states)
+    else:
+        filtered_state = encoded_state
+
     frame_counter = 0
     while not done:
         frame_counter += 1
 
         # Select an action
-        action = policy.draw_action(encoded_state, done, evaluation=True)
+        action = policy.draw_action(filtered_state, done, evaluation=True)
         # Execute the action, get next state and reward
         next_state, reward, done, info = mdp.step(action)
         ep_performance += df * reward  # Update performance
@@ -151,6 +157,10 @@ def _eval_with_FE(mdp, policy, AE, metric, render=False):
         # Get encoded features
         preprocessed_next_state = np.expand_dims(crop_state(next_state), axis=0)
         encoded_next_state = AE.flat_encode(preprocessed_next_state)
+        if selected_states is not None:
+            filtered_next_state = filter_state_with_RFS(encoded_next_state, selected_states)
+        else:
+            filtered_next_state = encoded_next_state
 
         # Render environment
         if render:
@@ -158,7 +168,7 @@ def _eval_with_FE(mdp, policy, AE, metric, render=False):
 
         # Update state
         state = next_state
-        encoded_state = encoded_next_state
+        filtered_state = filtered_next_state
 
     if gamma == 1:
         ep_performance /= frame_counter
@@ -193,7 +203,7 @@ def evaluate_policy(mdp, policy, metric='discounted', initial_states=None,
 
 
 def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
-                            render=False, n_jobs=1):
+                            selected_states=None, render=False, n_jobs=1):
     """
         This function evaluate a policy on the given environment w.r.t.
         the specified metric by executing multiple episode, using the provided
@@ -205,6 +215,8 @@ def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
                 expected)
             metric (string, 'discounted'): the evaluation metric ['discounted',
                 'average']
+            selected_states (iterable, None): the subset of states on which the
+                policy was trained. If None, use all states.
             render (bool, False): whether to render the step of the environment
             n_jobs (int, 1): the number of processes to use for evaluation
                 (leave default value if the feature extraction model - AE - runs
@@ -216,7 +228,7 @@ def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
 
     assert metric in ['discounted', 'average'], "unsupported metric"
     out =  Parallel(n_jobs=n_jobs)(
-        delayed(_eval_with_FE)(mdp, policy, AE, metric, render=render)
+        delayed(_eval_with_FE)(mdp, policy, AE, metric, selected_states=selected_states, render=render)
         for ep in range(n_episodes)
     )
 
