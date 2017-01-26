@@ -207,12 +207,16 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             Q = [Q[i] for i in range(1, len(Q))]
             for node_id in current.children:
                 if node_id not in S:
-                    if 'r2score' in self.nodes[node_id].data.keys():
-                        g.node(str(node_id), label='{}\nr2={:.4f}'.format(self.nodes[node_id].feature_name,
-                                                                          self.nodes[node_id].data['r2score'][-1]))
+                    if current.feature_name == self.nodes[node_id].feature_name:
+                        # make self loop if parent feature is equal to the current one
+                        g.edge(str(current_id), str(current_id))
                     else:
-                        g.node(str(node_id), label='{}'.format(self.nodes[node_id].feature_name))
-                    g.edge(str(node_id), str(current.id))
+                        if 'r2score' in self.nodes[node_id].data.keys():
+                            g.node(str(node_id), label='{}\nr2={:.6f}'.format(self.nodes[node_id].feature_name,
+                                                                              self.nodes[node_id].data['r2score'][-1]))
+                        else:
+                            g.node(str(node_id), label='{}'.format(self.nodes[node_id].feature_name))
+                        g.edge(str(node_id), str(current.id))
                     S.add(node_id)
                     Q.append(node_id)
         # g.view()
