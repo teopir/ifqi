@@ -126,7 +126,7 @@ def _parallel_eval(mdp, policy, metric, initial_states, n_episodes,
            steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
 
 
-def _eval_with_FE(mdp, policy, AE, metric, selected_states=None, render=False):
+def _eval_with_FE(mdp, policy, AE, metric, selected_states=None, max_ep_len=np.inf, render=False):
     gamma = mdp.gamma if metric == 'discounted' else 1
     ep_performance = 0.0
     df = 1.0  # Discount factor
@@ -144,7 +144,7 @@ def _eval_with_FE(mdp, policy, AE, metric, selected_states=None, render=False):
         filtered_state = encoded_state
 
     frame_counter = 0
-    while not done:
+    while not done and frame_counter <= max_ep_len:
         frame_counter += 1
 
         # Select an action
@@ -203,7 +203,7 @@ def evaluate_policy(mdp, policy, metric='discounted', initial_states=None,
 
 
 def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
-                            selected_states=None, render=False, n_jobs=1):
+                            selected_states=None, max_ep_len=np.inf, render=False, n_jobs=1):
     """
         This function evaluate a policy on the given environment w.r.t.
         the specified metric by executing multiple episode, using the provided
@@ -217,6 +217,8 @@ def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
                 'average']
             selected_states (iterable, None): the subset of states on which the
                 policy was trained. If None, use all states.
+            max_ep_len (int, inf): allow evaluation episodes to run at most this number
+                of frames.
             render (bool, False): whether to render the step of the environment
             n_jobs (int, 1): the number of processes to use for evaluation
                 (leave default value if the feature extraction model - AE - runs
@@ -228,7 +230,9 @@ def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
 
     assert metric in ['discounted', 'average'], "unsupported metric"
     out =  Parallel(n_jobs=n_jobs)(
-        delayed(_eval_with_FE)(mdp, policy, AE, metric, selected_states=selected_states, render=render)
+        delayed(_eval_with_FE)(
+            mdp, policy, AE, metric, selected_states=selected_states, max_ep_len=max_ep_len, render=render
+        )
         for ep in range(n_episodes)
     )
 

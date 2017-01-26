@@ -169,6 +169,7 @@ fqi = FQI(estimator=regressor,
 print('Running FQI...')
 t = time.time()
 
+average_episode_duration = len(dataset) / np.sum(dataset[:, -1])
 iteration_values = []
 fit_params = {}
 fqi.partial_fit(sast, r, **fit_params) # Initial fit (see documentation in FQI.fit for more info)
@@ -179,7 +180,8 @@ for i in range(args.iterations - 1):
     # Evaluate policy
     print('Evaluating policy using model at %s' % args.path)
     values = evaluation.evaluate_policy_with_FE(mdp, fqi, AE, metric='average', n_episodes=32,
-                                                selected_states=selected_states)
+                                                selected_states=selected_states,
+                                                max_ep_len=2 * average_episode_duration)
     print(values)
     iteration_values.append(values[0])
 
