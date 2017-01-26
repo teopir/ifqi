@@ -276,7 +276,7 @@ def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
         for ep in range(n_episodes)
     )
 
-    values, steps = zip(*out)
+    values, steps = np.array(zip(*out))
 
     return values.mean(), 2 * values.std() / np.sqrt(n_episodes), \
            steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
