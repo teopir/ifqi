@@ -37,4 +37,5 @@ print('selected features: {}'.format(selected_features))  # this are the selecte
 assert np.all(selected_features == ['S0', 'S2', 'A0'])
 
 print(fs.nodes)
-fs.export_graphviz()
+g = fs.export_graphviz()
+g.view()

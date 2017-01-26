@@ -384,7 +384,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             if len(cv_scores.shape) > 1:
                 cv_scores = np.mean(cv_scores, axis=1)
             m2 = np.mean(cv_scores * cv_scores)
-            confidence_interval = np.sqrt((m2 - score * score) / (n_splits - 1))
+            confidence_interval_or = np.sqrt((m2 - score * score) / (n_splits - 1))
 
             end_t = time.time() - start_t
 
@@ -396,21 +396,27 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 # else:
                 #     print("Selected features: {}".format(step_features))
                 #     print("Total features: {}".format(features[tentative_support_]))
-                print("R2= {} +- {}".format(score, confidence_interval))
-                print("\n Crossvalidation done in {} s".format(end_t))
+                print("R2= {} +- {}".format(score, confidence_interval_or))
+                print("\nCrossvalidation done in {} s".format(end_t))
 
-            self.scores_.append(score)
-            self.scores_confidences_.append(confidence_interval)
-            confidence_interval *= self.significance  # do not trust confidence interval completely
+            confidence_interval = confidence_interval_or * self.significance  # do not trust confidence interval completely
 
             # check terminal condition
             proceed = score - old_score > old_confidence_interval + confidence_interval
+            if self.verbose > 0:
+                print("PROCEED: {}\n\t{} - {} > {} + {}\n\t{} > {} )".format(proceed, score, old_score,
+                                                                             old_confidence_interval,
+                                                                             confidence_interval,
+                                                                             score - old_score,
+                                                                             old_confidence_interval + confidence_interval))
 
             if proceed or np.sum(current_support_) == 0:
                 # last feature set proved to be informative
                 # we need to take into account of the new features (update current support)
                 current_support_[step_features] = True
                 self.features_per_it_.append(features_names[step_features])
+                self.scores_.append(score)
+                self.scores_confidences_.append(confidence_interval)
 
                 # all the features are selected, stop
                 if np.sum(current_support_) == n_features:

@@ -200,7 +200,7 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         # BFS
         S = set()
         Q = [0]
-        g.node('0', label='{}\nr2={:.4f}'.format(self.nodes[0].feature_name, self.nodes[0].data['r2score'][-1]))
+        g.node('0', label='{}\nr2={:.6f}'.format(self.nodes[0].feature_name, self.nodes[0].data['r2score'][-1]))
         while len(Q) > 0:
             current_id = Q[0]
             current = self.nodes[current_id]
