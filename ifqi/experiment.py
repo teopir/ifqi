@@ -13,6 +13,7 @@ from envs.invertedPendulum import InvPendulum
 from envs.acrobot import Acrobot
 from envs.bicycle import Bicycle
 from envs.swingPendulum import SwingPendulum
+from envs.swingUpPendulum import SwingUpPendulum
 from envs.cartPole import CartPole
 from envs.lqg1d import LQG1D
 from envs.lunarLander import LunarLander
@@ -65,7 +66,7 @@ class Experiment(object):
         if self.config['mdp']['mdpName'] == 'CarOnHill':
             return CarOnHill()
         elif self.config['mdp']['mdpName'] == 'SwingUpPendulum':
-            return InvPendulum()
+            return SwingUpPendulum()
         elif self.config['mdp']['mdpName'] == 'Acrobot':
             return Acrobot()
         elif self.config["mdp"]["mdpName"] == "BicycleBalancing":

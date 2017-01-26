@@ -28,11 +28,14 @@ def _eval_and_render(mdp, policy, n_episodes=1, metric='discounted',
         step (float): average number of step before finish
         step_confidence (float):  95% confidence level for step average
     """
-    values, steps = _eval_and_render_vectorial(mdp, policy, n_episodes,
+    dic_val = _eval_and_render_vectorial(mdp, policy, n_episodes,
                                                metric, initial_states, render)
 
-    return values.mean(), 2 * values.std() / np.sqrt(n_episodes), \
-        steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
+    ret = {}
+    for k in dic_val:
+        ret[k] = dic_val[k].mean()
+        ret[k + "_conf"] = 2 * dic_val[k].std() / np.sqrt(n_episodes)
+    return ret
 
 
 def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
@@ -50,12 +53,13 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
             policy
         render (bool, True): whether to render the step of the environment
     Return:
-        metric (float): the selected evaluation metric
-        step (float): average number of step before finish
+        dictionary:(dic)
     """
     fps = mdp.metadata.get('video.frames_per_second') or 100
     values = np.zeros(n_episodes)
     steps = np.zeros(n_episodes)
+    ret_values = {}
+
     gamma = mdp.gamma
     if hasattr(mdp, 'horizon'):
         H = mdp.horizon
@@ -73,15 +77,16 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
 
         done = False
         if render:
-            #mdp.render(mode='human')
             mdp.render()
         state = mdp.reset(initial_states[e % n_initial_states, :] if initial_states is not None
                           else None)
         while t < H and not done:
             action = policy.draw_action(state, done, True)
-            state, r, done, _ = mdp.step(action)
+            state, r, done, info = mdp.step(action)
+
             ep_performance += df * r
-            df *= gamma
+            if metric=="discounted":
+                df *= gamma
             t += 1
 
             if render:
@@ -90,17 +95,32 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
         #if gamma == 1:
         #    ep_performance /= t
         print("last_reward = ", r)
+
         values[e] = ep_performance
+        if metric=="average":
+            values[e] = ep_performance / (t + .0)
         steps[e] = t
 
-    return values, steps
+        if len(info) != len(ret_values):
+            for k in info:
+                ret_values[k] = np.zeros(n_episodes)
+
+        for k in info:
+            ret_values[k][e] = info[k]
+
+    ret_values["score"] = values
+    ret_values["steps"] = steps
+
+    return ret_values
 
 
 def _parallel_eval(mdp, policy, n_episodes, metric, initial_states,
                    n_jobs, n_episodes_per_job):
     # TODO using joblib
     # return _eval_and_render(mdp, policy, n_episodes, metric,
-    #                         initial_states, False)
+    #
+    #                       initial_states, False)
+    """
     if hasattr(mdp, 'spec') and mdp.spec is not None:
         how_many = int(round(n_episodes / n_episodes_per_job))
         out = Parallel(
@@ -114,13 +134,17 @@ def _parallel_eval(mdp, policy, n_episodes, metric, initial_states,
         # out is a list of quadruplet: mean J, 95% conf lev J, mean steps,
         # 95% conf lev steps
         # (confidence level should be 0 or NaN)
-        values, steps = np.array(out)
+        values = np.array(out)
     else:
-        values, steps = _eval_and_render_vectorial(mdp, policy, n_episodes,
+    """
+    values  = _eval_and_render_vectorial(mdp, policy, n_episodes,
                                                    metric, initial_states,
                                                    False)
-    return values.mean(), 2 * values.std() / np.sqrt(n_episodes), \
-        steps.mean(), 2 * steps.std() / np.sqrt(n_episodes)
+    ret = {}
+    for k in values:
+        ret[k] = values[k].mean()
+        ret[k + "_conf"] = 2 * values[k].std() / np.sqrt(n_episodes)
+    return ret
 
 
 def evaluate_policy(mdp, policy, n_episodes=1,
@@ -139,8 +163,7 @@ def evaluate_policy(mdp, policy, n_episodes=1,
             policy
         render (bool, True): whether to render the step of the environment
     Return:
-        metric (float): the selected evaluation metric
-        confidence (float): 95% confidence level for the provided metric
+        dictionary (dict)
     """
     assert metric in ['discounted', 'average'], "unsupported metric"
     if render:

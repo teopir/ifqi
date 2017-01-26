@@ -131,6 +131,8 @@ pkl_filename = ".regressor_" + str(regressorName) + "size_" + str(size) + "datas
 # TODO:
 action_dim = 1
 
+
+
 # ------------------------------------------------------------------------------
 # Dataset Generation
 # ------------------------------------------------------------------------------
@@ -140,6 +142,7 @@ reward_idx = state_dim + action_dim
 dataset = evaluate.collect_episodes(environment,policy=None,n_episodes=size)
 sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
 sastFirst, rFirst = sast, dataset[:, reward_idx]
+
 
 
 if "experienceReplay" in exp.config['experimentSetting']:
@@ -298,6 +301,15 @@ for repetition in range(actualRepetition, repetitions):
                 initial_states[:, 0] = np.linspace(-np.pi, np.pi, 21)
                 score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, 21*nEvaluation,
                                                                           initial_states=initial_states)
+            elif exp.config["mdp"]["mdpName"] == "SwingUpPendulum":
+                #Sperimentale
+                if screen:
+                    dic_env = evaluate.evaluate_policy(environment, fqi, nEvaluation, render=True)
+                else:
+                    dic_env = evaluate.evaluate_policy(environment, fqi, nEvaluation)
+                for k in dic_env:
+                    varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, k, dic_env[k])
+
             elif exp.config["mdp"]["mdpName"] == "CarOnHill":
                 # evaluation initial states
                 initial_states = np.zeros((289, 2))
@@ -317,11 +329,12 @@ for repetition in range(actualRepetition, repetitions):
                 else:
                     score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation)
             end_eval = time.time()
-
+            """
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "score", score)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "goal", goal)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "stdScore", stdScore)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "step", step)
+            """
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "evalTime", end_eval- start_eval)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "fitTime", end_fit - start_fit)
 
