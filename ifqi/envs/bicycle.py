@@ -144,6 +144,7 @@ class Bicycle(Environment):
 
     def reset(self, state=None):
         self._absorbing = False
+        self.goal = False
 
         psi = 0.
         """if self.uniform_psi:
@@ -250,10 +251,12 @@ class Bicycle(Environment):
         self._position = numpy.array([x_f, y_f, x_b, y_b, psi])
 
         reward = 0
+        goal = 0
         if numpy.abs(omega) > self._state_range[0, 1]:  # Bicycle fell over
             self._absorbing = True
             reward = -1.0
         elif self._isAtGoal():
+            goal = 1
             self._absorbing = True
             reward = self._reward_goal
         elif not self._navigate:
@@ -270,7 +273,7 @@ class Bicycle(Environment):
             ret = 0.1 * (self._angleWrapPi(goal_angle_old) -
                          self._angleWrapPi(goal_angle))
             reward = ret
-        return self._getState(), reward, self._absorbing, {}
+        return self._getState(), reward, self._absorbing, {"goal":1}
 
     def _unit_vector(self, vector):
         """ Returns the unit vector of the vector.  """

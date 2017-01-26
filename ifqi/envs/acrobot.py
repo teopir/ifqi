@@ -25,6 +25,10 @@ class Acrobot(Environment):
     }
 
     def __init__(self):
+
+        self.initial_states = np.zeros((41, 4))
+        self.initial_states[:, 0] = np.linspace(-2, 2, 41)
+
         self.horizon = 100
         self.gamma = .95
 

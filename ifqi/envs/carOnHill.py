@@ -20,6 +20,12 @@ class CarOnHill(Environment):
     }
 
     def __init__(self):
+        self.initial_states = np.zeros((289, 2))
+        cont = 0
+        for i in range(-8, 9):
+            for j in range(-8, 9):
+                self.initial_states[cont, :] = [0.125 * i, 0.375 * j]
+                cont += 1
         self.horizon = 300
         self.gamma = 0.95
 

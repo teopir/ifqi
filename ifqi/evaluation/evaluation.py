@@ -94,7 +94,6 @@ def _eval_and_render_vectorial(mdp, policy, n_episodes=1, metric='discounted',
                 time.sleep(1.0 / fps)
         #if gamma == 1:
         #    ep_performance /= t
-        print("last_reward = ", r)
 
         values[e] = ep_performance
         if metric=="average":

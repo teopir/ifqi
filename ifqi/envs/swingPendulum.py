@@ -23,14 +23,20 @@ class SwingPendulum(Environment):
     }
 
     def __init__(self, **kwargs):
-        self.horizon = 100
-        self.gamma = 0.9
+
+        self.initial_states = np.zeros((21, 2))
+        self.initial_states[:, 0] = np.linspace(-np.pi, np.pi, 21)
+
+        self.gamma = 0.98
 
         self._m = 1.
         self._l = 1.
         self._g = 9.8
         self._mu = 0.01
         self._dt = 0.02
+        self.horizon = int(20. / self._dt)
+        self.time_up = int(10. / self._dt)
+        self.time_over_rotated = int(10. / self._dt)
 
         # gym attributes
         self.viewer = None
@@ -68,7 +74,25 @@ class SwingPendulum(Environment):
         self._state = np.array([theta, theta_dot])
         reward = np.cos(theta)
 
-        return self.get_state(), reward, False, {}
+        """if abs(theta) > 5 * np.pi:
+            self.t_over_rotated += 1
+        else:
+            self.time_over_rotated = 0"""
+
+        if abs(theta) < np.pi / 4:
+            self.t_up += 1
+        else:
+            self.t_up = 0
+
+        goal = 0
+        if self.t_up > self.time_up:
+            goal = 1
+            self.done = True
+
+        """if self.time_over_rotated > self.time_over_rotated:
+            self.done = False"""
+
+        return self.get_state(), reward, self.done, {"goal":self.goal}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -80,6 +104,10 @@ class SwingPendulum(Environment):
             self._state = np.array([theta, 0.])
         else:
             self._state = np.array(state).ravel()
+
+        self.done = False
+        self.t_up = 0
+        self.t_over_rotated = 0
 
         return self.get_state()
 

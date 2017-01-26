@@ -47,21 +47,19 @@ args = parser.parse_args()
 experimentName = args.experimentName
 
 config_file = args.configFile
-# Every experiment just run a regressor that is selected by the ExperimentThreadManager, and here we get the index
 regressorN = args.regressor
-# Every experiment just run a specific dataset size. ExperimentThreadManager select one index of size
 sizeN = args.size
-# Every experiment just run a specific dataset. ExperimentThreadManager select one specific dataset
 datasetN = args.dataset
-
 continue_ = args.cont
-
 haveLoss = args.loss
-
 screen = args.screen
 
 print("Started experiment with regressor " + str(regressorN)+ " dataset " + str(datasetN) + ", size " + str(sizeN))
 
+
+# ------------------------------------------------------------------------------
+# Seeds
+# ------------------------------------------------------------------------------
 
 prng.seed(datasetN)
 np.random.seed(datasetN)
@@ -70,7 +68,7 @@ random.seed(datasetN)
 exp = Experiment(config_file)
 
 # ------------------------------------------------------------------------------
-# Variables
+# Variables from configuration
 # ------------------------------------------------------------------------------
 
 iterations = exp.config['rlAlgorithm']['nIterations']
@@ -89,7 +87,6 @@ easyReplicability = False
 if "easyReplicability" in exp.config['experimentSetting']:
     easyReplicability = exp.config['experimentSetting']['easyReplicability']
 
-
 experienceReplay = False
 experienceEveryNIteration = False
 replace = False
@@ -97,7 +94,6 @@ mBias = False
 if "experienceReplay" in exp.config['experimentSetting']:
     print("expRepl=True")
     experienceReplay = True
-    #nExperience = exp.config['rlAlgorithm']["experienceReplay"]['nExperience']
     experienceEveryNIteration = exp.config['rlAlgorithm']["experienceReplay"]['everyNIterations']
     epsilon = exp.config['rlAlgorithm']["experienceReplay"]['epsilon']
     if "replace" in exp.config['rlAlgorithm']["experienceReplay"]:
@@ -130,8 +126,6 @@ pkl_filename = ".regressor_" + str(regressorName) + "size_" + str(size) + "datas
     datasetN) + ".pkl"
 # TODO:
 action_dim = 1
-
-
 
 # ------------------------------------------------------------------------------
 # Dataset Generation
@@ -281,70 +275,38 @@ for repetition in range(actualRepetition, repetitions):
                 varSetting.savePickle(regressorN,sizeN,datasetN,repetition,iteration,"FQI",fqi)
 
         end_fit = time.time()
+
         # ----------------------------------------------------------------------
         # Evaluation
         # ----------------------------------------------------------------------
 
         if iteration % evaluationEveryNIteration == 0 or iteration==1:
-            start_eval = time.time()
-            if exp.config["mdp"]["mdpName"] == "LQG1D":
-                initial_states = np.zeros((1,1))
-                initial_states[0,0] = 10.
-                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation, initial_states=initial_states)
-            elif exp.config["mdp"]["mdpName"] == "Acrobot":
-                initial_states = np.zeros((41, 4))
-                initial_states[:, 0] = np.linspace(-2, 2, 41)
-                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, 41*nEvaluation,
-                                                                          initial_states=initial_states)
-            elif exp.config["mdp"]["mdpName"] == "SwingPendulum":
-                initial_states = np.zeros((21, 2))
-                initial_states[:, 0] = np.linspace(-np.pi, np.pi, 21)
-                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, 21*nEvaluation,
-                                                                          initial_states=initial_states)
-            elif exp.config["mdp"]["mdpName"] == "SwingUpPendulum":
-                #Sperimentale
-                if screen:
-                    dic_env = evaluate.evaluate_policy(environment, fqi, nEvaluation, render=True)
-                else:
-                    dic_env = evaluate.evaluate_policy(environment, fqi, nEvaluation)
-                for k in dic_env:
-                    varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, k, dic_env[k])
 
-            elif exp.config["mdp"]["mdpName"] == "CarOnHill":
-                # evaluation initial states
-                initial_states = np.zeros((289, 2))
-                cont = 0
-                for i in range(-8, 9):
-                    for j in range(-8, 9):
-                        initial_states[cont, :] = [0.125 * i, 0.375 * j]
-                        cont += 1
-                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, 289*nEvaluation,
-                                                                          initial_states=initial_states)
-            elif exp.config["mdp"]["mdpName"] == "BicycleNavigate":
-                score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation)
-                goal = environment._isAtGoal()
-            else:
-                if screen:
-                    score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation, render=True)
-                else:
-                    score, stdScore, step, stdStep = evaluate.evaluate_policy(environment, fqi, nEvaluation)
+
+            kwargs = {"initial_states":None, "metric":"discounted"}
+            if hasattr(environment,"initial_states"):
+                kwargs["initial_states"] = environment.initial_states
+            if hasattr(environment,"metric"):
+                kwargs["metric"] = environment.metric
+            if screen:
+                kwargs["render"] = True
+
+            start_eval = time.time()
+            dic_env = evaluate.evaluate_policy(environment, fqi, nEvaluation, **kwargs)
             end_eval = time.time()
-            """
-            varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "score", score)
-            varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "goal", goal)
-            varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "stdScore", stdScore)
-            varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "step", step)
-            """
+
+            # ---------------------------------------------------------------------------
+            # Variable saving
+            # ---------------------------------------------------------------------------
+            for k in dic_env:
+                varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, k, dic_env[k])
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "evalTime", end_eval- start_eval)
             varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "fitTime", end_fit - start_fit)
 
-            """if screen:
-                raw_input("Type something: ")
-                evaluate.evaluate_policy(environment, fqi, nEvaluation, render=True)"""
             # ---------------------------------------------------------------------------
             # Q-Value
             # ---------------------------------------------------------------------------
-            """if exp.config["mdp"]["mdpName"] == "LQG1D" and datasetN==0:
+            if exp.config["mdp"]["mdpName"] == "LQG1D" and datasetN==0:
                 xs = np.linspace(-environment.max_pos, environment.max_pos, 60)
                 us = np.linspace(-environment.max_action, environment.max_action, 50)
 
@@ -355,7 +317,7 @@ for repetition in range(actualRepetition, repetitions):
                         l.append([x, u, v])
                 tabular_Q = np.array(l)
 
-                varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "Q", tabular_Q)"""
+                varSetting.save(regressorN, sizeN, datasetN, repetition, iteration, "Q", tabular_Q)
 
         # ----------------------------------------------------------------------
         # SAVE FQI STATUS

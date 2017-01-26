@@ -41,6 +41,8 @@ class LQG1D(Environment):
     def __init__(self, discrete_reward=False):
         self.horizon = 100
         self.gamma = 0.99
+        self.initial_states = np.zeros((1,1))
+        self.initial_states[0,0] = 10.
 
         self.discrete_reward = discrete_reward
         self.max_pos = 10.0

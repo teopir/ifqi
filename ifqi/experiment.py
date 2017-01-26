@@ -58,37 +58,39 @@ class Experiment(object):
         return self.config['mdp']['discreteActions']
 
     def getMDP(self, seed=None):
-        """
-        This function loads the mdp required in the configuration file.
-        Returns:
-            the required mdp.
-        """
-        if self.config['mdp']['mdpName'] == 'CarOnHill':
-            return CarOnHill()
-        elif self.config['mdp']['mdpName'] == 'SwingUpPendulum':
-            return SwingUpPendulum()
-        elif self.config['mdp']['mdpName'] == 'Acrobot':
-            return Acrobot()
-        elif self.config["mdp"]["mdpName"] == "BicycleBalancing":
-            return Bicycle(navigate=False)
-        elif self.config["mdp"]["mdpName"] == "BicycleNavigate":
-            return Bicycle(navigate=True)
-        elif self.config["mdp"]["mdpName"] == "SwingPendulum":
-            return SwingPendulum()
-        elif self.config["mdp"]["mdpName"] == "CartPole":
-            return CartPole()
-        elif self.config["mdp"]["mdpName"] == "CartPoleDisc":
-            return CartPole(discreteRew=True)
-        elif self.config["mdp"]["mdpName"] == "LQG1D":
-            return LQG1D()
-        elif self.config["mdp"]["mdpName"] == "LQG1DDisc":
-            mdp = LQG1D()
-            mdp.discreteReward = True
-            return mdp
-        elif self.config["mdp"]["mdpName"] == "LunarLander":
-            return LunarLander()
-        else:
-            raise ValueError('Unknown mdp type.')
+        if not hasattr(self, "mdp"):
+            """
+            This function loads the mdp required in the configuration file.
+            Returns:
+                the required mdp.
+            """
+            if self.config['mdp']['mdpName'] == 'CarOnHill':
+                self.mdp = CarOnHill()
+            elif self.config['mdp']['mdpName'] == 'SwingUpPendulum':
+                self.mdp = SwingUpPendulum()
+            elif self.config['mdp']['mdpName'] == 'Acrobot':
+                self.mdp = Acrobot()
+            elif self.config["mdp"]["mdpName"] == "BicycleBalancing":
+                self.mdp = Bicycle(navigate=False)
+            elif self.config["mdp"]["mdpName"] == "BicycleNavigate":
+                self.mdp = Bicycle(navigate=True)
+            elif self.config["mdp"]["mdpName"] == "SwingPendulum":
+                self.mdp = SwingPendulum()
+            elif self.config["mdp"]["mdpName"] == "CartPole":
+                self.mdp = CartPole()
+            elif self.config["mdp"]["mdpName"] == "CartPoleDisc":
+                self.mdp = CartPole(discreteRew=True)
+            elif self.config["mdp"]["mdpName"] == "LQG1D":
+                self.mdp = LQG1D()
+            elif self.config["mdp"]["mdpName"] == "LQG1DDisc":
+                self.mdp = LQG1D()
+                self.mdp.discreteReward = True
+            elif self.config["mdp"]["mdpName"] == "LunarLander":
+                self.mdp = LunarLander()
+            else:
+                raise ValueError('Unknown mdp type.')
+
+        return self.mdp
 
     def _getModel(self, index):
         """
@@ -182,18 +184,21 @@ class Experiment(object):
 
     def getFQI(self, regressorIndex):
         regressor = self._getModel(regressorIndex)
-        gamma = self.config['rlAlgorithm']['gamma']
+
+        gamma = self.mdp.gamma
+        if "gamma" in self.config['rlAlgorithm']:
+            gamma = self.config['rlAlgorithm']['gamma']
+
         horizon = self.config['rlAlgorithm']['horizon']
         verbose = self.config['rlAlgorithm']['verbosity']
-        #scaled = self.config['rlAlgorithm']['scaled']
+
         optimized=False
         if "optimized" in self.config["rlAlgorithm"]:
             optimized = self.config['rlAlgorithm']['optimized']
-        #TODO: fix
+
+        features = None
         if 'features' in self.config['regressors'][regressorIndex]:
             features = self.config['regressors'][regressorIndex]['features']
-        else:
-            features = None
 
         reset=False
         if "reset" in self.config["rlAlgorithm"]:
