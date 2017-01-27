@@ -17,7 +17,7 @@ class LunarLander(Environment):
         self.gamma = 1.
 
         self.env = gym.make('LunarLander-v2')
-        self.horizon = envs.registry.env_specs["Pendulum-v0"].tags['wrapper_config.TimeLimit.max_episode_steps']
+        self.horizon = envs.registry.env_specs["LunarLander-v2"].tags['wrapper_config.TimeLimit.max_episode_steps']
         #self.env = wrappers.Monitor(self.env, './monitor',force=True)
         self.action_space = self.env.action_space
         self.action_space.values = range(self.action_space.n)
