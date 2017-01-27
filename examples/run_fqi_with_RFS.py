@@ -79,7 +79,7 @@ if args.rfs:
                    cv=None,
                    scale=True,
                    verbose=1,
-                   significance=0.05)
+                   significance=0.005)
     features_names = np.array(['S%s' % i for i in xrange(state_dim)] + ['A%s' % i for i in xrange(action_dim)])
     fs = RFS(feature_selector=selector,
              features_names=features_names,
@@ -190,7 +190,7 @@ for i in range(args.iterations - 1):
 # Plot results
 fig1 = plt.figure(1)
 ax = fig1.add_subplot(1, 1, 1)
-x = np.array(range(args.interactions - 1))
+x = np.array(range(args.iterations - 1))
 y = np.array(iteration_values)
 print(x)
 print(y)
