@@ -4,7 +4,7 @@ import numpy as np
 from gym import envs
 from gym.utils import seeding
 from .environment import Environment
-
+import time
 from gym import wrappers
 
 class SwingUpPendulum(Environment):
@@ -20,7 +20,7 @@ class SwingUpPendulum(Environment):
         self.state_dim = 2
         self.action_dim = 1
         self.env = gym.make('Pendulum-v0')
-        self.horizon = 200 #envs.registry.env_specs["Pendulum-v0"].tags['wrapper_config.TimeLimit.max_episode_steps']
+        self.horizon = envs.registry.env_specs["Pendulum-v0"].tags['wrapper_config.TimeLimit.max_episode_steps']
 
         #self.env = wrappers.Monitor(self.env, './monitor',force=True)
         self.action_space = self.env.action_space
@@ -46,9 +46,9 @@ class SwingUpPendulum(Environment):
     def step(self, action):
         ret = self.env.step(action)
         ret = list(ret)
-        if abs(ret[0][0]) < np.pi / 4.:
+        if abs(ret[0][0] - 1) < 0.1:
             self.tup += self.env.dt
-        #ret[1] = np.cos(ret[0][0])
+        reward = ret[0][0]
         ret[-1] = {"t_up": self.tup}
         ret = tuple(ret)
         return ret
