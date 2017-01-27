@@ -3,7 +3,7 @@ import math
 import numpy as np
 from gym.utils import seeding
 from .environment import Environment
-
+from gym import envs
 from gym import wrappers
 
 class LunarLander(Environment):
@@ -14,10 +14,10 @@ class LunarLander(Environment):
     }
 
     def __init__(self):
-        self.horizon = 500000
         self.gamma = 1.
 
         self.env = gym.make('LunarLander-v2')
+        self.horizon = envs.registry.env_specs["Pendulum-v0"].tags['wrapper_config.TimeLimit.max_episode_steps']
         #self.env = wrappers.Monitor(self.env, './monitor',force=True)
         self.action_space = self.env.action_space
         self.action_space.values = range(self.action_space.n)
