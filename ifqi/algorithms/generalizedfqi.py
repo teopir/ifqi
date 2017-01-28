@@ -325,6 +325,6 @@ class GenGradFQI(Algorithm):
 
         # finally apply the bellman operator K-times to get the final point
         if self._verbose > 1:
-            print('learned theta: {}'.format(self.q_model.get_weights()))
+            print('learned theta: {}'.format(self._estimator.get_weights()))
 
         return history
