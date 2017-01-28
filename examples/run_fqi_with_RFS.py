@@ -99,6 +99,9 @@ else:
                          'n_jobs': 1}  # n_jobs forced to 1 because AE runs on GPU
     dataset = collect_encoded_dataset(AE, **collection_params)
 
+    #Save dataset
+    np.savetxt(logger.path + 'original_dataset.csv', dataset, fmt='%s', delimiter=',')
+
 ### ALGORITHMS ###
 ### RFS ###
 reward_dim = 1  # Reward has fixed size of 1
@@ -183,7 +186,8 @@ if args.rfs:
 
     # Save RFS dataset
     if args.save_rfs:
-        np.savetxt(logger.path + 'rfs_dataset.csv', reduced_dataset, fmt='%s', delimiter=',')
+        np.savetxt(logger.path + 'rfs_dataset.csv', np.append([support], reduced_dataset, axis=0),
+                   fmt='%s', delimiter=',')
 
     rfs_time = time.time() - rfs_time
     print('Done RFS. Elapsed time: %s' % rfs_time)
