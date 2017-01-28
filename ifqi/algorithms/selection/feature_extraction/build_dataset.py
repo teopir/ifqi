@@ -143,6 +143,7 @@ if __name__ == '__main__':
     parser.add_argument('--path', type=str, default='data/model.h5', help='path to the hdf5 weights file for the AE')
     parser.add_argument('-e', '--encode', action='store_true', help='save a SARS dataset with the encoded features')
     parser.add_argument('-i', '--images', action='store_true', help='save images of states and a SARS csv with ids')
+    parser.add_argument('--onehot', action='store_true', help='save actions in the dataset with onehot encoding')
     args = parser.parse_args()
 
     logger = Logger(debug=args.debug)
@@ -161,6 +162,7 @@ if __name__ == '__main__':
                                 episodes=args.episodes,
                                 env_name=args.env,
                                 header=header,
+                                onehot=args.onehot,
                                 video=args.video,
                                 n_jobs=args.njobs)
         output_file = 'encoded_dataset.csv'
