@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np, os, random
 from PIL import Image
 
@@ -21,7 +22,7 @@ def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
     batch_size = batch_size if batch_size != 'all' else data_size
     nb_batches_in_epoch = int(data_size / batch_size) + (1 if data_size % batch_size else 0)
 
-    print 'Total number of iterations: %d' % (nb_batches_in_epoch * nb_epochs)
+    print('Total number of iterations: %d' % (nb_batches_in_epoch * nb_epochs))
 
     images = []
     for epoch in range(nb_epochs):
