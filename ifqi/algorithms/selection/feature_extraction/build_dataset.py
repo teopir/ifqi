@@ -68,7 +68,7 @@ def collect_images_dataset(logger, episodes=100, env_name='BreakoutDeterministic
         return dataset
 
 
-def episode_encoded(AE, env_name='BreakoutDeterministic-v3', video=False):
+def episode_encoded(AE, env_name='BreakoutDeterministic-v3', onehot=True, video=False):
     env = envs.Atari(env_name)
     action_space = env.action_space.n
     frame_counter = 0
@@ -98,7 +98,8 @@ def episode_encoded(AE, env_name='BreakoutDeterministic-v3', video=False):
         encoded_next_state = AE.flat_encode(preprocessed_next_state)
 
         # Append sars tuple to datset
-        sars_list = [encoded_state, onehot_encode(action, action_space), reward, encoded_next_state, [1 if done else 0] * 2]
+        actions_to_append = onehot_encode(action, action_space) if onehot else action
+        sars_list = [encoded_state, actions_to_append, reward, encoded_next_state, [1 if done else 0] * 2]
         ep_output.append(flat2list(sars_list, as_tuple=True))
 
         # Render environment
@@ -112,10 +113,12 @@ def episode_encoded(AE, env_name='BreakoutDeterministic-v3', video=False):
     return ep_output
 
 
-def collect_encoded_dataset(AE, episodes=100, env_name='BreakoutDeterministic-v3', header=None, video=False, n_jobs=-1):
+def collect_encoded_dataset(AE, episodes=100, env_name='BreakoutDeterministic-v3', header=None, onehot=True,
+                            video=False, n_jobs=-1):
     # Parameters for the episode function
     ep_params = {
         'env_name': env_name,
+        'onehot': onehot,
         'video': video
     }
 

@@ -50,6 +50,9 @@ Parameters:
         that are being used now.
     --rfs: perform RFS on the SARS dataset.
     --save-rfs: save the generated RFS dataset.
+    --onehot: save actions in the dataset with onehot encoding. The action space will be converted
+        back to monodimensional after RFS.
+        Note: onehot encoding only works with monodimensional discrete action spaces.
     --significance (float, 0.1): significance parameter for RFS.
     --iterations (int, 100): number of FQI iterations to run.
 """
@@ -65,6 +68,7 @@ parser.add_argument('--episodes', type=int, default=100, help='number of episode
 parser.add_argument('--dataset', type=str, default=None, help='path to SARS dataset with encoded features')
 parser.add_argument('--rfs', action='store_true', help='perform RFS on the dataset')
 parser.add_argument('--save-rfs', action='store_true', help='save the RFS dataset')
+parser.add_argument('--onehot', action='store_true', help='save actions in the dataset with onehot encoding')
 parser.add_argument('--significance', type=int, default=0.1, help='significance for RFS')
 parser.add_argument('--iterations', type=int, default=100, help='number of FQI iterations to run')
 args = parser.parse_args()
@@ -90,6 +94,7 @@ else:
     collection_params = {'episodes': args.episodes,
                          'env_name': args.env,
                          'header': None,
+                         'onehot': args.onehot,
                          'video': False,
                          'n_jobs': 1}  # n_jobs forced to 1 because AE runs on GPU
     dataset = collect_encoded_dataset(AE, **collection_params)
@@ -99,17 +104,18 @@ else:
 reward_dim = 1  # Reward has fixed size of 1
 if args.rfs:
     print('Selecting features with RFS...')
-    rfs_time = time.time()
+    rfs_time = time.time() # Save this for logging
+
     dataset = dataset[1:]  # Remove header
     # Datset parameters for RFS
-    action_dim = mdp.action_space.n  # Assuming one hot encoding of the actions
+    action_dim = mdp.action_space.n if args.onehot else 1
     state_dim = (len(dataset[0][:]) - action_dim - reward_dim - 2) / 2  # Number of state features
 
     check_dataset(dataset, state_dim, action_dim, reward_dim)
     print('Dataset has %d samples' % dataset.shape[0])
 
     # Create IFS and RFS models
-    ifs_regressor_params = {'n_estimators': 150,
+    ifs_regressor_params = {'n_estimators': 100,
                             'n_jobs': args.njobs}
     ifs_params = {'estimator': ExtraTreesRegressor(**ifs_regressor_params),
                   'n_features_step': 1,
@@ -138,47 +144,57 @@ if args.rfs:
         if f.startswith('S'):
             selected_states.append(f)
         if f.startswith('A'):
-            selected_actions.append(int(f.lstrip('A')))
+            selected_actions.append(f)
 
-    # Remove this during experiments
-    if len(selected_actions) == 0:
-        selected_actions.extend(range(action_dim))
+    if args.onehot:
+        selected_actions_values = [int(a.lstrip('A')) for a in selected_actions]
+        assert len(selected_actions_values) >= 2, 'Not enough actions selected (try to decrease significance)'
+    else:
+        selected_actions_values = np.array(range(mdp.action_space.n))
 
-    # Build dataframe for easy dataset reduction
+    # Convert to Pandas dataframe for easy dataset reduction
     header = ['S%s' % i for i in xrange(state_dim)] + ['A%s' % i for i in xrange(action_dim)] + \
              ['R'] + ['SS%s' % i for i in xrange(state_dim)] + ['Absorbing', 'Finished']
     dataframe = pd.DataFrame(dataset, columns=header)
-    # Convert actions from onehot to original discrete space
-    reverse_onehot_actions = [np.where(dataset[i][state_dim:state_dim + action_dim] == 1)[0][0]
-                              for i in xrange(len(dataset))]
-    dataframe['A'] = pd.Series(reverse_onehot_actions)
+
+    if args.onehot:
+        # Convert actions from onehot to original discrete space
+        reverse_onehot_actions = [np.where(dataset[i][state_dim:state_dim + action_dim] == 1)[0][0]
+                                  for i in xrange(len(dataset))]
+        dataframe['A0'] = pd.Series(reverse_onehot_actions)  # A0 will be the only action
+        support = selected_states + ['A0', 'R'] + ['S' + s for s in selected_states] + ['Absorbing', 'Finished']
+    else:
+        support = selected_states + selected_actions + ['R'] + ['S' + s for s in selected_states] + \
+                  ['Absorbing', 'Finished']
 
     # Reduce dataset
-    support = selected_states + ['A', 'R'] + ['S' + s for s in selected_states] + ['Absorbing', 'Finished']
-    reduced_dataset = dataframe[support]  # Remove useless states and one-hot encoding
-    reduced_dataset = reduced_dataset[reduced_dataset['A'].isin(selected_actions)]  # Remove useless actions
+    reduced_dataset = dataframe[support]  # Keep only selected states and actions
+    if args.onehot:
+        reduced_dataset = reduced_dataset[reduced_dataset['A0'].isin(selected_actions_values)]  # Remove useless actions
     reduced_dataset = reduced_dataset.as_matrix()
 
     # Save RFS tree
     tree = fs.export_graphviz(filename=logger.path + 'rfs_tree.gv')
     tree.save()
     tree.format = 'pdf'
-    # TODO I wasn't sure which was the right method to save to pdf
-    tree.render()
+    # TODO I am not sure which is the right method to save to pdf
+    # tree.render()
     tree.save()
 
     # Save RFS dataset
     if args.save_rfs:
         np.savetxt(logger.path + 'rfs_dataset.csv', reduced_dataset, fmt='%s', delimiter=',')
 
-    rfs_time = time.time() - rfs_time  # Save this for logging
+    rfs_time = time.time() - rfs_time
     print('Done RFS. Elapsed time: %s' % rfs_time)
 else:
+    # The dataset is already reduced
     header = list(dataset[0])
-    reduced_dataset = dataset[1:]  # Remove header (the dataset is already reduced)
-    action_idx = header.index('A')  # Assuming monodimensional, discrete action
-    selected_states = header[:action_idx]  # Selected states are all states
-    selected_actions = list(set(reduced_dataset[action_idx, :]))
+    reduced_dataset = dataset[1:]  # Remove header
+    selected_actions = ['A0']  # Assuming monodimensional, discrete action space
+    action_idx = header.index('A0')
+    selected_states = header[:action_idx]  # All states were selected
+    selected_actions_values = np.unique(reduced_dataset[action_idx])
 
 print('Reduced dataset has %d samples' % reduced_dataset.shape[0])
 print('Selected states: %s' % selected_states)
@@ -186,12 +202,10 @@ print('Selected actions: %s' % selected_actions)
 
 ### FQI ###
 # Dataset parameters for FQI
-selected_state_dim = len(selected_states)
-selected_action_dim = 1  # Assuming monodimensional, discrete action
-selected_discrete_actions = np.array(selected_actions)
-
+selected_states_dim = len(selected_states)
+selected_actions_dim = 1  # Assuming monodimensional, discrete action space
 # Split dataset for FQI
-sast, r = split_data_for_fqi(reduced_dataset, selected_state_dim, selected_action_dim, reward_dim)
+sast, r = split_data_for_fqi(reduced_dataset, selected_states_dim, selected_actions_dim, reward_dim)
 
 # Action regressor of ExtraTreesRegressor for FQI
 fqi_regressor_params = {'n_estimators': 50,
@@ -204,15 +218,15 @@ fqi_regressor_params = {'n_estimators': 50,
 regressor = Regressor(regressor_class=ExtraTreesRegressor,
                       **fqi_regressor_params)
 regressor = ActionRegressor(regressor,
-                            discrete_actions=selected_discrete_actions,
+                            discrete_actions=selected_actions_values,
                             tol=0.5,
                             **fqi_regressor_params)
 
 # Create FQI model
 fqi_params = {'estimator': regressor,
-              'state_dim': selected_state_dim,
-              'action_dim': selected_action_dim,
-              'discrete_actions': selected_discrete_actions,
+              'state_dim': selected_states_dim,
+              'action_dim': selected_actions_dim,
+              'discrete_actions': selected_actions_values,
               'gamma': mdp.gamma,
               'horizon': args.iterations,
               'verbose': True}
@@ -221,7 +235,7 @@ fqi = FQI(**fqi_params)
 # Run FQI
 print('Running FQI...')
 print('Evaluating policy using model at %s' % args.path)
-fqi_time = time.time()
+fqi_time = time.time()  # Save this for logging
 
 average_episode_duration = len(dataset) / np.sum(dataset[:, -1])
 iteration_values = []  # Stores performance of the policy at each step
@@ -242,7 +256,7 @@ for i in range(args.iterations - 1):
     print(values)
     iteration_values.append(values[0])
 
-fqi_time = time.time() - fqi_time  # Save this for logging
+fqi_time = time.time() - fqi_time
 print('Done FQI. Elapsed time: %s' % fqi_time)
 
 
@@ -269,44 +283,44 @@ print('Logging run information...')
 logger.log('### RUN INFORMATION ###')
 logger.log(logger.path)
 
-logger.log('\n### FEATURE EXTRACTION ###')
+logger.log('\n\n### FEATURE EXTRACTION ###')
 logger.log('AE path: %s' % args.path)
 
-logger.log('\n### DATASET ###')
+logger.log('\n\n### DATASET ###')
 if args.dataset is not None:
     logger.log('Dataset: %s' % args.dataset)
 else:
     logger.log('Dataset collection parameters')
     logger.log(collection_params)
 
-logger.log('\n### RFS ###')
+logger.log('\n\n### RFS ###')
 if args.rfs:
     logger.log('Elapsed time: %s' % rfs_time)
-    logger.log('IFS regressor parameters')
+    logger.log('\nIFS regressor parameters')
     logger.log(ifs_regressor_params)
-    logger.log('IFS parameters')
+    logger.log('\nIFS parameters')
     logger.log(ifs_params)
-    logger.log('RFS parameters')
+    logger.log('\nRFS parameters')
     logger.log(rfs_params)
-    logger.log('Dataset for RFS')
+    logger.log('\nDataset for RFS')
     logger.log({'action_dim': action_dim,
                 'state_dim': state_dim,
                 'reward_dim': reward_dim,
                 'dataset_size': len(dataset)})
-logger.log('reduced_dataset_size: %s' % len(reduced_dataset))
+logger.log('\nreduced_dataset_size: %s' % len(reduced_dataset))
 logger.log('Selected states (total %d): \n%s' % (len(selected_states), selected_states))
-logger.log('Selected actions (total %d): \n%s' % (len(selected_actions), selected_actions))
+logger.log('\nSelected actions (total %d): \n%s' % (len(selected_actions), selected_actions))
 
-logger.log('### FQI ###')
+logger.log('\n\n### FQI ###')
 logger.log('Elapsed time: %s' % fqi_time)
-logger.log('FQI regressor parameters')
+logger.log('\nFQI regressor parameters')
 logger.log(fqi_regressor_params)
-logger.log('FQI parameters')
+logger.log('\nFQI parameters')
 logger.log(fqi_params)
-logger.log('FQI fit parameters')
+logger.log('\nFQI fit parameters')
 logger.log(fqi_fit_params)
-logger.log('FQI evaluation parameters')
+logger.log('\nFQI evaluation parameters')
 logger.log(fqi_evaluation_params)
 
-logger.log('(if something isn\'t listed here, it was left as default)')
+logger.log('\n\n(if something isn\'t listed here, it was left as default)')
 print('Done.')
