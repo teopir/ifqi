@@ -154,7 +154,8 @@ if __name__ == '__main__':
         # Automatically generate headers from the output length of AE.flat_encode
         nb_states = AE.flat_encode(np.expand_dims(np.ones(AE.input_shape), axis=0)).shape[0]
         nb_actions = envs.Atari(args.env).action_space.n
-        header = ['S%s' % i for i in xrange(nb_states)] + ['A%s' % i for i in xrange(nb_actions)] + ['R'] + \
+        actions_header = ['A%s' % i for i in xrange(nb_actions)] if args.onehot else ['A0']
+        header = ['S%s' % i for i in xrange(nb_states)] + actions_header + ['R'] + \
                         ['SS%s' % i for i in xrange(nb_states)] + ['Absorbing', 'Finished']
 
         # Collect episodes

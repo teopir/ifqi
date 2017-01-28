@@ -149,6 +149,9 @@ if args.rfs:
         if f.startswith('A'):
             selected_actions.append(f)
 
+    if len(selected_actions) == 0:
+        selected_actions = ['A0']
+
     if args.onehot:
         selected_actions_values = [int(a.lstrip('A')) for a in selected_actions]
         assert len(selected_actions_values) >= 2, 'Not enough actions selected (try to decrease significance)'
