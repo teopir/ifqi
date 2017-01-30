@@ -7,7 +7,7 @@ import keras.backend.tensorflow_backend as b
 
 
 class Autoencoder:
-    def __init__(self, input_shape, encoding_dim=9, load_path=None, logger=None):
+    def __init__(self, input_shape, encoding_dim=100, load_path=None, logger=None):
         b.clear_session()  # To avoid memory leaks when instantiating the network in a loop
         self.dim_ordering = 'th'  # (samples, filters, rows, cols)
         self.input_shape = input_shape
@@ -18,6 +18,7 @@ class Autoencoder:
         # Build network
         self.inputs = Input(shape=self.input_shape)
 
+        """
         # Encoding layers
         self.encoded = Convolution2D(32, 3, 3, subsample=(3, 3), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
         self.encoded = Convolution2D(16, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
@@ -31,8 +32,8 @@ class Autoencoder:
         self.decoded = Convolution2D(32, 3, 3, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = UpSampling2D(size=(3, 3), dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = Convolution2D(self.input_shape[0], 2, 2, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
-
         """
+
         self.decoding_available = True
         self.inputs = Input(shape=self.input_shape)
         self.encoded_input = Input(shape=(self.encoding_dim,))
@@ -41,15 +42,14 @@ class Autoencoder:
         self.encoded = Dense(self.input_shape[0] / 16, activation='relu')(self.encoded)
         self.encoded = Dense(self.input_shape[0] / 32, activation='relu')(self.encoded)
         self.encoded = Dense(self.input_shape[0] / 64, activation='relu')(self.encoded)
-        self.encoded = Dense(self.input_shape[0] / 128, activation='relu')(self.encoded)
-        self.encoded = Dense(self.encoding_dim, activation='relu')(self.encoded)
+        self.encoded = Dense(self.input_shape[0] / 128, activation='relu', W_regularizer=l2())(self.encoded)
+        self.encoded = Dense(self.encoding_dim, activation='relu', W_regularizer=l2())(self.encoded)
         self.decoded = Dense(self.input_shape[0] / 128, activation='relu')(self.encoded)
         self.decoded = Dense(self.input_shape[0] / 64, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0] / 32, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0] / 16, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0] / 8, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0], activation='sigmoid')(self.decoded)
-        """
 
         # Models
         self.autoencoder = Model(input=self.inputs, output=self.decoded)
@@ -89,7 +89,7 @@ class Autoencoder:
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         x[x < 0.1] = 0
         x[x >= 0.1] = 1
-        # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
+        x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.train_on_batch(x, x)
 
     def predict(self, x):
@@ -102,7 +102,7 @@ class Autoencoder:
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         x[x < 0.1] = 0
         x[x >= 0.1] = 1
-        # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
+        x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.predict_on_batch(x) * 255  # Restore original scale
 
     def test(self, x):
@@ -114,7 +114,7 @@ class Autoencoder:
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         x[x < 0.1] = 0
         x[x >= 0.1] = 1
-        # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
+        x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.autoencoder.test_on_batch(x, x)
 
     def encode(self, x):
@@ -127,7 +127,7 @@ class Autoencoder:
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         x[x < 0.1] = 0
         x[x >= 0.1] = 1
-        # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
+        x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return self.encoder.predict_on_batch(x)
 
     def flat_encode(self, x):
@@ -140,7 +140,7 @@ class Autoencoder:
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
         x[x < 0.1] = 0
         x[x >= 0.1] = 1
-        # x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
+        x = x.reshape(x.shape[0], self.input_shape[0]) # Flatten tensor for dense network
         return np.asarray(self.encoder.predict_on_batch(x)).flatten()
 
     def decode(self, x):

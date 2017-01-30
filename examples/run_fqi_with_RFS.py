@@ -54,6 +54,8 @@ Parameters:
         back to monodimensional after RFS.
         Note: onehot encoding only works with monodimensional discrete action spaces.
     --significance (float, 0.1): significance parameter for RFS.
+    --trees (int, 100): number of trees to use in RFS.
+    --fqi: run FQI on the dataset.
     --iterations (int, 100): number of FQI iterations to run.
 """
 
@@ -69,7 +71,9 @@ parser.add_argument('--dataset', type=str, default=None, help='path to SARS data
 parser.add_argument('--rfs', action='store_true', help='perform RFS on the dataset')
 parser.add_argument('--save-rfs', action='store_true', help='save the RFS dataset')
 parser.add_argument('--onehot', action='store_true', help='save actions in the dataset with onehot encoding')
-parser.add_argument('--significance', type=int, default=0.1, help='significance for RFS')
+parser.add_argument('--significance', type=float, default=0.1, help='significance for RFS')
+parser.add_argument('--trees', type=int, default=100, help='number of trees to use in RFS')
+parser.add_argument('--fqi', action='store_true', help='run FQI on the dataset')
 parser.add_argument('--iterations', type=int, default=100, help='number of FQI iterations to run')
 args = parser.parse_args()
 logger = Logger(debug=args.debug, output_folder='../ifqi/algorithms/selection/feature_extraction/output/', )
@@ -83,7 +87,7 @@ if args.log:
 mdp = envs.Atari(name=args.env)
 
 # Feature extraction model (used for collecting episodes and evaluation)
-AE = Autoencoder((4, 84, 84), load_path=args.path)
+AE = Autoencoder((4 * 84 * 84, ), load_path=args.path)
 
 # Read or collect dataset
 if args.dataset is not None:
@@ -117,7 +121,7 @@ if args.rfs:
     print('Dataset has %d samples' % dataset.shape[0])
 
     # Create IFS and RFS models
-    ifs_regressor_params = {'n_estimators': 100,
+    ifs_regressor_params = {'n_estimators': args.trees,
                             'n_jobs': args.njobs}
     ifs_params = {'estimator': ExtraTreesRegressor(**ifs_regressor_params),
                   'n_features_step': 1,
@@ -181,11 +185,9 @@ if args.rfs:
 
     # Save RFS tree
     tree = fs.export_graphviz(filename=logger.path + 'rfs_tree.gv')
-    tree.save()
+    tree.save()  # Save GV source
     tree.format = 'pdf'
-    # TODO I am not sure which is the right method to save to pdf
-    tree.render()
-    # tree.save()
+    tree.render()  # Save PDF
 
     # Save RFS dataset
     if args.save_rfs:
@@ -208,84 +210,86 @@ print('Selected states: %s' % selected_states)
 print('Selected actions: %s' % selected_actions)
 
 ### FQI ###
-# Dataset parameters for FQI
-selected_states_dim = len(selected_states)
-selected_actions_dim = 1  # Assuming monodimensional, discrete action space
-# Split dataset for FQI
-sast, r = split_data_for_fqi(reduced_dataset, selected_states_dim, selected_actions_dim, reward_dim)
+if args.fqi:
+    # Dataset parameters for FQI
+    selected_states_dim = len(selected_states)
+    selected_actions_dim = 1  # Assuming monodimensional, discrete action space
+    # Split dataset for FQI
+    sast, r = split_data_for_fqi(reduced_dataset, selected_states_dim, selected_actions_dim, reward_dim)
 
-# Action regressor of ExtraTreesRegressor for FQI
-fqi_regressor_params = {'n_estimators': 50,
-                        'criterion': 'mse',
-                        'min_samples_split': 5,
-                        'min_samples_leaf': 2,
-                        'input_scaled': False,
-                        'output_scaled': False,
-                        'n_jobs': args.njobs}
-regressor = Regressor(regressor_class=ExtraTreesRegressor,
-                      **fqi_regressor_params)
-regressor = ActionRegressor(regressor,
-                            discrete_actions=selected_actions_values,
-                            tol=0.5,
-                            **fqi_regressor_params)
+    # Action regressor of ExtraTreesRegressor for FQI
+    fqi_regressor_params = {'n_estimators': 50,
+                            'criterion': 'mse',
+                            'min_samples_split': 5,
+                            'min_samples_leaf': 2,
+                            'input_scaled': False,
+                            'output_scaled': False,
+                            'n_jobs': args.njobs}
+    regressor = Regressor(regressor_class=ExtraTreesRegressor,
+                          **fqi_regressor_params)
+    regressor = ActionRegressor(regressor,
+                                discrete_actions=selected_actions_values,
+                                tol=0.5,
+                                **fqi_regressor_params)
 
-# Create FQI model
-fqi_params = {'estimator': regressor,
-              'state_dim': selected_states_dim,
-              'action_dim': selected_actions_dim,
-              'discrete_actions': selected_actions_values,
-              'gamma': mdp.gamma,
-              'horizon': args.iterations,
-              'verbose': True}
-fqi = FQI(**fqi_params)
+    # Create FQI model
+    fqi_params = {'estimator': regressor,
+                  'state_dim': selected_states_dim,
+                  'action_dim': selected_actions_dim,
+                  'discrete_actions': selected_actions_values,
+                  'gamma': mdp.gamma,
+                  'horizon': args.iterations,
+                  'verbose': True}
+    fqi = FQI(**fqi_params)
 
-# Run FQI
-print('Running FQI...')
-print('Evaluating policy using model at %s' % args.path)
-fqi_time = time.time()  # Save this for logging
+    # Run FQI
+    print('Running FQI...')
+    print('Evaluating policy using model at %s' % args.path)
+    fqi_time = time.time()  # Save this for logging
 
-average_episode_duration = len(dataset) / np.sum(dataset[:, -1])
-iteration_values = []  # Stores performance of the policy at each step
-fqi_fit_params = {}  # Optional parameters for fitting FQI
-fqi_evaluation_params = {'metric': 'average',
-                         'n_episodes': 1,
-                         'selected_states': selected_states,
-                         'max_ep_len': 2 * average_episode_duration}
+    average_episode_duration = len(dataset) / np.sum(dataset[:, -1])
+    iteration_values = []  # Stores performance of the policy at each step
+    fqi_fit_params = {}  # Optional parameters for fitting FQI
+    fqi_evaluation_params = {'metric': 'average',
+                             'n_episodes': 1,
+                             'selected_states': selected_states,
+                             'max_ep_len': 2 * average_episode_duration}
 
-# Fit FQI
-fqi.partial_fit(sast, r, **fqi_fit_params)  # Initial fit (see documentation in FQI.fit for more info)
-for i in range(args.iterations - 1):
-    fqi.partial_fit(None, None, **fqi_fit_params)
+    # Fit FQI
+    fqi.partial_fit(sast, r, **fqi_fit_params)  # Initial fit (see documentation in FQI.fit for more info)
+    for i in range(args.iterations - 1):
+        fqi.partial_fit(None, None, **fqi_fit_params)
 
-    # Evaluate policy (after some training)
-    if float(i) / args.iterations - 1 >= 0.5:
-        values = evaluation.evaluate_policy_with_FE(mdp, fqi, AE, **fqi_evaluation_params)
-        print(values)
-        iteration_values.append(values[0])
+        # Evaluate policy (after some training)
+        if float(i) / (args.iterations - 1) >= 0.5:
+            values = evaluation.evaluate_policy_with_FE(mdp, fqi, AE, **fqi_evaluation_params)
+            print(values)
+            iteration_values.append(values[0])
 
-fqi_time = time.time() - fqi_time
-print('Done FQI. Elapsed time: %s' % fqi_time)
+    fqi_time = time.time() - fqi_time
+    print('Done FQI. Elapsed time: %s' % fqi_time)
 
+    # Plot results
+    if len(iteration_values) > 0:
+        # Plot iteration values
+        fig1 = plt.figure(1)
+        ax = fig1.add_subplot(1, 1, 1)
+        x = np.array(range(len(iteration_values)))
+        y = np.array(iteration_values)
+        h = ax.plot(x, y, 'ro-')
+        plt.ylim(min(iteration_values), max(iteration_values))
+        plt.xlim(0, len(x) + 1)
+        plt.ion()  # Turns on interactive mode
+        plt.savefig(logger.path + 'fqi_iteration_values.png')
 
 ### WRITE OUTPUT ###
-# Plot iteration values
-fig1 = plt.figure(1)
-ax = fig1.add_subplot(1, 1, 1)
-x = np.array(range(len(iteration_values)))
-y = np.array(iteration_values)
-h = ax.plot(x, y, 'ro-')
-plt.ylim(min(iteration_values), max(iteration_values))
-plt.xlim(0, len(x) + 1)
-plt.ion()  # Turns on interactive mode
-plt.savefig(logger.path + 'fqi_iteration_values.png')
-
-# Log all information of the run for reproducibility
 # Restore stdout and close logfile
 if args.log:
     sys.stdout.flush()
     sys.stdout.close()
     sys.stdout = old_stdout
 
+# Log all information of the run for reproducibility
 print('Logging run information...')
 logger.log('### RUN INFORMATION ###')
 logger.log(logger.path)
@@ -318,16 +322,17 @@ logger.log('\nreduced_dataset_size: %s' % len(reduced_dataset))
 logger.log('Selected states (total %d): \n%s' % (len(selected_states), selected_states))
 logger.log('\nSelected actions (total %d): \n%s' % (len(selected_actions), selected_actions))
 
-logger.log('\n\n### FQI ###')
-logger.log('Elapsed time: %s' % fqi_time)
-logger.log('\n# FQI regressor parameters')
-logger.log(fqi_regressor_params)
-logger.log('\n# FQI parameters')
-logger.log(fqi_params)
-logger.log('\n# FQI fit parameters')
-logger.log(fqi_fit_params)
-logger.log('\n# FQI evaluation parameters')
-logger.log(fqi_evaluation_params)
+if args.fqi:
+    logger.log('\n\n### FQI ###')
+    logger.log('Elapsed time: %s' % fqi_time)
+    logger.log('\n# FQI regressor parameters')
+    logger.log(fqi_regressor_params)
+    logger.log('\n# FQI parameters')
+    logger.log(fqi_params)
+    logger.log('\n# FQI fit parameters')
+    logger.log(fqi_fit_params)
+    logger.log('\n# FQI evaluation parameters')
+    logger.log(fqi_evaluation_params)
 
 logger.log('\n\n(if something isn\'t listed here, it was left as default)')
 print('Done.')

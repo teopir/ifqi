@@ -21,7 +21,7 @@ parser.add_argument('--nb-epochs', type=int, default=3, help='')
 args = parser.parse_args()
 logger = Logger(debug=args.debug)
 
-AE = Autoencoder((4, 84, 84), logger=logger)
+AE = Autoencoder((4 * 84 * 84, ), logger=logger)
 
 # Create the batch iterator for the images
 batches = batch_iterator(args.dataset_dir, batch_size=args.batch_size, nb_epochs=args.nb_epochs)

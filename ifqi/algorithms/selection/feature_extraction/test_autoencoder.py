@@ -12,7 +12,7 @@ parser.add_argument('--path', type=str, default='data/breakout/model.h5', help='
 args = parser.parse_args()
 
 env = envs.Atari('BreakoutDeterministic-v3')
-AE = Autoencoder((4, 84, 84), load_path=args.path)
+AE = Autoencoder((4 * 84 * 84, ), load_path=args.path)
 
 state = env.reset()
 for i in range(12):
