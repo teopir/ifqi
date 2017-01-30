@@ -72,13 +72,14 @@ parser.add_argument('--onehot', action='store_true', help='save actions in the d
 parser.add_argument('--significance', type=int, default=0.1, help='significance for RFS')
 parser.add_argument('--iterations', type=int, default=100, help='number of FQI iterations to run')
 args = parser.parse_args()
-logger = Logger(debug=args.debug, output_folder='../ifqi/algorithms/selection/feature_extraction/output/')
+logger = Logger(debug=args.debug, output_folder='../ifqi/algorithms/selection/feature_extraction/output/', )
 # Redirect stdout
 if args.log:
     old_stdout = sys.stdout
-    sys.stdout = open(logger.path + 'run_log.txt', 'w')
+    sys.stdout = open(logger.path + 'output_dump.txt', 'w', 0)
 
 # Create environment
+# TODO Enduro, MsPacman, Qbert
 mdp = envs.Atari(name=args.env)
 
 # Feature extraction model (used for collecting episodes and evaluation)
@@ -88,7 +89,7 @@ AE = Autoencoder((4, 84, 84), load_path=args.path)
 if args.dataset is not None:
     # Load from disk if dataset was provided
     print('Loading dataset at %s' % args.dataset)
-    dataset = np.loadtxt(args.dataset, delimiter=',')
+    dataset = np.loadtxt(args.dataset, delimiter=',', skiprows=1)
 else:
     print('Collecting episodes using model at %s' % args.path)
     collection_params = {'episodes': args.episodes,
@@ -109,11 +110,9 @@ if args.rfs:
     print('Selecting features with RFS...')
     rfs_time = time.time() # Save this for logging
 
-    dataset = dataset[1:]  # Remove header
-    # Datset parameters for RFS
+    # Prep dataset for RFS
     action_dim = mdp.action_space.n if args.onehot else 1
     state_dim = (len(dataset[0][:]) - action_dim - reward_dim - 2) / 2  # Number of state features
-
     check_dataset(dataset, state_dim, action_dim, reward_dim)
     print('Dataset has %d samples' % dataset.shape[0])
 
@@ -127,7 +126,6 @@ if args.rfs:
                   'verbose': 1,
                   'significance': args.significance}
     selector = IFS(**ifs_params)
-
     features_names = np.array(['S%s' % i for i in xrange(state_dim)] + ['A%s' % i for i in xrange(action_dim)])
     rfs_params = {'feature_selector': selector,
                   'features_names': features_names,
@@ -149,6 +147,8 @@ if args.rfs:
         if f.startswith('A'):
             selected_actions.append(f)
 
+    # TODO remove this once everything works
+    assert len(selected_states) > 0, '### RFS fail ###'
     if len(selected_actions) == 0:
         selected_actions = ['A0']
 
@@ -184,8 +184,8 @@ if args.rfs:
     tree.save()
     tree.format = 'pdf'
     # TODO I am not sure which is the right method to save to pdf
-    # tree.render()
-    tree.save()
+    tree.render()
+    # tree.save()
 
     # Save RFS dataset
     if args.save_rfs:
@@ -255,13 +255,13 @@ fqi_evaluation_params = {'metric': 'average',
 # Fit FQI
 fqi.partial_fit(sast, r, **fqi_fit_params)  # Initial fit (see documentation in FQI.fit for more info)
 for i in range(args.iterations - 1):
-    # print('Iteration %d' % i)
     fqi.partial_fit(None, None, **fqi_fit_params)
 
-    # Evaluate policy
-    values = evaluation.evaluate_policy_with_FE(mdp, fqi, AE, **fqi_evaluation_params)
-    print(values)
-    iteration_values.append(values[0])
+    # Evaluate policy (after some training)
+    if float(i) / args.iterations - 1 >= 0.5:
+        values = evaluation.evaluate_policy_with_FE(mdp, fqi, AE, **fqi_evaluation_params)
+        print(values)
+        iteration_values.append(values[0])
 
 fqi_time = time.time() - fqi_time
 print('Done FQI. Elapsed time: %s' % fqi_time)
@@ -271,7 +271,7 @@ print('Done FQI. Elapsed time: %s' % fqi_time)
 # Plot iteration values
 fig1 = plt.figure(1)
 ax = fig1.add_subplot(1, 1, 1)
-x = np.array(range(args.iterations - 1))
+x = np.array(range(len(iteration_values)))
 y = np.array(iteration_values)
 h = ax.plot(x, y, 'ro-')
 plt.ylim(min(iteration_values), max(iteration_values))
@@ -303,13 +303,13 @@ else:
 logger.log('\n\n### RFS ###')
 if args.rfs:
     logger.log('Elapsed time: %s' % rfs_time)
-    logger.log('\nIFS regressor parameters')
+    logger.log('\n# IFS regressor parameters')
     logger.log(ifs_regressor_params)
-    logger.log('\nIFS parameters')
+    logger.log('\n# IFS parameters')
     logger.log(ifs_params)
-    logger.log('\nRFS parameters')
+    logger.log('\n# RFS parameters')
     logger.log(rfs_params)
-    logger.log('\nDataset for RFS')
+    logger.log('\n# Dataset for RFS')
     logger.log({'action_dim': action_dim,
                 'state_dim': state_dim,
                 'reward_dim': reward_dim,
@@ -320,13 +320,13 @@ logger.log('\nSelected actions (total %d): \n%s' % (len(selected_actions), selec
 
 logger.log('\n\n### FQI ###')
 logger.log('Elapsed time: %s' % fqi_time)
-logger.log('\nFQI regressor parameters')
+logger.log('\n# FQI regressor parameters')
 logger.log(fqi_regressor_params)
-logger.log('\nFQI parameters')
+logger.log('\n# FQI parameters')
 logger.log(fqi_params)
-logger.log('\nFQI fit parameters')
+logger.log('\n# FQI fit parameters')
 logger.log(fqi_fit_params)
-logger.log('\nFQI evaluation parameters')
+logger.log('\n# FQI evaluation parameters')
 logger.log(fqi_evaluation_params)
 
 logger.log('\n\n(if something isn\'t listed here, it was left as default)')
