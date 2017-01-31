@@ -189,6 +189,18 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             g (graphviz.Digraph): an object representing the graph
 
         """
+        def apply_styles(graph, styles):
+            graph.graph_attr.update(
+                ('graph' in styles and styles['graph']) or {}
+            )
+            graph.node_attr.update(
+                ('nodes' in styles and styles['nodes']) or {}
+            )
+            graph.edge_attr.update(
+                ('edges' in styles and styles['edges']) or {}
+            )
+            return graph
+
         if not hasattr(self, 'nodes'):
             raise ValueError('Model must be trained.')
 
@@ -200,24 +212,64 @@ class RFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         # BFS
         S = set()
         Q = [0]
-        g.node('0', label='{}\nr2={:.6f}'.format(self.nodes[0].feature_name, self.nodes[0].data['r2score'][-1]))
+        g.node('0', label='{}\nr2={:.4f}'.format(self.nodes[0].feature_name, self.nodes[0].data['r2score'][-1]))
         while len(Q) > 0:
             current_id = Q[0]
             current = self.nodes[current_id]
             Q = [Q[i] for i in range(1, len(Q))]
+
+            # prepare visualization data
+            keys = {}
+            if 'r2score' in current.data.keys():
+                diff_scores = np.ediff1d(current.data['r2score'], to_begin=current.data['r2score'][0])
+                for cnt, el in enumerate(current.data['ordered_features']):
+                    keys[el] = cnt
+            else:
+                diff_scores = None
+
             for node_id in current.children:
                 if node_id not in S:
+                    lfn = self.nodes[node_id].feature_name
                     if current.feature_name == self.nodes[node_id].feature_name:
                         # make self loop if parent feature is equal to the current one
-                        g.edge(str(current_id), str(current_id))
+                        g.edge(str(current_id), str(current_id),
+                               label='r2={:.4f}'.format(diff_scores[keys[lfn]]) if diff_scores is not None else '')
                     else:
                         if 'r2score' in self.nodes[node_id].data.keys():
-                            g.node(str(node_id), label='{}\nr2={:.6f}'.format(self.nodes[node_id].feature_name,
-                                                                              self.nodes[node_id].data['r2score'][-1]))
+                            lbl = '{}\nr2={:.4f}'.format(lfn, self.nodes[node_id].data['r2score'][-1])
                         else:
-                            g.node(str(node_id), label='{}'.format(self.nodes[node_id].feature_name))
-                        g.edge(str(node_id), str(current.id))
+                            lbl = '{}'.format(lfn)
+                        g.node(str(node_id), label=lbl)
+                        g.edge(str(node_id), str(current.id),
+                               label='r2={:.4f}'.format(diff_scores[keys[lfn]]) if diff_scores is not None else '')
                     S.add(node_id)
                     Q.append(node_id)
+
+        styles = {
+            # 'graph': {
+            #     'label': 'A Fancy Graph',
+            #     'fontsize': '16',
+            #     'fontcolor': 'black',
+            #     'bgcolor': 'white',
+            #     'rankdir': 'BT',
+            # },
+            # 'nodes': {
+            #     'fontname': 'Helvetica',
+            #     'shape': 'hexagon',
+            #     'fontcolor': 'black',
+            #     'color': 'black',
+            #     'style': 'filled',
+            #     'fillcolor': 'white',
+            # },
+            'edges': {
+                # 'style': 'solid',
+                # 'color': 'black',
+                'arrowhead': 'open',
+                # 'fontname': 'Courier',
+                'fontsize': '12',
+                'fontcolor': 'black',
+            }
+        }
+        g = apply_styles(g, styles)
         # g.view()
         return g
