@@ -16,14 +16,18 @@ AE = Autoencoder((4, 84, 84), load_path=args.path)
 
 state = env.reset()
 state, reward, done, info = env.step(1)
-for i in range(50):
+for i in range(40):
     state, reward, done, info = env.step(3)
+    print info
 
 preprocessed_state = np.expand_dims(np.asarray(crop_state(state)), axis=0)
 encoded_state = AE.encode(preprocessed_state)
 flat_encoded_state = AE.flat_encode(preprocessed_state)
 predicted_state = AE.predict(preprocessed_state)
 predicted_state = predicted_state.reshape(4, 84, 84)
+
+conv_map = flat_encoded_state.reshape(14,14)
+Image.fromarray(conv_map).convert('L').show()
 
 for i in range(predicted_state.shape[0]):
     state_img = Image.fromarray(state[i]).convert('L')

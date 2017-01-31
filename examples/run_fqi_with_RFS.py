@@ -153,7 +153,8 @@ if args.rfs:
 
     # TODO remove this once everything works
     assert len(selected_states) > 0, '### RFS fail ###'
-    if len(selected_actions) == 0:
+    got_actions = len(selected_actions) > 0
+    if not got_actions:
         selected_actions = ['A0']
 
     if args.onehot:
@@ -306,6 +307,8 @@ else:
 
 logger.log('\n\n### RFS ###')
 if args.rfs:
+    if not got_actions:
+        logger.log('### NO ACTIONS WERE SELECTED ###')
     logger.log('Elapsed time: %s' % rfs_time)
     logger.log('\n# IFS regressor parameters')
     logger.log(ifs_regressor_params)

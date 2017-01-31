@@ -7,7 +7,7 @@ import keras.backend.tensorflow_backend as b
 
 
 class Autoencoder:
-    def __init__(self, input_shape, encoding_dim=150, load_path=None, logger=None):
+    def __init__(self, input_shape, encoding_dim=30, load_path=None, logger=None):
         b.clear_session()  # To avoid memory leaks when instantiating the network in a loop
         self.dim_ordering = 'th'  # (samples, filters, rows, cols)
         self.input_shape = input_shape
@@ -22,9 +22,13 @@ class Autoencoder:
         self.encoded = Convolution2D(32, 3, 3, subsample=(3, 3), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.inputs)
         self.encoded = Convolution2D(16, 2, 2, subsample=(2, 2), border_mode='valid', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
         self.encoded = Convolution2D(1, 2, 2, subsample=(1, 1), border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.encoded = Dense(self.encoding_dim, W_regularizer=l2(0.001))(self.encoded)
+        self.encoded = LeakyReLU(alpha=0.1)(self.encoded)
+        self.encoded = Dropout(0.2)(self.encoded)
 
         # Decoding layers
-        self.decoded = Convolution2D(1, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.encoded)
+        self.decoded = Reshape((1, 14, 14))(self.encoded)
+        self.decoded = Convolution2D(1, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = UpSampling2D(size=(1, 1), dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = Convolution2D(16, 2, 2, border_mode='same', activation='relu', dim_ordering=self.dim_ordering)(self.decoded)
         self.decoded = UpSampling2D(size=(2, 2), dim_ordering=self.dim_ordering)(self.decoded)
@@ -33,7 +37,6 @@ class Autoencoder:
         self.decoded = Convolution2D(self.input_shape[0], 2, 2, border_mode='same', activation='sigmoid', dim_ordering=self.dim_ordering)(self.decoded)
 
         """
-        self.decoding_available = False
         self.inputs = Input(shape=self.input_shape)
         self.encoded_input = Input(shape=(self.encoding_dim,))
 
@@ -47,6 +50,7 @@ class Autoencoder:
         self.decoded = Dense(self.input_shape[0] / 32, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0] / 16, activation='relu')(self.decoded)
         self.decoded = Dense(self.input_shape[0], activation='sigmoid')(self.decoded)
+        """
 
         # Models
         self.autoencoder = Model(input=self.inputs, output=self.decoded)
@@ -61,9 +65,11 @@ class Autoencoder:
             self.decoding_intermediate = self.autoencoder.layers[-2](self.decoding_intermediate)
             self.decoding_output = self.autoencoder.layers[-1](self.decoding_intermediate)
             self.decoder = Model(input=self.encoded_input, output=self.decoding_output)
-        """
         # Optimization algorithm
-        self.optimizer = RMSpropGraves()
+        try:
+            self.optimizer = RMSpropGraves()
+        except NameError:
+            self.optimizer = RMSprop()
 
         # Load the network from saved model
         if load_path is not None:
@@ -157,7 +163,7 @@ class Autoencoder:
 
     def save(self, filename=None, append=''):
         """
-        Saves the autoencoder weights to disk (in the run folder if a logger was given, otherwise in the current floder)
+        Saves the autoencoder weights to disk (in the run folder if a logger was given, otherwise in the current folder)
         :param filename: custom filename for the hdf5 file.
         :param append: the model will be saved as model_append.h5 if a value is provided.
         """
