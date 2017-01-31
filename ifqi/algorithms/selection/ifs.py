@@ -233,7 +233,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         """
         return self._fit(X, y, self.features_names)
 
-    def _fit(self, X, y, step_score=None, features_names=None):
+    def _fit(self, X, y, step_score=None, features_names=None, ranking_th=0.005):
         X, y = check_X_y(X, y, accept_sparse=['csr', 'csc', 'coo'],
                          multi_output=True)
         # Initialization
@@ -328,6 +328,9 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 print('{:6}\t{:6}\t{:8}\t{}'.format('Rank', 'Index', 'Score', 'Feature Name'))
                 for i in range(n_features):
                     idx = n_features - i - 1
+                    if (coefs[ranks[idx]] < ranking_th) and (i > 2):
+                        print(' ...')
+                        break
                     print('#{:6}\t{:6}\t{:6f}\t{}'.format(str(i), str(ranked_f[idx]), coefs[ranks[idx]], ranked_n[idx]))
                 print("\n Fit done in {} s and rank done in {} s".format(end_fit, end_rank))
 
