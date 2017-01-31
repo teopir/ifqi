@@ -12,11 +12,12 @@ parser.add_argument('--path', type=str, default='data/breakout/model.h5', help='
 args = parser.parse_args()
 
 env = envs.Atari('BreakoutDeterministic-v3')
-AE = Autoencoder((4 * 84 * 84, ), load_path=args.path)
+AE = Autoencoder((4, 84, 84), load_path=args.path)
 
 state = env.reset()
-for i in range(12):
-    state, reward, done, info = env.step(i%6)
+state, reward, done, info = env.step(1)
+for i in range(50):
+    state, reward, done, info = env.step(3)
 
 preprocessed_state = np.expand_dims(np.asarray(crop_state(state)), axis=0)
 encoded_state = AE.encode(preprocessed_state)
