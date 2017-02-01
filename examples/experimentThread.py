@@ -87,6 +87,10 @@ easyReplicability = False
 if "easyReplicability" in exp.config['experimentSetting']:
     easyReplicability = exp.config['experimentSetting']['easyReplicability']
 
+loadSast = False
+if "loadSast" in exp.config['experimentSetting']:
+    loadSast = exp.config['experimentSetting']['loadSast']
+
 experienceReplay = False
 experienceEveryNIteration = False
 replace = False
@@ -133,10 +137,13 @@ action_dim = 1
 
 state_dim, action_dim = envs.get_space_info(environment)
 reward_idx = state_dim + action_dim
-dataset = evaluate.collect_episodes(environment,policy=None,n_episodes=size)
-sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
-sastFirst, rFirst = sast, dataset[:, reward_idx]
-
+if not loadSast:
+    dataset = evaluate.collect_episodes(environment,policy=None,n_episodes=size)
+    sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
+    sastFirst, rFirst = sast, dataset[:, reward_idx]
+else:
+    sastFirst = sast = np.load("sast.np")
+    rFirst = np.load("r.np")
 
 
 if "experienceReplay" in exp.config['experimentSetting']:
@@ -175,6 +182,8 @@ if "horizon" in exp.config["mdp"]:
 
 varSetting = ExperimentVariables(experimentName)
 replay_experience = False
+
+environment.x_random = False
 for repetition in range(actualRepetition, repetitions):
 
     z = varSetting.loadSingle(regressorN, sizeN, datasetN, repetition, iterations, "score")

@@ -6,7 +6,7 @@ from numpy.matlib import repmat
 import time
 class DQN:
 
-    def __init__(self, env, regr, batch_size = 100, epsilon=1., discrete_actions = None, action_dim = None,state_dim=None,gamma=0.9):
+    def __init__(self, env, regr, batch_size = 100, epsilon=1.,epsilon_disc=0.99, discrete_actions = None, action_dim = None,state_dim=None,gamma=0.9):
         self.env = env
         self.sast = np.zeros((0,state_dim*2 + action_dim + 1))
         self.r = np.zeros((0,1))
@@ -20,9 +20,8 @@ class DQN:
         self.horizon = self.env.horizon
         self.n_step = 0
         self.gamma = gamma
-        self.renderize = True
-        self.epsilon_disc = 0.99
-
+        self.renderize = False
+        self.epsilon_disc = epsilon_disc
         self.i = 0
         if isinstance(discrete_actions, np.ndarray):
             if len(discrete_actions.shape) > 1:
@@ -55,13 +54,14 @@ class DQN:
             self.n_step = 0
             self.disc_reward = 0
             self.i += 1
-            if self.i > 750:
-                self.renderize = True
             print "episodio:", self.i
             print "epsilon:", self.epsilon
 
             self.state = np.array(self.env.reset())
             self.epsilon = self.epsilon * self.epsilon_disc
+
+        if self.first_time:
+            self.max_state = self.state
 
         if self.first_time or np.random.rand() < self.epsilon:
             a = self.env.action_space.sample()
@@ -72,12 +72,11 @@ class DQN:
 
         if self.renderize:
             self.env.render()
-        #print "predict Q: ", self.regr.predict(np.concatenate((np.matrix(self.state),np.matrix(a)),axis=1))
+
         next_state, reward, self.done, info = self.env.step(a)
-        if reward >= 100.:
-            print "reward >= 100"
-            raw_input("write somethong")
-        self.disc_reward +=  reward
+        x =  np.concatenate((np.matrix(self.max_state), np.abs(np.matrix(next_state))),axis=0)
+
+        self.disc_reward += reward
         self.n_step += 1
 
 
@@ -111,6 +110,8 @@ class DQN:
         self.regr.fit(self._sa, batch_r + self.gamma * y, nb_epoch=1, verbose=False)
 
         self.state = next_state[:]
+
+        return self.done
                       
     def _optimal_action(self,state):
         max_q_a = - np.infty
@@ -135,6 +136,10 @@ class DQN:
         """
         return X.reshape(-1, self.state_dim)
 
+    def save(self):
+        np.save("sast.np", self.sast)
+        np.save("r.np", self.r)
+
     def maxQA(self, states, absorbing, evaluation=False):
         """
         Computes the maximum Q-function and the associated action
@@ -142,7 +147,7 @@ class DQN:
         Args:
             states (numpy.array): states to be evaluated.
                                   Dimenions: (nsamples x state_dim)
-            absorbing (bool): true if the current state is absorbing.
+            absorbing (numpy.array): true if the current state is absorbing.
                               Dimensions: (nsamples x 1)
         Returns:
             Q: the maximum Q-value in each state
@@ -174,7 +179,7 @@ class DQN:
         # store Q-value and action for each state
         rQ, rA = np.zeros(n_states), np.zeros(n_states)
         for idx in range(n_states):
-            Q_max[idx,:] = np.array([[Q[idx, amax[idx]]]*4])
+            Q_max[idx,:] = np.array([[Q[idx, amax[idx]]]*n_actions])
             rQ[idx] = Q[idx, amax[idx]]
             rA[idx] = self._actions[amax[idx]]
 
