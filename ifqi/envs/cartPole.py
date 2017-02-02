@@ -21,7 +21,7 @@ class CartPole(Environment):
     def __init__(self):
 
         self.x_random = True
-        self.gamma = 0.99
+        self.gamma = 1.
 
         self.env = gym.make('CartPole-v0')
 
