@@ -187,7 +187,7 @@ class GradPBO(object):
         """
         # compute new parameters
         # theta_tp1 = self.bellman_model.outputs[0]
-        theta_tp1 = self.bellman_model._model_evaluation(theta)
+        theta_tp1 = self.bellman_model.model(theta)
         if self.incremental:
             theta_tp1 = theta_tp1 + theta
         # compute q-function with new parameters
@@ -201,11 +201,12 @@ class GradPBO(object):
         v = qbpo - r - gamma * qmat
         # compute error
         if self.norm_value == np.inf:
-            err = T.max(np.abs(v))
+            err = T.max(v ** 2)
+            # err = T.max(abs(v))
         elif self.norm_value % 2 == 0:
             err = T.mean(v ** self.norm_value) ** (1. / self.norm_value)
         else:
-            err = T.mean(np.abs(v) ** self.norm_value) ** (1. / self.norm_value)
+            err = T.mean(abs(v) ** self.norm_value) ** (1. / self.norm_value)
         return err, theta_tp1
 
     def k_step_bellman_error(self, s, a, nexts, r, theta, gamma, discrete_actions, steps):
@@ -453,8 +454,8 @@ class GradPBO(object):
 
                 if self.update_theta_every > 0 and n_updates % self.update_theta_every == 0:
                     tmp = self.apply_bop(theta[0], n_times=self.steps_per_theta_update)
-                    theta = []
-                    for _ in range(len(self.theta_list)):
+                    theta = [tmp]
+                    for _ in range(len(self.theta_list)-1):
                         if self.incremental:
                             tmp = tmp + self.bellman_model.predict(tmp)
                         else:
@@ -544,7 +545,7 @@ class GradPBO(object):
         self.T_grad_bellman_err = T.grad(self.T_bellman_err, params)
         # compile all functions
         # self.F_bellman_operator = theano.function([theta], self.bellman_model.outputs[0])
-        self.F_bellman_operator = theano.function([theta], self.bellman_model._model_evaluation(theta))
+        self.F_bellman_operator = theano.function([theta], self.bellman_model.model(theta))
         self.F_q = theano.function([self.T_s, self.T_a, theta], self.q_model.model(self.T_s, self.T_a, theta))
         self.F_bellman_err = theano.function(
             [self.T_s, self.T_a, self.T_s_next, self.T_r, theta, self.T_discrete_actions], self.T_bellman_err)
