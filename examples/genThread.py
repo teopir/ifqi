@@ -99,6 +99,11 @@ elif env_name=="Bicycle":
     sizeDS = 2000
     mdp = envs.Bicycle(navigate=True)
     discrete_actions = mdp.action_space.values
+elif env_name=="CartPole":
+    sizeDS = 2000
+    mdp = envs.CartPole()
+    discrete_actions = mdp.action_space.values
+
 
 
 mdp.seed(0)
@@ -183,6 +188,9 @@ elif env_name == "SwingPendulum":
     score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5*nEval,
                                                               initial_states=initial_states)
 elif env_name == "Bicycle":
+    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
+elif env_name == "CartPole":
+    mdp.x_random = False
     score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
 
 print(score)
