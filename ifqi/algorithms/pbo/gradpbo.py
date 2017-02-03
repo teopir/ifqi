@@ -18,7 +18,7 @@ class PBOHistory(cbks.Callback):
         self.hist = {}
 
     def on_batch_end(self, batch, logs={}):
-        for k in self.params['metrics'] + ['theta']:
+        for k in self.params['metrics'] + ['theta'] + ['rho']:
             if k in logs:
                 self.hist.setdefault(k, []).append(logs[k])
 
@@ -398,7 +398,8 @@ class GradPBO(object):
             'verbose': verbose,
             'do_validation': do_validation,
             'metrics': callback_metrics + [el for el in theta_metrics.keys()],
-            'theta': theta
+            'theta': theta,
+            'rho': [self.bellman_model.get_weights()]
         })
         callbacks.on_train_begin()
         callback_model.stop_training = False
@@ -439,6 +440,7 @@ class GradPBO(object):
                 batch_logs['batch'] = batch_index
                 batch_logs['size'] = len(batch_ids)
                 batch_logs['theta'] = [theta[0]]
+                batch_logs['rho'] = self.bellman_model.get_weights()
                 for k in theta_metrics.keys():
                     batch_logs[k] = theta_metrics[k](theta)
                 callbacks.on_batch_begin(batch_index, batch_logs)
