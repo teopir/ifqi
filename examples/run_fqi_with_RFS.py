@@ -87,7 +87,7 @@ if args.log:
 mdp = envs.Atari(name=args.env)
 
 # Feature extraction model (used for collecting episodes and evaluation)
-AE = Autoencoder((4, 84, 84), load_path=args.path)
+AE = Autoencoder((4 * 84 * 84,), load_path=args.path)
 
 # Read or collect dataset
 if args.dataset is not None:

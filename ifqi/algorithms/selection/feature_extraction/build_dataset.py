@@ -149,7 +149,7 @@ if __name__ == '__main__':
     logger = Logger(debug=args.debug)
 
     if args.encode:
-        AE = Autoencoder((4, 84, 84), load_path=args.path)
+        AE = Autoencoder((4 * 84 * 84,), load_path=args.path)
 
         # Automatically generate headers from the output length of AE.flat_encode
         nb_states = AE.flat_encode(np.expand_dims(np.ones(AE.input_shape), axis=0)).shape[0]
