@@ -209,7 +209,7 @@ def _eval_with_FE(mdp, policy, AE, metric, selected_states=None, max_ep_len=np.i
         state = next_state
         filtered_state = filtered_next_state
 
-    if gamma == 1:
+    if metric == 'average':
         ep_performance /= frame_counter
 
     return ep_performance, frame_counter
@@ -234,7 +234,7 @@ def evaluate_policy(mdp, policy, horizon=None, gamma=None, metric='discounted', 
         step (float): average number of step before finish
         step_confidence (float):  95% confidence level for step average
     """
-    assert metric in ['discounted', 'average'], "unsupported metric"
+    assert metric in ['discounted', 'average', 'cumulative'], "unsupported metric"
     if render:
         return _eval_and_render(mdp, policy, horizon, gamma, metric, initial_states, True)
     else:
@@ -268,7 +268,7 @@ def evaluate_policy_with_FE(mdp, policy, AE, metric='discounted', n_episodes=1,
             confidence (float): 95% confidence level for the provided metric
     """
 
-    assert metric in ['discounted', 'average'], "unsupported metric"
+    assert metric in ['discounted', 'average', 'cumulative'], "unsupported metric"
     out = Parallel(n_jobs=n_jobs)(
         delayed(_eval_with_FE)(
             mdp, policy, AE, metric, selected_states=selected_states, max_ep_len=max_ep_len, render=render

@@ -251,7 +251,7 @@ if args.fqi:
     average_episode_duration = len(dataset) / np.sum(dataset[:, -1])
     iteration_values = []  # Stores performance of the policy at each step
     fqi_fit_params = {}  # Optional parameters for fitting FQI
-    fqi_evaluation_params = {'metric': 'average',
+    fqi_evaluation_params = {'metric': 'cumulative',
                              'n_episodes': 1,
                              'selected_states': selected_states,
                              'max_ep_len': 2 * average_episode_duration}

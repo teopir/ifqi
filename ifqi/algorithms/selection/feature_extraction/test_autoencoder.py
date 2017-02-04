@@ -8,6 +8,9 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--path', type=str, default='data/breakout/model.h5', help='path to the hdf5 weights file for the autoencoder')
+parser.add_argument('--original', action='store_true')
+parser.add_argument('--rebuilt', action='store_true')
+parser.add_argument('--convmap', action='store_true')
 args = parser.parse_args()
 
 env = envs.Atari('BreakoutDeterministic-v3')
@@ -82,26 +85,29 @@ print '\nOnly ball moves and breaks wall (% change between states)'
 print(np.array_str(conv_map3 / conv_map4, precision=2))
 print ''
 
-# Image.fromarray(conv_map1 * 255).convert('L').show()
+if args.convmap:
+    Image.fromarray(conv_map0 * 255).convert('L').show()
+    Image.fromarray(conv_map00 * 255).convert('L').show()
+    Image.fromarray(conv_map1 * 255).convert('L').show()
+    Image.fromarray(conv_map2 * 255).convert('L').show()
+    Image.fromarray(conv_map3 * 255).convert('L').show()
+    Image.fromarray(conv_map4 * 255).convert('L').show()
 
-Image.fromarray(state0[3]).convert('L').show()
-# Image.fromarray(predicted_state0[3]).convert('L').show()
+if args.original:
+    Image.fromarray(state0[3]).convert('L').show()
+    Image.fromarray(state00[3]).convert('L').show()
+    Image.fromarray(state1[3]).convert('L').show()
+    Image.fromarray(state2[3]).convert('L').show()
+    Image.fromarray(state3[3]).convert('L').show()
+    Image.fromarray(state4[3]).convert('L').show()
 
-Image.fromarray(state00[3]).convert('L').show()
-# Image.fromarray(predicted_state00[3]).convert('L').show()
-
-Image.fromarray(state1[3]).convert('L').show()
-# Image.fromarray(predicted_state1[3]).convert('L').show()
-
-Image.fromarray(state2[3]).convert('L').show()
-# Image.fromarray(predicted_state2[3]).convert('L').show()
-
-Image.fromarray(state3[3]).convert('L').show()
-# Image.fromarray(predicted_state4[3]).convert('L').show()
-
-Image.fromarray(state4[3]).convert('L').show()
-# Image.fromarray(predicted_state4[3]).convert('L').show()
-
+if args.rebuilt:
+    Image.fromarray(predicted_state0[3]).convert('L').show()
+    Image.fromarray(predicted_state00[3]).convert('L').show()
+    Image.fromarray(predicted_state1[3]).convert('L').show()
+    Image.fromarray(predicted_state2[3]).convert('L').show()
+    Image.fromarray(predicted_state4[3]).convert('L').show()
+    Image.fromarray(predicted_state4[3]).convert('L').show()
 
 ''' Run this to reconstruct an image from a feature vector
 rebuilt = AE.decode(encoded_state)

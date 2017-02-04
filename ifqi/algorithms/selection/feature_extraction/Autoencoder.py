@@ -104,7 +104,6 @@ class Autoencoder:
             self.load(load_path)
 
         self.autoencoder.compile(optimizer=self.optimizer, loss=self.contractive_loss, metrics=['accuracy'])
-        #self.autoencoder.compile(optimizer=self.optimizer, loss=self.contractive_loss, metrics=['accuracy'])
 
         # Save the architecture
         if self.logger is not None:
