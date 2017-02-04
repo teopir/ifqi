@@ -172,26 +172,27 @@ iterations = nIter
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
 
+out = {}
 if env_name == "LQG1D" or env_name == "LQG1DD":
     initial_states = np.zeros((5, 1))
     initial_states[:, 0] = np.linspace(-10,10,5)
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1*nEval,
+    out = evaluate.evaluate_policy(mdp, fqi, 1*nEval,
                                                               initial_states=initial_states)
 elif env_name == "Acrobot":
     initial_states = np.zeros((5, 4))
     initial_states[:, 0] = np.linspace(-2, 2, 5)
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5*nEval,
+    out = evaluate.evaluate_policy(mdp, fqi, 5*nEval,
                                                               initial_states=initial_states)
 elif env_name == "SwingPendulum":
     initial_states = np.zeros((5, 2))
     initial_states[:, 0] = np.linspace(-np.pi, np.pi, 5)
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 5*nEval,
+    out = evaluate.evaluate_policy(mdp, fqi, 5*nEval,
                                                               initial_states=initial_states)
 elif env_name == "Bicycle":
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
+    out = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
 elif env_name == "CartPole":
     mdp.x_random = False
-    score, stdScore, step, stdStep = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
+    out = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
 
-print(score)
+print(out["score"])
 
