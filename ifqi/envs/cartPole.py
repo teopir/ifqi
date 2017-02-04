@@ -62,6 +62,7 @@ class CartPole(Environment):
         return self.env.step(int(action))
 
     def render(self, mode='human', close=False):
+        return
         self.env.render()
 
 
