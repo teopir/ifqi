@@ -204,9 +204,9 @@ class GradPBO(object):
             err = T.max(v ** 2)
             # err = T.max(abs(v))
         elif self.norm_value % 2 == 0:
-            err = T.mean(v ** self.norm_value) ** (1. / self.norm_value)
+            err = T.sum(v ** self.norm_value) ** (1. / self.norm_value)
         else:
-            err = T.mean(abs(v) ** self.norm_value) ** (1. / self.norm_value)
+            err = T.sum(abs(v) ** self.norm_value) ** (1. / self.norm_value)
         return err, theta_tp1
 
     def k_step_bellman_error(self, s, a, nexts, r, theta, gamma, discrete_actions, steps):

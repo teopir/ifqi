@@ -34,18 +34,34 @@ def bellmanop_grad(rho, theta):
     return np.kron(theta.T, np.eye(rho.shape[0], rho.shape[1]))
 
 
-def empirical_bop(s, a, r, snext, all_a, gamma, rho, theta):
+def empirical_bop(s, a, r, snext, all_a, gamma, rho, theta, norm_value=2, incremental=False):
     new_theta = bellmanop(rho, theta)
+    if incremental:
+        new_theta = theta + new_theta
     qnop = lqr_reg(s, a, new_theta)
     bop = -np.ones(s.shape[0]) * np.inf
     for i in range(s.shape[0]):
-        for j in range(a.shape[0]):
+        for j in range(all_a.shape[0]):
             qv = lqr_reg(snext[i], all_a[j], theta)
             if qv > bop[i]:
                 bop[i] = qv
     v = qnop - r - gamma * bop
-    return 0.5 * np.mean(v ** 2)
+    if norm_value == np.inf:
+        err = np.max(np.abs(v))
+    elif norm_value % 2 == 0:
+        err = np.sum(v ** norm_value) ** (1. / norm_value)
+    else:
+        err = np.sum(np.abs(v) ** norm_value) ** (1. / norm_value)
+    return err, new_theta
 
+
+def multi_step_ebop(s, a, r, snext, all_a, gamma, rho, theta, norm_value=2, incremental=False, steps=1):
+    tot_err = 0.0
+    t = theta
+    for k in range(steps):
+        err_k, t = empirical_bop(s, a, r, snext, all_a, gamma, rho, t, norm_value, incremental)
+        tot_err += err_k
+    return tot_err, t
 
 class LBPO(object):
     def __init__(self, init_rho):
@@ -56,7 +72,7 @@ class LBPO(object):
         self.inputs = [self.theta]
         self.trainable_weights = [self.rho]
 
-    def _model_evaluation(self, theta):
+    def model(self, theta):
         return T.dot(theta, self.rho)
 
     def evaluate(self, theta):
@@ -118,7 +134,7 @@ class LQG_PBO(object):
 # print(lqgpbo.evaluate(F))
 
 gamma = 0.99
-rho = np.array([1., 2., 0., 3.]).reshape(2, 2)
+rho = np.array([1., 2., 0., 3.], dtype='float64').reshape(2, 2)
 theta = np.array([2., 0.2], dtype='float32').reshape(1, -1)
 
 lbpo = LBPO(rho)  # bellman operator (apx)
@@ -133,9 +149,11 @@ discrete_actions = np.array([1, 2, 3]).reshape(-1, 1)  # discretization of the a
 
 # =================================================================
 INCREMENTAL = False
-gpbo = GradPBO(bellman_model=lbpo, q_model=q_model, steps_ahead=1,
+NORM_VAL = 2
+ST = 1
+gpbo = GradPBO(bellman_model=lbpo, q_model=q_model, steps_ahead=ST,
                discrete_actions=discrete_actions,
-               gamma=gamma, optimizer="adam",
+               gamma=gamma, optimizer="adam", norm_value=NORM_VAL,
                state_dim=1, action_dim=1, incremental=INCREMENTAL)
 gpbo._make_additional_functions()
 assert np.allclose(bellmanop(rho, theta), gpbo.F_bellman_operator(theta)), \
@@ -143,13 +161,17 @@ assert np.allclose(bellmanop(rho, theta), gpbo.F_bellman_operator(theta)), \
 assert np.allclose(lqr_reg(s, a, theta), gpbo.F_q(s, a, theta))
 
 berr = gpbo.F_bellman_err(s, a, nexts, r, theta, discrete_actions)
-tv = empirical_bop(s, a, r, nexts, discrete_actions, gamma, rho, theta)
+tv = multi_step_ebop(s, a, r, nexts, discrete_actions, gamma, rho, theta,
+                     norm_value=NORM_VAL, incremental=INCREMENTAL, steps=ST)[0]
 assert np.allclose(berr, tv), '{}, {}'.format(berr, tv)
+print(tv)
 
 berr_grad = gpbo.F_grad_bellman_berr(s, a, nexts, r, theta, discrete_actions)
 eps = np.sqrt(np.finfo(float).eps)
-f = lambda x: empirical_bop(s, a, r, nexts, discrete_actions, gamma, x, theta)
+f = lambda x: multi_step_ebop(s, a, r, nexts, discrete_actions, gamma, x, theta,
+                              norm_value=NORM_VAL, incremental=INCREMENTAL, steps=ST)[0]
 approx_grad = optimize.approx_fprime(rho.ravel(), f, eps).reshape(berr_grad[0].shape)
+print("{}\n{}".format(berr_grad, approx_grad))
 assert np.allclose(berr_grad, approx_grad), '{}, {}'.format(berr_grad, approx_grad)
 
 # =================================================================
