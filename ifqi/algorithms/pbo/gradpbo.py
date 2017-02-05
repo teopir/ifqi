@@ -2,26 +2,12 @@ from __future__ import print_function
 import theano
 import theano.tensor as T
 import numpy as np
-import copy
+from six import iteritems
 import time
 
 from keras.engine.training import slice_X, batch_shuffle, make_batches, \
     standardize_input_data, check_array_lengths
 from keras import optimizers
-from keras import callbacks as cbks
-
-
-class PBOHistory(cbks.Callback):
-    def on_train_begin(self, logs={}):
-        self.epoch = []
-        self.batch = []
-        self.hist = {}
-
-    def on_batch_end(self, batch, logs={}):
-        for k in self.params['metrics'] + ['theta'] + ['rho']:
-            if k in logs:
-                self.hist.setdefault(k, []).append(logs[k])
-
 
 class GradPBO(object):
     """
@@ -336,7 +322,7 @@ class GradPBO(object):
 
                 history["theta"].append(theta[0])
                 history["rho"].append(self.bellman_model.get_weights())
-                for k, v in theta_metrics.iteritems():
+                for k, v in iteritems(theta_metrics):
                     history['k'].append(v(theta))
 
                 batch_ids = index_array[batch_start:batch_end]
