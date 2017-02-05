@@ -61,7 +61,7 @@ class CartPole(Environment):
         ret = self.env.step(int(action))
         ret = list(ret)
         if self.continuousReward:
-            ret[1] = np.cos(ret[0][0])
+            ret[1] = np.cos(ret[0][2])
         ret = tuple(ret)
         return ret
 
