@@ -5,7 +5,8 @@ scipy>=0.18
 gym>=0.3
 joblib
 pybrain>=0.3
-keras<1.2.1
+keras>=1.2.1
 pygame
 pillow>=4.0.0
 graphviz
+pandas>=0.17

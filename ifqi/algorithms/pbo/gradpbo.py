@@ -73,7 +73,7 @@ class GradPBO(object):
         self.update_theta_every = update_theta_every if update_theta_every > 0 else -1
         self.verbose = verbose
         self.independent = independent
-        self.steps_per_theta_update =  steps_ahead if steps_per_theta_update is None else max(1, steps_per_theta_update)
+        self.steps_per_theta_update = steps_ahead if steps_per_theta_update is None else max(1, steps_per_theta_update)
 
         # create theano variables
         T_s = T.dmatrix()
@@ -132,7 +132,7 @@ class GradPBO(object):
         self.discrete_actions = standardize_input_data(discrete_actions, ['discrete_actions'],
                                                        [(None,
                                                          self.action_dim)] if self.action_dim is not None else None,
-                                                       check_batch_dim=False, exception_prefix='discrete_actions')
+                                                       exception_prefix='discrete_actions')
 
     def _compute_max_q(self, s, discrete_actions, theta):
         """
@@ -251,22 +251,21 @@ class GradPBO(object):
 
         """
         s = standardize_input_data(s, ['s'], [(None, self.state_dim)] if self.state_dim is not None else None,
-                                   check_batch_dim=check_batch_dim, exception_prefix='state')
+                                   exception_prefix='state')
         a = standardize_input_data(a, ['a'], [(None, self.action_dim)] if self.action_dim is not None else None,
-                                   check_batch_dim=check_batch_dim, exception_prefix='action')
+                                   exception_prefix='action')
         # r = standardize_input_data(r, ['r'], [(None, 1)],
         #                            check_batch_dim=False, exception_prefix='reward')
         s_next = standardize_input_data(s_next, ['s_next'],
                                         [(None, self.state_dim)] if self.state_dim is not None else None,
-                                        check_batch_dim=check_batch_dim, exception_prefix='state_next')
+                                        exception_prefix='state_next')
         theta = standardize_input_data(theta, ['theta'], (None, self.bellman_model.n_inputs()),
-                                       check_batch_dim=check_batch_dim, exception_prefix='theta')
+                                       exception_prefix='theta')
         check_array_lengths(s, a, s_next)
         return s, a, s_next, r, theta
 
     def fit(self, s, a, s_next, r, theta,
-            batch_size=32, nb_epoch=10, verbose=1, callbacks=[],
-            validation_split=0., validation_data=None, shuffle=True, theta_metrics={}):
+            batch_size=32, nb_epoch=10, verbose=1, shuffle=True, theta_metrics={}):
         """
 
         Args:
@@ -305,106 +304,19 @@ class GradPBO(object):
 
         all_actions = standardize_input_data(self.discrete_actions, ['all_actions'],
                                              [(None, self.action_dim)] if self.action_dim is not None else None,
-                                             check_batch_dim=False, exception_prefix='discrete_actions')
+                                             exception_prefix='discrete_actions')
 
-        # # prepare validation data
-        # if validation_data:
-        #     do_validation = True
-        #     if len(validation_data) == 4:
-        #         val_s, val_a, val_s_next, val_r = validation_data
-        #     elif len(validation_data) == 5:
-        #         val_s, val_a, val_s_next, val_r, val_theta = validation_data
-        #     else:
-        #         raise
-        #
-        #     val_s, val_a, val_s_next, val_r, val_theta = self._standardize_user_data(
-        #         val_s, val_a, val_s_next, val_r, val_theta,
-        #         check_batch_dim=False,
-        #         batch_size=batch_size
-        #     )
-        #     self._make_test_function()
-        #     val_f = self.test_function
-        #     val_ins = val_s + val_a + val_s_next + [val_r]
-        #
-        # elif validation_split and 0. < validation_split < 1.:
-        #     do_validation = True
-        #     split_at = int(len(x[0]) * (1. - validation_split))
-        #     x, val_x = (slice_X(x, 0, split_at), slice_X(x, split_at))
-        #     y, val_y = (slice_X(y, 0, split_at), slice_X(y, split_at))
-        #     sample_weights, val_sample_weights = (
-        #         slice_X(sample_weights, 0, split_at), slice_X(sample_weights, split_at))
-        #     self._make_test_function()
-        #     val_f = self.test_function
-        #     if self.uses_learning_phase and type(K.learning_phase()) is not int:
-        #         val_ins = val_x + val_y + val_sample_weights + [0.]
-        #     else:
-        #         val_ins = val_x + val_y + val_sample_weights
-        # else:
-        #     do_validation = False
-        #     val_f = None
-        #     val_ins = None
-
-        do_validation = False
-        val_f = None
-        val_ins = None
+        n_updates = 0
+        history = {"theta": [], 'rho': []}
+        for k in theta_metrics.keys():
+            history.update({k: []})
 
         ins = s + a + s_next + [r]
         self._make_train_function()
         f = self.train_function
 
-        # prepare display labels
-        out_labels = ['bellman_error']
-
-        if do_validation:
-            callback_metrics = copy.copy(out_labels) + ['val_' + n for n in out_labels]
-        else:
-            callback_metrics = copy.copy(out_labels)
-
-        return self._fit_loop(f, ins, theta, all_actions,
-                              out_labels=out_labels,
-                              batch_size=batch_size, nb_epoch=nb_epoch,
-                              verbose=verbose, callbacks=callbacks,
-                              val_f=val_f, val_ins=val_ins, shuffle=shuffle,
-                              callback_metrics=callback_metrics,
-                              theta_metrics=theta_metrics)
-
-    def _fit_loop(self, f, ins, theta, discrete_actions, out_labels=[],
-                  batch_size=32, nb_epoch=100, verbose=1, callbacks=[],
-                  val_f=None, val_ins=None, shuffle=True, callback_metrics=[],
-                  theta_metrics={}):
-        do_validation = False
-        if val_f and val_ins:
-            do_validation = True
-            if verbose:
-                print('Train on %d samples, validate on %d samples' %
-                      (ins[0].shape[0], val_ins[0].shape[0]))
-
         nb_train_sample = ins[0].shape[0]
-        print(nb_train_sample)
         index_array = np.arange(nb_train_sample)
-
-        history = PBOHistory()
-        callbacks = [history] + callbacks
-        if verbose:
-            callbacks += [cbks.ProgbarLogger()]
-        callbacks = cbks.CallbackList(callbacks)
-        callback_model = self
-
-        callbacks._set_model(callback_model)
-        callbacks._set_params({
-            'batch_size': batch_size,
-            'nb_epoch': nb_epoch,
-            'nb_sample': nb_train_sample,
-            'verbose': verbose,
-            'do_validation': do_validation,
-            'metrics': callback_metrics + [el for el in theta_metrics.keys()],
-            'theta': theta,
-            'rho': [self.bellman_model.get_weights()]
-        })
-        callbacks.on_train_begin()
-        callback_model.stop_training = False
-
-        n_updates = 0
 
         # append evolution of theta for independent case
         for _ in range(len(self.theta_list) - 1):
@@ -415,15 +327,18 @@ class GradPBO(object):
             theta += [tmp]
 
         for epoch in range(nb_epoch):
-            callbacks.on_epoch_begin(epoch)
             if shuffle == 'batch':
                 index_array = batch_shuffle(index_array, batch_size)
             elif shuffle:
                 np.random.shuffle(index_array)
-
             batches = make_batches(nb_train_sample, batch_size)
-            epoch_logs = {}
             for batch_index, (batch_start, batch_end) in enumerate(batches):
+
+                history["theta"].append(theta[0])
+                history["rho"].append(self.bellman_model.get_weights())
+                for k, v in theta_metrics.iteritems():
+                    history['k'].append(v(theta))
+
                 batch_ids = index_array[batch_start:batch_end]
                 try:
                     if type(ins[-1]) is float:
@@ -435,53 +350,19 @@ class GradPBO(object):
                     raise Exception('TypeError while preparing batch. '
                                     'If using HDF5 input data, '
                                     'pass shuffle="batch".')
-
-                batch_logs = {}
-                batch_logs['batch'] = batch_index
-                batch_logs['size'] = len(batch_ids)
-                batch_logs['theta'] = [theta[0]]
-                batch_logs['rho'] = self.bellman_model.get_weights()
-                for k in theta_metrics.keys():
-                    batch_logs[k] = theta_metrics[k](theta)
-                callbacks.on_batch_begin(batch_index, batch_logs)
-
-                inp = ins_batch + theta + discrete_actions
+                inp = ins_batch + theta + all_actions
                 outs = f(*inp)
                 n_updates += 1
-
-                if type(outs) != list:
-                    outs = [outs]
-                for l, o in zip(out_labels, outs):
-                    batch_logs[l] = o
 
                 if self.update_theta_every > 0 and n_updates % self.update_theta_every == 0:
                     tmp = self.apply_bop(theta[0], n_times=self.steps_per_theta_update)
                     theta = [tmp]
-                    for _ in range(len(self.theta_list)-1):
+                    for _ in range(len(self.theta_list) - 1):
                         if self.incremental:
                             tmp = tmp + self.bellman_model.predict(tmp)
                         else:
                             tmp = self.bellman_model.predict(tmp)
                         theta += [tmp]
-
-                callbacks.on_batch_end(batch_index, batch_logs)
-
-                if batch_index == len(batches) - 1:  # last batch
-                    # validation
-                    if do_validation:
-                        # replace with self._evaluate
-                        val_outs = self._test_loop(val_f, val_ins,
-                                                   batch_size=batch_size,
-                                                   verbose=0)
-                        if type(val_outs) != list:
-                            val_outs = [val_outs]
-                        # same labels assumed
-                        for l, o in zip(out_labels, val_outs):
-                            epoch_logs['val_' + l] = o
-
-            callbacks.on_epoch_end(epoch, epoch_logs)
-
-        callbacks.on_train_end()
 
         # finally apply the bellman operator K-times to get the final point
         self.learned_theta_value = self.apply_bop(theta[0], n_times=100)
@@ -535,7 +416,7 @@ class GradPBO(object):
         self._make_draw_action_function()
         state = standardize_input_data(state, ['state'],
                                        [(None, self.state_dim)] if self.state_dim is not None else None,
-                                       check_batch_dim=False, exception_prefix='draw_state')
+                                       exception_prefix='draw_state')
         return self.draw_action_function(state[0], self.learned_theta_value, self.discrete_actions[
             0])  # we take index zero since they are lists of numpy matrices
 

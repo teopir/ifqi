@@ -101,7 +101,7 @@ def _model_evaluation(self, theta):
     return inv
 
 
-Sequential._model_evaluation = _model_evaluation
+Sequential.model = _model_evaluation
 rho_regressor = Sequential()
 rho_regressor.add(Dense(20, input_dim=n_q_regressors_weights, init='uniform', activation=ACTIVATION))
 rho_regressor.add(Dense(n_q_regressors_weights, init='uniform', activation='linear'))
@@ -112,7 +112,7 @@ import theano.tensor as T
 
 theta = T.matrix()
 
-res = rho_regressor._model_evaluation(theta)
+res = rho_regressor.model(theta)
 ff = theano.function([theta], res)
 h = np.array([[1, 2.]], dtype=theano.config.floatX)
 assert np.allclose(ff(h), rho_regressor.predict(h))
@@ -158,8 +158,8 @@ print('Final performance of PBO: {}'.format(values))
 
 ##########################################
 # Some plot
-ks = np.array(history.hist['k']).squeeze()
-weights = np.array(history.hist['theta']).squeeze()
+ks = np.array(history['k']).squeeze()
+weights = np.array(history['theta']).squeeze()
 
 plt.figure()
 plt.title('[train] evaluated weights')
