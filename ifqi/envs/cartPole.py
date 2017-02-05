@@ -59,8 +59,10 @@ class CartPole(Environment):
 
     def step(self, action):
         ret = self.env.step(int(action))
+        ret = list(ret)
         if self.continuousReward:
             ret[1] = np.cos(ret[0][0])
+        ret = tuple(ret)
         return ret
 
     def render(self, mode='human', close=False):
