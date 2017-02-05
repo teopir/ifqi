@@ -18,20 +18,20 @@ class CartPole(Environment):
         'video.frames_per_second': 15
     }
 
-    def __init__(self):
+    def __init__(self, continuosReward = False):
 
         self.x_random = True
         self.gamma = 1.
 
         self.env = gym.make('CartPole-v0')
 
-        #self.env = wrappers.Monitor(self.env, "/tmp/gym-results", force=True)
         self.horizon = envs.registry.env_specs["CartPole-v0"].tags['wrapper_config.TimeLimit.max_episode_steps']
 
         self.action_space = self.env.action_space
         self.action_space.values = range(self.action_space.n)
         self.observation_space = self.env.observation_space
 
+        self.continuousReward = continuosReward
         # initialize state
         self.seed()
         self.reset()
@@ -50,8 +50,7 @@ class CartPole(Environment):
                 th *= 0.95
                 self.env.state[0] = x
                 self.env.state[1] = dx
-                dth = np.random.rand() * 6. -3.
-                #self.env.state[2] = th
+                dth = np.random.rand() * 6. - 3.
                 self.env.state[3] = dth
             return self.get_state()
         else:
@@ -59,7 +58,10 @@ class CartPole(Environment):
             return self.get_state()
 
     def step(self, action):
-        return self.env.step(int(action))
+        ret = self.env.step(int(action))
+        if self.continuousReward:
+            ret[1] = np.cos(ret[0][0])
+        return ret
 
     def render(self, mode='human', close=False):
         return

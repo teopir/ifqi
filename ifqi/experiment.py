@@ -78,8 +78,8 @@ class Experiment(object):
                 self.mdp = SwingPendulum()
             elif self.config["mdp"]["mdpName"] == "CartPole":
                 self.mdp = CartPole()
-            elif self.config["mdp"]["mdpName"] == "CartPoleDisc":
-                self.mdp = CartPole(discreteRew=True)
+            elif self.config["mdp"]["mdpName"] == "CartPoleCont":
+                self.mdp = CartPole(continuosReward=True)
             elif self.config["mdp"]["mdpName"] == "LQG1D":
                 self.mdp = LQG1D()
             elif self.config["mdp"]["mdpName"] == "LQG1DDisc":
