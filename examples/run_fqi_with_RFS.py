@@ -55,6 +55,7 @@ Parameters:
         Note: onehot encoding only works with monodimensional discrete action spaces.
     --significance (float, 0.1): significance parameter for RFS.
     --trees (int, 100): number of trees to use in RFS.
+    --min-score (int, 0): minimum score needed to add episode in RFS dataset
     --fqi: run FQI on the dataset.
     --iterations (int, 100): number of FQI iterations to run.
 """
@@ -73,6 +74,7 @@ parser.add_argument('--save-rfs', action='store_true', help='save the RFS datase
 parser.add_argument('--onehot', action='store_true', help='save actions in the dataset with onehot encoding')
 parser.add_argument('--significance', type=float, default=0.1, help='significance for RFS')
 parser.add_argument('--trees', type=int, default=100, help='number of trees to use in RFS')
+parser.add_argument('--min-score', type=int, default=0, help='min score needed to add episode in RFS dataset')
 parser.add_argument('--fqi', action='store_true', help='run FQI on the dataset')
 parser.add_argument('--iterations', type=int, default=100, help='number of FQI iterations to run')
 args = parser.parse_args()
@@ -99,6 +101,7 @@ else:
     collection_params = {'episodes': args.episodes,
                          'env_name': args.env,
                          'header': None,
+                         'minimum_score': args.min_score,
                          'onehot': args.onehot,
                          'video': False,
                          'n_jobs': 1}  # n_jobs forced to 1 because AE runs on GPU
@@ -307,8 +310,6 @@ else:
 
 logger.log('\n\n### RFS ###')
 if args.rfs:
-    if not got_actions:
-        logger.log('### NO ACTIONS WERE SELECTED ###')
     logger.log('Elapsed time: %s' % rfs_time)
     logger.log('\n# IFS regressor parameters')
     logger.log(ifs_regressor_params)
@@ -323,7 +324,10 @@ if args.rfs:
                 'dataset_size': len(dataset)})
 logger.log('\nreduced_dataset_size: %s' % len(reduced_dataset))
 logger.log('Selected states (total %d): \n%s' % (len(selected_states), selected_states))
-logger.log('\nSelected actions (total %d): \n%s' % (len(selected_actions), selected_actions))
+if not got_actions:
+    logger.log('\n### NO ACTIONS WERE SELECTED ###')
+else:
+    logger.log('\nSelected actions (total %d): \n%s' % (len(selected_actions), selected_actions))
 
 if args.fqi:
     logger.log('\n\n### FQI ###')

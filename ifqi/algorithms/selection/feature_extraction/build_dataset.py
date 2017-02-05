@@ -68,56 +68,62 @@ def collect_images_dataset(logger, episodes=100, env_name='BreakoutDeterministic
         return dataset
 
 
-def episode_encoded(AE, env_name='BreakoutDeterministic-v3', onehot=True, video=False):
+def episode_encoded(AE, env_name='BreakoutDeterministic-v3', minimum_score=0, onehot=True, video=False):
     env = envs.Atari(env_name)
     action_space = env.action_space.n
-    frame_counter = 0
+    cumulative_reward = 0
 
-    # Get current state
-    state = env.reset()
+    while cumulative_reward <= minimum_score:
+        cumulative_reward = 0
+        frame_counter = 0
 
-    # Get encoded features
-    preprocessed_state = np.expand_dims(np.asarray(crop_state(state)), axis=0)
-    encoded_state = AE.flat_encode(preprocessed_state)
-
-    reward = 0
-    done = False
-
-    # Start episode
-    ep_output = []
-    while not done:
-        frame_counter += 1
-
-        # Select an action
-        action = random.randrange(0, action_space)
-        # Execute the action, get next state and reward
-        next_state, reward, done, info = env.step(action)
+        # Get current state
+        state = env.reset()
 
         # Get encoded features
-        preprocessed_next_state = np.expand_dims(crop_state(next_state), axis=0)
-        encoded_next_state = AE.flat_encode(preprocessed_next_state)
+        preprocessed_state = np.expand_dims(np.asarray(crop_state(state)), axis=0)
+        encoded_state = AE.flat_encode(preprocessed_state)
 
-        # Append sars tuple to datset
-        actions_to_append = onehot_encode(action, action_space) if onehot else action
-        sars_list = [encoded_state, actions_to_append, reward, encoded_next_state, [1 if done else 0] * 2]
-        ep_output.append(flat2list(sars_list, as_tuple=True))
+        reward = 0
+        done = False
 
-        # Render environment
-        if video:
-            env.render()
+        # Start episode
+        ep_output = []
+        while not done:
+            frame_counter += 1
 
-        # Update state
-        state = next_state
-        encoded_state = encoded_next_state
+            # Select an action
+            action = random.randrange(0, action_space)
+            # Execute the action, get next state and reward
+            next_state, reward, done, info = env.step(action)
+            cumulative_reward += reward
+
+            # Get encoded features
+            preprocessed_next_state = np.expand_dims(crop_state(next_state), axis=0)
+            encoded_next_state = AE.flat_encode(preprocessed_next_state)
+
+            # Append sars tuple to datset
+            actions_to_append = onehot_encode(action, action_space) if onehot else action
+            sars_list = [encoded_state, actions_to_append, reward, encoded_next_state, [1 if done else 0] * 2]
+            ep_output.append(flat2list(sars_list, as_tuple=True))
+
+            # Render environment
+            if video:
+                env.render()
+
+            # Update state
+            state = next_state
+            encoded_state = encoded_next_state
 
     return ep_output
 
 
 def collect_encoded_dataset(AE, episodes=100, env_name='BreakoutDeterministic-v3', header=None, onehot=True,
-                            video=False, n_jobs=-1):
+                            minimum_score=0, video=False, n_jobs=-1):
     # Parameters for the episode function
     ep_params = {
         'env_name': env_name,
+        'minimum_score': minimum_score,
         'onehot': onehot,
         'video': video
     }
@@ -143,6 +149,7 @@ if __name__ == '__main__':
     parser.add_argument('--path', type=str, default='data/model.h5', help='path to the hdf5 weights file for the AE')
     parser.add_argument('-e', '--encode', action='store_true', help='save a SARS dataset with the encoded features')
     parser.add_argument('-i', '--images', action='store_true', help='save images of states and a SARS csv with ids')
+    parser.add_argument('--min-score', type=int, default=0, help='keep episode only if it got more than this score')
     parser.add_argument('--onehot', action='store_true', help='save actions in the dataset with onehot encoding')
     args = parser.parse_args()
 
@@ -164,6 +171,7 @@ if __name__ == '__main__':
                                 env_name=args.env,
                                 header=header,
                                 onehot=args.onehot,
+                                minimum_score=args.min_score,
                                 video=args.video,
                                 n_jobs=args.njobs)
         output_file = 'encoded_dataset.csv'
