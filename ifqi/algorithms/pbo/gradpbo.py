@@ -321,7 +321,10 @@ class GradPBO(object):
             for batch_index, (batch_start, batch_end) in enumerate(batches):
 
                 history["theta"].append(theta[0])
-                history["rho"].append(self.bellman_model.get_weights())
+                if hasattr(self.bellman_model, '_model'):
+                    history["rho"].append(self.bellman_model._model.get_weights())
+                else:
+                    history["rho"].append(self.bellman_model.get_weights())
                 for k, v in iteritems(theta_metrics):
                     history['k'].append(v(theta))
 
@@ -355,6 +358,7 @@ class GradPBO(object):
         if self.verbose > 1:
             print('learned theta: {}'.format(self.learned_theta_value))
 
+        self.history = history
         return history
 
     def apply_bop(self, theta, n_times=1):
