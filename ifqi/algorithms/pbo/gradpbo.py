@@ -344,7 +344,7 @@ class GradPBO(object):
                 n_updates += 1
 
                 if self.update_theta_every > 0 and n_updates % self.update_theta_every == 0:
-                    tmp = self.apply_bop(theta[0], n_times=self.steps_per_theta_update)
+                    tmp = self.apply_bo(theta[0], n_times=self.steps_per_theta_update)
                     theta = [tmp]
                     for _ in range(len(self.theta_list) - 1):
                         if self.incremental:
@@ -354,14 +354,14 @@ class GradPBO(object):
                         theta += [tmp]
 
         # finally apply the bellman operator K-times to get the final point
-        self.learned_theta_value = self.apply_bop(theta[0], n_times=100)
+        self.learned_theta_value = self.apply_bo(theta[0], n_times=100)
         if self.verbose > 1:
             print('learned theta: {}'.format(self.learned_theta_value))
 
         self.history = history
         return history
 
-    def apply_bop(self, theta, n_times=1):
+    def apply_bo(self, theta, n_times=1):
         """
         Applies the Bellman operator to the provided Q-function parameters
         Args:
