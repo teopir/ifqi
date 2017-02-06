@@ -28,7 +28,7 @@ class ConvNet:
 
         # Models
         self.model = Model(input=self.input, output=self.output)
-        self.encoder = Model(input=self.inputs, output=self.features)
+        self.encoder = Model(input=self.input, output=self.features)
 
         # Optimization algorithm
         try:
@@ -55,6 +55,7 @@ class ConvNet:
         :return: the metrics of interest as defined in the model (loss, accuracy, etc.)
         """
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        y = np.array(y)
         x[x < 0.1] = 0
         x[x >= 0.1] = 1
         return self.model.train_on_batch(x, y)
@@ -71,13 +72,14 @@ class ConvNet:
         x[x >= 0.1] = 1
         return self.model.predict_on_batch(x) * 255  # Restore original scale
 
-    def test(self, x):
+    def test(self, x, y):
         """
         Tests the model on a batch.
         :param x: batch of samples on which to train.
         :return: the metrics of interest as defined in the model (loss, accuracy, etc.)
         """
         x = np.asarray(x).astype('float32') / 255  # Normalize pixels in 0-1 range
+        y = np.array(y)
         x[x < 0.1] = 0
         x[x >= 0.1] = 1
         return self.model.test_on_batch(x, y)

@@ -15,11 +15,6 @@ def batch_iterator(dataset_folder, batch_size, nb_epochs, labels=None, shuffle=T
     :return: an iterator for the batches.
     """
 
-    data = []
-    for filename in os.listdir(dataset_folder):
-        if filename.endswith('.npy'):
-            data.append(filename)
-
     data = pd.read_csv(dataset_folder + 'images_dataset.csv')
     x = data['S'].as_matrix()
     if labels is not None:
@@ -47,10 +42,10 @@ def batch_iterator(dataset_folder, batch_size, nb_epochs, labels=None, shuffle=T
             batch_data = x[batch_idx * batch_size: min((batch_idx + 1) * batch_size, data_size)]
             batch_labels = y[batch_idx * batch_size: min((batch_idx + 1) * batch_size, data_size)]
             for _x, _y in zip(batch_data, batch_labels):
-                image = np.load(dataset_folder + _x)
+                image = np.load(dataset_folder + _x + '.npy')
                 images.append(np.asarray(image))
                 labels.append(_y)
-            if labels is not None:
+            if labels is None:
                 yield images
             else:
                 yield images, labels
