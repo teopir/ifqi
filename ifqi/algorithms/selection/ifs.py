@@ -283,13 +283,16 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             old_confidence_interval = confidence_interval
             old_score = score
 
+            if self.scale:
+                target = StandardScaler().fit_transform(target.reshape(
+                    -1,1)).ravel()
+
             if self.verbose > 0:
                 print()
                 print('Feature ranking')
                 print()
-
-            if self.scale:
-                target = StandardScaler().fit_transform(target.reshape(-1, 1)).ravel()
+                print("target shape: {}".format(target.shape))
+                print()
 
             # Rank the remaining features
             start_t = time.time()
