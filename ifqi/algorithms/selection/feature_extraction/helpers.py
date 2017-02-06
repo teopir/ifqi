@@ -1,11 +1,13 @@
 from __future__ import print_function
 import numpy as np, os, random
 from PIL import Image
+import pandas as pd
 
 
-def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
+def batch_iterator(dataset_folder, batch_size, nb_epochs, labels=None, shuffle=True):
     """
     Yields batches of length batch_size, randomly created iterating over the dataset nb_epochs times.
+    :param labels: use the column with this name as labels and return a x,y dataset
     :param dataset_folder: path to folder containing .png or .jpg images.
     :param batch_size: number of images to yiela at a time. Set to 'all' if you want to use the whole dataset as batch.
     :param nb_epochs: number of times to iterate the dataset.
@@ -18,23 +20,40 @@ def batch_iterator(dataset_folder, batch_size, nb_epochs, shuffle=True):
         if filename.endswith('.npy'):
             data.append(filename)
 
-    data_size = len(data)
+    data = pd.read_csv(dataset_folder + 'images_dataset.csv')
+    x = data['S'].as_matrix()
+    if labels is not None:
+        y = data[labels].as_matrix()
+    else:
+        y = x
+
+    data_size = len(x)
     batch_size = batch_size if batch_size != 'all' else data_size
     nb_batches_in_epoch = int(data_size / batch_size) + (1 if data_size % batch_size else 0)
 
     print('Total number of iterations: %d' % (nb_batches_in_epoch * nb_epochs))
 
     images = []
+    labels = []
     for epoch in range(nb_epochs):
         if shuffle:
-            random.shuffle(data)  # Shuffle data at each epoch
+            # Shuffle data at each epoch
+            perm = np.random.permutation(data_size)
+            x = x[perm]
+            y = y[perm]
         for batch_idx in range(nb_batches_in_epoch):
             images[:] = []  # Empty the list to free up memory
-            batch_data = data[batch_idx * batch_size: min((batch_idx + 1) * batch_size, data_size)]
-            for _id in batch_data:
-                image = np.load(dataset_folder + _id)
+            labels[:] = []
+            batch_data = x[batch_idx * batch_size: min((batch_idx + 1) * batch_size, data_size)]
+            batch_labels = y[batch_idx * batch_size: min((batch_idx + 1) * batch_size, data_size)]
+            for _x, _y in zip(batch_data, batch_labels):
+                image = np.load(dataset_folder + _x)
                 images.append(np.asarray(image))
-            yield images
+                labels.append(_y)
+            if labels is not None:
+                yield images
+            else:
+                yield images, labels
 
 
 def resize_state(to_resize, new_size=(72,72)):
