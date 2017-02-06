@@ -8,6 +8,7 @@ from ifqi.models.mlp import MLP
 from ifqi.models.regressor import Regressor
 from gym.spaces import prng
 import random
+from ifqi.models.actionregressor import  ActionRegressor
 
 import argparse
 
@@ -113,7 +114,8 @@ mdp.seed(seed)
 
 state_dim, action_dim = envs.get_space_info(mdp)
 
-regressor_params = {"n_input": state_dim+action_dim,
+regressor_params = {"model":MLP,
+                    "n_input": state_dim+action_dim,
                     "n_output": 1,
                     "optimizer": "rmsprop",
                      "early_stopping":True,
@@ -135,7 +137,8 @@ regressor_params = {"n_input": state_dim+action_dim,
 #ExtraTree con Regressor:
 regressor_params["input_scaled"]= input_scaled==1
 regressor_params["output_scaled"]= output_scaled==1
-regressor = Regressor(regressor_class=MLP, **regressor_params)
+
+regressor = Regressor(regressor_class=ActionRegressor, **regressor_params)
 
 #ExtraTree senza regressor
 #regressor = ExtraTreesRegressor(**regressor_params)
@@ -159,7 +162,8 @@ fqi = FQI(estimator=regressor,
           gamma=mdp.gamma,
           horizon=mdp.horizon,
           features=None,
-          verbose=True)
+          verbose=True,
+          reset_regressor=True)
 
 
 fitParams = {
