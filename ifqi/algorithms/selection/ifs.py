@@ -27,7 +27,7 @@ else:
     from sklearn.utils import indexable
     from sklearn.externals.joblib import Parallel, delayed
     from sklearn.utils.validation import _num_samples
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import scipy.sparse as sp
 import time
 
@@ -272,7 +272,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         self.scores_confidences_ = []
         self.features_per_it_ = []
 
-        target = y
+        target = y.copy()
 
         score, confidence_interval = -np.inf, 0
         proceed = True
@@ -283,13 +283,18 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             old_confidence_interval = confidence_interval
             old_score = score
 
+            if self.scale:
+                target = StandardScaler().fit_transform(target.reshape(
+                   -1,1)).ravel()
+                # target = MinMaxScaler().fit_transform(target.reshape(
+                #     -1,1)).ravel()
+
             if self.verbose > 0:
                 print()
                 print('Feature ranking')
                 print()
-
-            if self.scale:
-                target = StandardScaler().fit_transform(target.reshape(-1, 1)).ravel()
+                print("target shape: {}".format(target.shape))
+                print()
 
             # Rank the remaining features
             start_t = time.time()

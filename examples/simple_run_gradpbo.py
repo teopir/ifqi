@@ -2,9 +2,11 @@ import numpy as np
 
 from ifqi import envs
 from ifqi.evaluation import evaluation
-from ifqi.evaluation.utils import check_dataset, split_dataset, split_data_for_fqi
+from ifqi.evaluation.utils import check_dataset, split_dataset, \
+    split_data_for_fqi
 from ifqi.models.regressor import Regressor
-from ifqi.algorithms.pbo.gradpbo import GradPBO
+from ifqi.algorithms.pbo.gradpbo import GradPBO, increment_base_termination
+from ifqi.algorithms.algorithm import Algorithm
 
 from keras.models import Sequential
 from keras.layers import Dense
@@ -40,10 +42,10 @@ op.add_option("--activ", default="tanh",
               help="NN activation")
 (opts, args) = op.parse_args()
 
-np.random.seed(6652)
+# np.random.seed(6652)
 
 mdp = envs.LQG1D()
-mdp.seed(2897270658018522815)
+# mdp.seed(2897270658018522815)
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 reward_idx = state_dim + action_dim
 discrete_actions = np.linspace(-8, 8, 20)
@@ -56,12 +58,16 @@ STEPS_AHEAD = opts.STEPS_HEAD
 UPDATE_EVERY = opts.UPDATE_EVERY
 INDEPENDENT = opts.INDEPENDENT
 EPOCH = opts.EPOCH
+NORM_VALUE = np.inf
 
 print('INCREMENTAL:  {}'.format(INCREMENTAL))
 print('ACTIVATION:   {}'.format(ACTIVATION))
 print('STEPS_AHEAD:  {}'.format(STEPS_AHEAD))
 print('UPDATE_EVERY: {}'.format(UPDATE_EVERY))
 print('INDEPENDENT:  {}'.format(INDEPENDENT))
+print('NORM_VALUE:  {}'.format(NORM_VALUE))
+print('EPOCH:  {}'.format(EPOCH))
+
 
 # sast, r = split_data_for_fqi(dataset, state_dim, action_dim, reward_dim)
 
@@ -84,6 +90,11 @@ class LQG_Q(object):
     def name(self):
         return "R1"
 
+    def predict(self, X, **kwargs):
+        state = X[:, 0]
+        action = X[:, 1]
+        return self.model(state, action, self.omega)
+
 
 q_regressor = LQG_Q()
 ##########################################
@@ -101,23 +112,40 @@ def _model_evaluation(self, theta):
     return inv
 
 
-Sequential._model_evaluation = _model_evaluation
+Sequential.model = _model_evaluation
 rho_regressor = Sequential()
-rho_regressor.add(Dense(20, input_dim=n_q_regressors_weights, init='uniform', activation=ACTIVATION))
-rho_regressor.add(Dense(n_q_regressors_weights, init='uniform', activation='linear'))
-rho_regressor.compile(loss='mse', optimizer='rmsprop', metrics=['accuracy'])
+rho_regressor.add(Dense(4, input_dim=n_q_regressors_weights, init='uniform',
+                        activation=ACTIVATION))
+rho_regressor.add(
+    Dense(n_q_regressors_weights, init='uniform', activation='linear'))
+rho_regressor.compile(loss='mse', optimizer='rmsprop')
 
 import theano
 import theano.tensor as T
 
 theta = T.matrix()
 
-res = rho_regressor._model_evaluation(theta)
-ff = theano.function([theta], res)
-h = np.array([[1, 2.]], dtype=theano.config.floatX)
-assert np.allclose(ff(h), rho_regressor.predict(h))
+res = rho_regressor.model(theta)
+
+
 # rho_regressor.fit(None, None)
 ##########################################
+
+def terminal_evaluation(old_theta, new_theta):
+    if increment_base_termination(old_theta, new_theta, 2, 1e-2):
+        estimator = LQG_Q()
+        estimator.omega = new_theta[0]
+        agent = Algorithm(estimator, state_dim, action_dim,
+                          discrete_actions, mdp.gamma, mdp.horizon)
+        agent._iteration = 1
+        initial_states = np.array([[1, 2, 5, 7, 10]]).T
+        values = evaluation.evaluate_policy(mdp, agent,
+                                            initial_states=initial_states)
+        stop = values[0] > -67.
+        return stop
+    else:
+        return False
+
 
 ### PBO ##################################
 pbo = GradPBO(bellman_model=rho_regressor,
@@ -130,12 +158,16 @@ pbo = GradPBO(bellman_model=rho_regressor,
               action_dim=action_dim,
               incremental=INCREMENTAL,
               update_theta_every=UPDATE_EVERY,
+              steps_per_theta_update=None,
               verbose=1,
-              independent=INDEPENDENT)
+              norm_value=NORM_VALUE,
+              independent=INDEPENDENT,
+              # term_condition='theta_improvement')
+              term_condition=terminal_evaluation)
 
 
 def tmetric(theta):
-    t = pbo.apply_bop(theta[0], n_times=STEPS_AHEAD)
+    t = pbo.apply_bo(theta[0], n_times=STEPS_AHEAD)
     return q_regressor.get_k(t)
 
 
@@ -145,7 +177,7 @@ state, actions, reward, next_states = split_dataset(dataset,
                                                     reward_dim=reward_dim)
 
 theta0 = np.array([6., 10.001], dtype='float32').reshape(1, -1)
-#theta0 = np.array([16., 10.001], dtype='float32').reshape(1, -1)
+# theta0 = np.array([16., 10.001], dtype='float32').reshape(1, -1)
 history = pbo.fit(state, actions, next_states, reward, theta0,
                   batch_size=10, nb_epoch=EPOCH,
                   theta_metrics={'k': tmetric})
@@ -158,8 +190,9 @@ print('Final performance of PBO: {}'.format(values))
 
 ##########################################
 # Some plot
-ks = np.array(history.hist['k']).squeeze()
-weights = np.array(history.hist['theta']).squeeze()
+ks = np.array(history['k']).squeeze()
+weights = np.array(history['theta']).squeeze()
+print(weights.shape)
 
 plt.figure()
 plt.title('[train] evaluated weights')
@@ -169,23 +202,26 @@ plt.xlabel('b')
 plt.ylabel('k')
 plt.colorbar()
 plt.savefig(
-    'LQG_MLP_{}_evaluated_weights_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL,
-                                                                                    ACTIVATION, STEPS_AHEAD),
+    'LQG_MLP_{}_evaluated_weights_incremental_{}_activation_{}_steps_{}.png'.format(
+        q_regressor.name(), INCREMENTAL,
+        ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
 
 plt.figure()
-plt.plot(ks[30:-1])
+plt.plot(ks)
+plt.ylim([-10., 10.])
 plt.xlabel('iteration')
 plt.ylabel('coefficient of max action (opt ~0.6)')
 plt.savefig(
-    'LQG_MLP_{}_max_coeff_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL, ACTIVATION,
-                                                                            STEPS_AHEAD),
+    'LQG_MLP_{}_max_coeff_incremental_{}_activation_{}_steps_{}.png'.format(
+        q_regressor.name(), INCREMENTAL, ACTIVATION,
+        STEPS_AHEAD),
     bbox_inches='tight')
 
 theta = theta0.copy()
 L = [np.array(theta)]
 for i in range(STEPS_AHEAD * 200):
-    theta = pbo.apply_bop(theta)
+    theta = pbo.apply_bo(theta)
     L.append(np.array(theta))
 
 L = np.array(L).squeeze()
@@ -205,23 +241,26 @@ plt.title('Application of Bellman operator')
 plt.xlabel('b')
 plt.ylabel('k')
 plt.savefig(
-    'LQG_MLP_{}_bpo_application_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL,
-                                                                                  ACTIVATION, STEPS_AHEAD),
+    'LQG_MLP_{}_bpo_application_incremental_{}_activation_{}_steps_{}.png'.format(
+        q_regressor.name(), INCREMENTAL,
+        ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
 
 B_i, K_i = np.mgrid[-6:6:40j, -5:35:40j]
 theta = np.column_stack((B_i.ravel(), K_i.ravel()))
-theta_p = pbo.apply_bop(theta)
+theta_p = pbo.apply_bo(theta)
 
 fig = plt.figure(figsize=(15, 10))
-Q = plt.quiver(theta[:, 0], theta[:, 1], theta_p[:, 0] - theta[:, 0], theta_p[:, 1] - theta[:, 1], angles='xy')
+Q = plt.quiver(theta[:, 0], theta[:, 1], theta_p[:, 0] - theta[:, 0],
+               theta_p[:, 1] - theta[:, 1], angles='xy')
 plt.xlabel('b')
 plt.ylabel('k')
 plt.scatter(L[:, 0], L[:, 1], c='b')
 plt.title('Gradient field - Act: {}, Inc: {}'.format(ACTIVATION, INCREMENTAL))
 plt.savefig(
-    'LQG_MLP_{}_grad_field_incremental_{}_activation_{}_steps_{}.png'.format(q_regressor.name(), INCREMENTAL,
-                                                                             ACTIVATION, STEPS_AHEAD),
+    'LQG_MLP_{}_grad_field_incremental_{}_activation_{}_steps_{}.png'.format(
+        q_regressor.name(), INCREMENTAL,
+        ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
 plt.show()
 plt.close('all')
