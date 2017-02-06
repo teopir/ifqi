@@ -175,6 +175,7 @@ iterations = nIter
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fitParams)
 
+mdp.x_random = False
 out = {}
 if env_name == "LQG1D" or env_name == "LQG1DD":
     initial_states = np.zeros((5, 1))
@@ -194,8 +195,8 @@ elif env_name == "SwingPendulum":
 elif env_name == "Bicycle":
     out = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
 elif env_name == "CartPole":
-    mdp.x_random = False
     out = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
-
+elif env_name == "CartPoleCont":
+    out = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
 print(out["score"])
 
