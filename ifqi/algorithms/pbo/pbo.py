@@ -7,6 +7,15 @@ from pybrain.optimization import ExactNES
 from ifqi.algorithms.algorithm import Algorithm
 
 
+
+def norm(x, p=2):
+    "Norm function accepting both ndarray or tensor as input"
+    if p == np.inf:
+        return (x ** 2).max()
+    x = x if p % 2 == 0 else abs(x)
+    return  (x ** p).sum() ** (1 / p)
+
+
 class PBO(Algorithm):
     """
     This class implements the function to run the experimental PBO method.
@@ -82,15 +91,17 @@ class PBO(Algorithm):
         self._iteration += 1
         if self._verbose:
             print('Iteration: %d' % self._iteration)
-        self._q_weights_list.append(self._get_q_weights())
-        new_q_weights = self._f(self.iteration_best_rho)
-        if self._incremental:
-            if hasattr(self, '_q_weights'):
-                new_q_weights += self._q_weights
-            self._q_weights = new_q_weights
 
-        self._set_q_weights(new_q_weights)
+        theta = self._get_q_weights()
+        self._q_weights_list.append(theta)
+        tnext = self._f(self.iteration_best_rho)
+        theta = (theta + tnext) if self._incremental else tnext
+
+        self._set_q_weights(theta)
         self._rho_values.append(self.iteration_best_rho)
+        if self._verbose:
+            print('Global best: %f | Local best: %f' % (
+                bestEvaluation, self.iteration_best_rho_value))
         self.iteration_best_rho_value = np.inf
 
     def _fitness(self, rho):
@@ -106,14 +117,16 @@ class PBO(Algorithm):
             the Q function computed using the provided individual and the best
             one found at the previous step
         """
-        old_q_weights = self._get_q_weights()
-        self._set_q_weights(self._f(rho))
+        theta0 = self._get_q_weights()
+        tnext = self._f(rho)
+        theta1 = theta0 + tnext if self._incremental else tnext
+        self._set_q_weights(theta1)
         q = self._estimator.predict(self._sa)
-        self._set_q_weights(old_q_weights)
+        self._set_q_weights(theta0)
 
         max_q, _ = self.maxQA(self._snext, self._absorbing)
 
-        value = np.mean((q - self._r - self.gamma * max_q) ** 2)
+        value = norm(q - self._r - self.gamma * max_q, 2)
 
         if value < self.iteration_best_rho_value:
             self.iteration_best_rho_value = value
