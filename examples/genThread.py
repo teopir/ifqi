@@ -103,10 +103,13 @@ elif env_name=="CartPole":
     sizeDS = 2000
     mdp = envs.CartPole()
     discrete_actions = mdp.action_space.values
+elif env_name=="CartPoleCont":
+    sizeDS = 2000
+    mdp = envs.CartPole()
+    discrete_actions = mdp.action_space.values
 
 
-
-mdp.seed(0)
+mdp.seed(seed)
 
 state_dim, action_dim = envs.get_space_info(mdp)
 
@@ -114,8 +117,8 @@ regressor_params = {"n_input": state_dim+action_dim,
                     "n_output": 1,
                     "optimizer": "rmsprop",
                      "early_stopping":True,
-                     "delta_min": deltaMinA * 10**(-deltaMinB),
-                     "patience": patienceA * 10**(patienceB) + 1,
+                     "delta_min": deltaMinA * 10**(-deltaMinB - 1),
+                     "patience": patienceA * 10**(patienceB - 1) + 1,
                      "activation": act,
                      "hidden_neurons":[ nNeurons]*nLayers}
 

@@ -69,6 +69,9 @@ class CartPole(Environment):
         return
         self.env.render()
 
+    def _seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def get_state(self):
         return self.env.state
