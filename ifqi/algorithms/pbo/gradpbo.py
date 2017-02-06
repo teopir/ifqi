@@ -9,6 +9,15 @@ from keras.engine.training import slice_X, batch_shuffle, make_batches, \
     standardize_input_data, check_array_lengths
 from keras import optimizers
 
+
+def increment_base_termination(old_theta, new_theta, norm_value=2, tol=1e-3):
+    theta_l = old_theta[0]
+    theta_lm1 = new_theta[0]
+    stop = np.linalg.norm(theta_l-theta_lm1, norm_value) < tol
+    return stop
+
+DEFAULT_TERM = {'theta_improvement': increment_base_termination}
+
 class GradPBO(object):
     """
     Construct a GradPBO instance given the specified parameters
@@ -49,7 +58,7 @@ class GradPBO(object):
                  norm_value=np.inf, update_theta_every=1,
                  steps_per_theta_update=None,
                  independent=False,
-                 verbose=0):
+                 verbose=0, term_condition=None):
         # save MDP information
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -119,6 +128,12 @@ class GradPBO(object):
                                                        [(None,
                                                          self.action_dim)] if self.action_dim is not None else None,
                                                        exception_prefix='discrete_actions')
+
+
+        if isinstance(term_condition, str):
+            self.term_condition = DEFAULT_TERM[term_condition]
+        else:
+            self.term_condition = term_condition
 
     def _compute_max_q(self, s, discrete_actions, theta):
         """
@@ -312,7 +327,14 @@ class GradPBO(object):
                 tmp = self.bellman_model.predict(theta[-1])
             theta += [tmp]
 
+        term_condition = self.term_condition
+        stop = False
+        old_theta = theta
+
         for epoch in range(nb_epoch):
+            if stop:
+                break
+
             if shuffle == 'batch':
                 index_array = batch_shuffle(index_array, batch_size)
             elif shuffle:
@@ -352,6 +374,12 @@ class GradPBO(object):
                         else:
                             tmp = self.bellman_model.predict(tmp)
                         theta += [tmp]
+
+                    if term_condition is not None:
+                        stop = term_condition(old_theta, theta)
+                        if stop:
+                            break
+                        old_theta = theta
 
         # finally apply the bellman operator K-times to get the final point
         self.learned_theta_value = self.apply_bo(theta[0], n_times=100)
