@@ -122,7 +122,9 @@ regressor_params = {"model":MLP,
                      "delta_min": deltaMinA * 10**(-deltaMinB - 1),
                      "patience": patienceA * 10**(patienceB - 1) + 1,
                      "activation": act,
-                     "hidden_neurons":[ nNeurons]*nLayers}
+                     "hidden_neurons":[ nNeurons]*nLayers,
+                    "discrete_actions":discrete_actions,
+                    "decimals":1}
 
 
 
