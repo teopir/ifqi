@@ -7,13 +7,12 @@ from pybrain.optimization import ExactNES
 from ifqi.algorithms.algorithm import Algorithm
 
 
-
 def norm(x, p=2):
     "Norm function accepting both ndarray or tensor as input"
     if p == np.inf:
         return (x ** 2).max()
     x = x if p % 2 == 0 else abs(x)
-    return  (x ** p).sum() ** (1 / p)
+    return (x ** p).sum() ** (1. / p)
 
 
 class PBO(Algorithm):
@@ -21,9 +20,15 @@ class PBO(Algorithm):
     This class implements the function to run the experimental PBO method.
 
     """
+
     def __init__(self, estimator, estimator_rho, state_dim, action_dim,
                  discrete_actions, gamma, learning_steps,
-                 batch_size, learning_rate, incremental=True, verbose=False):
+                 batch_size, learning_rate,
+                 steps_ahead=1,
+                 update_every=1,
+                 update_steps=None,
+                 norm_value=2,
+                 incremental=True, verbose=False):
         """
         Constructor.
         Args:
@@ -42,6 +47,11 @@ class PBO(Algorithm):
         self._learning_rate = learning_rate
         self._incremental = incremental
         self._q_weights_list = list()
+        self._norm_value = norm_value
+        self._K = steps_ahead
+        self._update_every = update_every
+        self.steps_per_theta_update = steps_ahead \
+            if update_steps is None else max(1, update_steps)
         self.__name__ = 'PBO'
         super(PBO, self).__init__(estimator, state_dim, action_dim,
                                   discrete_actions, gamma, None,
@@ -94,15 +104,30 @@ class PBO(Algorithm):
 
         theta = self._get_q_weights()
         self._q_weights_list.append(theta)
-        tnext = self._f(self.iteration_best_rho)
-        theta = (theta + tnext) if self._incremental else tnext
 
-        self._set_q_weights(theta)
+        if self._update_every > 0 and self._iteration % self._update_every == 0:
+            for _ in range(self.steps_per_theta_update):
+                tnext = self._f(self.iteration_best_rho)
+                theta = (theta + tnext) if self._incremental else tnext
+                self._set_q_weights(theta)
+
         self._rho_values.append(self.iteration_best_rho)
         if self._verbose:
             print('Global best: %f | Local best: %f' % (
                 bestEvaluation, self.iteration_best_rho_value))
         self.iteration_best_rho_value = np.inf
+
+    def _single_step(self, theta0, rho):
+        tnext = self._f(rho)
+        theta1 = theta0 + tnext if self._incremental else tnext
+        self._set_q_weights(theta1)
+        q = self._estimator.predict(self._sa)
+        self._set_q_weights(theta0)
+
+        max_q, _ = self.maxQA(self._snext, self._absorbing)
+
+        value = norm(q - self._r - self.gamma * max_q, self._norm_value)
+        return value, theta1
 
     def _fitness(self, rho):
         """
@@ -117,16 +142,13 @@ class PBO(Algorithm):
             the Q function computed using the provided individual and the best
             one found at the previous step
         """
-        theta0 = self._get_q_weights()
-        tnext = self._f(rho)
-        theta1 = theta0 + tnext if self._incremental else tnext
-        self._set_q_weights(theta1)
-        q = self._estimator.predict(self._sa)
-        self._set_q_weights(theta0)
-
-        max_q, _ = self.maxQA(self._snext, self._absorbing)
-
-        value = norm(q - self._r - self.gamma * max_q, 2)
+        initial_theta = self._get_q_weights()
+        theta = self._get_q_weights()
+        value = 0.
+        for _ in range(self._K):
+            tmp, theta = self._single_step(theta, rho)
+            value += tmp
+        self._set_q_weights(initial_theta)
 
         if value < self.iteration_best_rho_value:
             self.iteration_best_rho_value = value
