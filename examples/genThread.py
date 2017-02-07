@@ -124,6 +124,7 @@ regressor_params = {"model":MLP,
                      "activation": act,
                      "hidden_neurons":[ nNeurons]*nLayers,
                     "discrete_actions":discrete_actions,
+                    "val_loss":0.1,
                     "decimals":1}
 
 
