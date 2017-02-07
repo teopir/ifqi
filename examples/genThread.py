@@ -114,17 +114,16 @@ mdp.seed(seed)
 
 state_dim, action_dim = envs.get_space_info(mdp)
 
-regressor_params = {"model":MLP,
+regressor_params = {"regressor_class":MLP,
                     "n_input": state_dim,
                     "n_output": 1,
                     "optimizer": "rmsprop",
                      "early_stopping":True,
                      "delta_min": deltaMinA * 10**(-deltaMinB - 1),
-                     "patience": int(patienceA * 10**(patienceB) + 1),
+                     "patience": int(patienceA * 10**(patienceB-1) + 1),
                      "activation": act,
                      "hidden_neurons":[ nNeurons]*nLayers,
                     "discrete_actions":discrete_actions,
-                    "val_loss":0.1,
                     "decimals":1}
 
 
@@ -141,7 +140,7 @@ regressor_params = {"model":MLP,
 regressor_params["input_scaled"]= input_scaled==1
 regressor_params["output_scaled"]= output_scaled==1
 
-regressor = Regressor(regressor_class=ActionRegressor, **regressor_params)
+regressor = ActionRegressor(model=Regressor, **regressor_params)
 
 #ExtraTree senza regressor
 #regressor = ExtraTreesRegressor(**regressor_params)
@@ -157,7 +156,7 @@ reward_idx = state_dim + action_dim
 dataset = evaluate.collect_episodes(mdp,policy=None,n_episodes=sizeDS)
 sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
 sastFirst, rFirst = sast, dataset[:, reward_idx]
-
+print ("sast first", sastFirst)
 fqi = FQI(estimator=regressor,
           state_dim=state_dim,
           action_dim=action_dim,
@@ -177,6 +176,7 @@ fitParams = {
 }
 fqi.partial_fit(sastFirst[:], rFirst[:], **fitParams)
 
+print ("waaat")
 iterations = nIter
 
 for i in range(iterations - 1):
