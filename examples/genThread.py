@@ -106,7 +106,7 @@ elif env_name=="CartPole":
     discrete_actions = mdp.action_space.values
 elif env_name=="CartPoleCont":
     sizeDS = 2000
-    mdp = envs.CartPole()
+    mdp = envs.CartPole(continuosReward=True)
     discrete_actions = mdp.action_space.values
 
 
