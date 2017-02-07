@@ -115,7 +115,7 @@ mdp.seed(seed)
 state_dim, action_dim = envs.get_space_info(mdp)
 
 regressor_params = {"model":MLP,
-                    "n_input": state_dim+action_dim,
+                    "n_input": state_dim,
                     "n_output": 1,
                     "optimizer": "rmsprop",
                      "early_stopping":True,
