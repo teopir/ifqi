@@ -13,10 +13,12 @@ from keras import optimizers
 def increment_base_termination(old_theta, new_theta, norm_value=2, tol=1e-3):
     theta_l = old_theta[0]
     theta_lm1 = new_theta[0]
-    stop = np.linalg.norm(theta_l-theta_lm1, norm_value) < tol
+    stop = np.linalg.norm(theta_l - theta_lm1, norm_value) < tol
     return stop
 
+
 DEFAULT_TERM = {'theta_improvement': increment_base_termination}
+
 
 class GradPBO(object):
     """
@@ -68,13 +70,15 @@ class GradPBO(object):
         self.update_theta_every = update_theta_every if update_theta_every > 0 else -1
         self.verbose = verbose
         self.independent = independent
-        self.steps_per_theta_update = steps_ahead if steps_per_theta_update is None else max(1, steps_per_theta_update)
+        self.steps_per_theta_update = steps_ahead if steps_per_theta_update is None else max(
+            1, steps_per_theta_update)
 
         # create theano variables
         T_s = T.dmatrix()
         T_a = T.dmatrix()
         T_s_next = T.dmatrix()
         T_r = T.dvector()
+        T_absorbing = T.dvector()
         # T_r = T.dmatrix()
         T_discrete_actions = T.dmatrix()
 
@@ -92,21 +96,25 @@ class GradPBO(object):
         # construct (theano) Bellman error
         self.theta_list = [bellman_model.inputs[0]]
         if not independent:
-            self.T_bellman_err, _ = self.k_step_bellman_error(T_s, T_a, T_s_next, T_r,
-                                                              self.theta_list[0],
-                                                              gamma, T_discrete_actions, steps_ahead)
-            # self.T_bellman_err, _ = self.bellman_error(T_s, T_a, T_s_next, T_r, theta, self.gamma, T_discrete_actions)
+            self.T_bellman_err, _ = self.k_step_bellman_error(
+                T_s, T_a, T_s_next, T_r, T_absorbing,
+                self.theta_list[0], gamma, T_discrete_actions, steps_ahead)
             assert len(self.theta_list) == 1
         else:
             self.theta_list += [T.fmatrix(str(ll)) for ll in
-                                range(steps_ahead - 1)]  # theta_0, theta_1, ..., theta_steps
+                                range(
+                                    steps_ahead - 1)]  # theta_0, theta_1, ..., theta_steps
             T_bellman_err = None
             for theta in self.theta_list:
                 if T_bellman_err is None:
-                    T_bellman_err = self.bellman_error(T_s, T_a, T_s_next, T_r, theta, gamma, T_discrete_actions)[0]
+                    T_bellman_err = self.bellman_error(
+                        T_s, T_a, T_s_next, T_r, theta,
+                        gamma, T_discrete_actions)[0]
                 else:
                     T_bellman_err = T_bellman_err + \
-                                    self.bellman_error(T_s, T_a, T_s_next, T_r, theta, gamma, T_discrete_actions)[0]
+                                    self.bellman_error(
+                                        T_s, T_a, T_s_next, T_r, theta,
+                                        gamma, T_discrete_actions)[0]
             self.T_bellman_err = T_bellman_err
             assert len(self.theta_list) == steps_ahead
 
@@ -119,16 +127,16 @@ class GradPBO(object):
         self.T_s_next = T_s_next
         self.T_r = T_r
         self.T_discrete_actions = T_discrete_actions
+        self.T_absorbing = T_absorbing
 
         # get keras optimizer
         self.optimizer = optimizers.get(optimizer)
 
         # validate input data (the output is a list storing the validated input)
-        self.discrete_actions = standardize_input_data(discrete_actions, ['discrete_actions'],
-                                                       [(None,
-                                                         self.action_dim)] if self.action_dim is not None else None,
-                                                       exception_prefix='discrete_actions')
-
+        self.discrete_actions = standardize_input_data(
+            discrete_actions, ['discrete_actions'],
+            [(None, self.action_dim)] if self.action_dim is not None else None,
+            exception_prefix='discrete_actions')
 
         if isinstance(term_condition, str):
             self.term_condition = DEFAULT_TERM[term_condition]
@@ -148,8 +156,9 @@ class GradPBO(object):
             The maximum values of the Q-function in the given state w.r.t. all the discrete actions
 
         """
-        q_values, _ = theano.scan(fn=lambda a, s, theta: self.q_model.model(s, a, theta),
-                                  sequences=[discrete_actions], non_sequences=[s, theta])
+        q_values, _ = theano.scan(
+            fn=lambda a, s, theta: self.q_model.model(s, a, theta),
+            sequences=[discrete_actions], non_sequences=[s, theta])
         return T.max(q_values)
         # return q_values
 
@@ -165,11 +174,13 @@ class GradPBO(object):
         Returns:
             The index of the action that maximixes the Q-function in the given state
         """
-        q_values, _ = theano.scan(fn=lambda a, s, theta: self.q_model.model(s, a, theta),
-                                  sequences=[discrete_actions], non_sequences=[s, theta])
+        q_values, _ = theano.scan(
+            fn=lambda a, s, theta: self.q_model.model(s, a, theta),
+            sequences=[discrete_actions], non_sequences=[s, theta])
         return T.argmax(q_values)
 
-    def bellman_error(self, s, a, nexts, r, theta, gamma, discrete_actions):
+    def bellman_error(self, s, a, nexts, r, absorbing,
+                      theta, gamma, discrete_actions):
         """
         Compute the symbolic expression of the Bellman error.
 
@@ -178,6 +189,7 @@ class GradPBO(object):
             a (theano.matrix): the action matrix (nsamples x state_dim)
             nexts (theano.matrix): the next state matrix (nsamples x state_dim)
             r (theano.vector): the reward vector (nsamples)
+            abserbing (theano.vector): the flag for absorbing states (nsamples)
             theta (theano.matrix): the parameters of the Q-function (1 x n_q_params)
             gamma (float): discount factor
             discrete_actions (theano.matrix): the discrete actions (nactions x action_dim)
@@ -196,10 +208,11 @@ class GradPBO(object):
 
         # compute max over actions with old parameters
         qmat, _ = theano.scan(fn=self._compute_max_q,
-                              sequences=[nexts], non_sequences=[discrete_actions, theta])
+                              sequences=[nexts],
+                              non_sequences=[discrete_actions, theta])
 
         # compute empirical BOP
-        v = qbpo - r - gamma * qmat
+        v = qbpo - r - gamma * qmat * (1. - absorbing)
         # compute error
         if self.norm_value == np.inf:
             err = T.max(v ** 2)
@@ -210,11 +223,14 @@ class GradPBO(object):
             err = T.sum(abs(v) ** self.norm_value) ** (1. / self.norm_value)
         return err, theta_tp1
 
-    def k_step_bellman_error(self, s, a, nexts, r, theta, gamma, discrete_actions, steps):
+    def k_step_bellman_error(self, s, a, nexts, r, absorbing,
+                             theta, gamma, discrete_actions, steps):
         steps = max(1, steps)
-        loss, theta_k = self.bellman_error(s, a, nexts, r, theta, gamma, discrete_actions)
+        loss, theta_k = self.bellman_error(
+            s, a, nexts, r, absorbing, theta, gamma, discrete_actions)
         for _ in range(steps - 1):
-            err_k, theta_k = self.bellman_error(s, a, nexts, r, theta_k, gamma, discrete_actions)
+            err_k, theta_k = self.bellman_error(
+                s, a, nexts, r, absorbing, theta_k, gamma, discrete_actions)
             loss += err_k
         return loss, theta_k
 
@@ -227,16 +243,21 @@ class GradPBO(object):
         if self.train_function is None:
             print('compiling train function...')
             start = time.time()
-            inputs = [self.T_s, self.T_a, self.T_s_next, self.T_r] + self.theta_list + [self.T_discrete_actions]
+            inputs = [self.T_s, self.T_a, self.T_s_next, self.T_r,
+                      self.T_absorbing] + self.theta_list \
+                     + [self.T_discrete_actions]
 
-            training_updates = self.optimizer.get_updates(self.bellman_model.trainable_weights,
-                                                          {}, self.T_bellman_err)
+            training_updates = self.optimizer.get_updates(
+                self.bellman_model.trainable_weights,
+                {}, self.T_bellman_err)
 
             # returns loss and metrics. Updates weights at each call.
-            self.train_function = theano.function(inputs, [self.T_bellman_err], updates=training_updates)
+            self.train_function = theano.function(
+                inputs, [self.T_bellman_err], updates=training_updates)
             print('compiled in {}s'.format(time.time() - start))
 
-    def _standardize_user_data(self, s, a, s_next, r, theta, check_batch_dim=False):
+    def _standardize_user_data(self, s, a, s_next, r, absorbing, theta,
+                               check_batch_dim=False):
         """
 
         Args:
@@ -251,22 +272,29 @@ class GradPBO(object):
             The standardized values (s, a, s_next, r, theta)
 
         """
-        s = standardize_input_data(s, ['s'], [(None, self.state_dim)] if self.state_dim is not None else None,
-                                   exception_prefix='state')
-        a = standardize_input_data(a, ['a'], [(None, self.action_dim)] if self.action_dim is not None else None,
-                                   exception_prefix='action')
+        s = standardize_input_data(
+            s, ['s'],
+            [(None, self.state_dim)] if self.state_dim is not None else None,
+            exception_prefix='state')
+        a = standardize_input_data(
+            a, ['a'],
+            [(None, self.action_dim)] if self.action_dim is not None else None,
+            exception_prefix='action')
         # r = standardize_input_data(r, ['r'], [(None, 1)],
         #                            check_batch_dim=False, exception_prefix='reward')
-        s_next = standardize_input_data(s_next, ['s_next'],
-                                        [(None, self.state_dim)] if self.state_dim is not None else None,
-                                        exception_prefix='state_next')
-        theta = standardize_input_data(theta, ['theta'], (None, self.bellman_model.n_inputs()),
+        s_next = standardize_input_data(
+            s_next, ['s_next'],
+            [(None, self.state_dim)] if self.state_dim is not None else None,
+            exception_prefix='state_next')
+        theta = standardize_input_data(theta, ['theta'],
+                                       (None, self.bellman_model.n_inputs()),
                                        exception_prefix='theta')
         check_array_lengths(s, a, s_next)
-        return s, a, s_next, r, theta
+        return s, a, s_next, r, absorbing, theta
 
-    def fit(self, s, a, s_next, r, theta,
-            batch_size=32, nb_epoch=10, verbose=1, shuffle=True, theta_metrics={}):
+    def fit(self, s, a, s_next, r, absorbing, theta,
+            batch_size=32, nb_epoch=10, shuffle=True,
+            theta_metrics={}):
         """
 
         Args:
@@ -298,21 +326,22 @@ class GradPBO(object):
         Returns:
             A PBOHistory instance storing train information
         """
-        s, a, s_next, r, theta = self._standardize_user_data(
-            s, a, s_next, r, theta,
+        s, a, s_next, r, absorbing, theta = self._standardize_user_data(
+            s, a, s_next, r, absorbing, theta,
             check_batch_dim=False
         )
 
-        all_actions = standardize_input_data(self.discrete_actions, ['all_actions'],
-                                             [(None, self.action_dim)] if self.action_dim is not None else None,
-                                             exception_prefix='discrete_actions')
+        all_actions = standardize_input_data(
+            self.discrete_actions, ['all_actions'],
+            [(None, self.action_dim)] if self.action_dim is not None else None,
+            exception_prefix='discrete_actions')
 
         n_updates = 0
         history = {"theta": [], 'rho': []}
         for k in theta_metrics.keys():
             history.update({k: []})
 
-        ins = s + a + s_next + [r]
+        ins = s + a + s_next + [r, absorbing]
         self._make_train_function()
         f = self.train_function
 
@@ -344,11 +373,12 @@ class GradPBO(object):
 
                 history["theta"].append(theta[0])
                 if hasattr(self.bellman_model, '_model'):
-                    history["rho"].append(self.bellman_model._model.get_weights())
+                    history["rho"].append(
+                        self.bellman_model._model.get_weights())
                 else:
                     history["rho"].append(self.bellman_model.get_weights())
                 for k, v in iteritems(theta_metrics):
-                    history['k'].append(v(theta))
+                    history[k].append(v(theta))
 
                 batch_ids = index_array[batch_start:batch_end]
                 try:
@@ -366,7 +396,8 @@ class GradPBO(object):
                 n_updates += 1
 
                 if self.update_theta_every > 0 and n_updates % self.update_theta_every == 0:
-                    tmp = self.apply_bo(theta[0], n_times=self.steps_per_theta_update)
+                    tmp = self.apply_bo(theta[0],
+                                        n_times=self.steps_per_theta_update)
                     theta = [tmp]
                     for _ in range(len(self.theta_list) - 1):
                         if self.incremental:
@@ -416,9 +447,12 @@ class GradPBO(object):
             # compute max over actions with old parameters
             theta = self.bellman_model.inputs[0]
             idx_max, _ = theano.scan(fn=self._compute_argmax_q,
-                                     sequences=[self.T_s], non_sequences=[self.T_discrete_actions, theta])
+                                     sequences=[self.T_s],
+                                     non_sequences=[self.T_discrete_actions,
+                                                    theta])
             inputs = [self.T_s, theta, self.T_discrete_actions]
-            self.draw_action_function = theano.function(inputs, [self.T_discrete_actions[idx_max]])
+            self.draw_action_function = theano.function(inputs, [
+                self.T_discrete_actions[idx_max]])
 
     def draw_action(self, state, done, flag):
         """
@@ -433,10 +467,12 @@ class GradPBO(object):
         """
         self._make_draw_action_function()
         state = standardize_input_data(state, ['state'],
-                                       [(None, self.state_dim)] if self.state_dim is not None else None,
+                                       [(None,
+                                         self.state_dim)] if self.state_dim is not None else None,
                                        exception_prefix='draw_state')
-        return self.draw_action_function(state[0], self.learned_theta_value, self.discrete_actions[
-            0])  # we take index zero since they are lists of numpy matrices
+        return self.draw_action_function(state[0], self.learned_theta_value,
+                                         self.discrete_actions[
+                                             0])  # we take index zero since they are lists of numpy matrices
 
     def _make_additional_functions(self):
         # get trainable parameters
@@ -446,10 +482,16 @@ class GradPBO(object):
         self.T_grad_bellman_err = T.grad(self.T_bellman_err, params)
         # compile all functions
         # self.F_bellman_operator = theano.function([theta], self.bellman_model.outputs[0])
-        self.F_bellman_operator = theano.function([theta], self.bellman_model.model(theta))
-        self.F_q = theano.function([self.T_s, self.T_a, theta], self.q_model.model(self.T_s, self.T_a, theta))
+        self.F_bellman_operator = theano.function([theta],
+                                                  self.bellman_model.model(
+                                                      theta))
+        self.F_q = theano.function([self.T_s, self.T_a, theta],
+                                   self.q_model.model(self.T_s, self.T_a,
+                                                      theta))
         self.F_bellman_err = theano.function(
-            [self.T_s, self.T_a, self.T_s_next, self.T_r, theta, self.T_discrete_actions], self.T_bellman_err)
+            [self.T_s, self.T_a, self.T_s_next, self.T_r, self.T_absorbing,
+             theta, self.T_discrete_actions], self.T_bellman_err)
         self.F_grad_bellman_berr = theano.function(
-            [self.T_s, self.T_a, self.T_s_next, self.T_r, theta, self.T_discrete_actions],
+            [self.T_s, self.T_a, self.T_s_next, self.T_r, self.T_absorbing,
+             theta, self.T_discrete_actions],
             self.T_grad_bellman_err)

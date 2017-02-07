@@ -4,9 +4,6 @@ import numpy as np
 from scipy import optimize
 import theano
 import theano.tensor as T
-from itertools import chain, combinations
-
-# np.random.seed(14151)
 from sklearn.preprocessing import PolynomialFeatures
 
 
@@ -34,7 +31,9 @@ def bellmanop_grad(rho, theta):
     return np.kron(theta.T, np.eye(rho.shape[0], rho.shape[1]))
 
 
-def empirical_bop(s, a, r, snext, all_a, gamma, rho, theta, norm_value=2, incremental=False):
+def empirical_bop(s, a, r, snext, absorbing,
+                  all_a, gamma, rho, theta, norm_value=2,
+                  incremental=False):
     new_theta = bellmanop(rho, theta)
     if incremental:
         new_theta = theta + new_theta
@@ -45,7 +44,7 @@ def empirical_bop(s, a, r, snext, all_a, gamma, rho, theta, norm_value=2, increm
             qv = lqr_reg(snext[i], all_a[j], theta)
             if qv > bop[i]:
                 bop[i] = qv
-    v = qnop - r - gamma * bop
+    v = qnop - r - gamma * bop * (1. - absorbing)
     if norm_value == np.inf:
         err = np.max(np.abs(v))
     elif norm_value % 2 == 0:
@@ -55,18 +54,24 @@ def empirical_bop(s, a, r, snext, all_a, gamma, rho, theta, norm_value=2, increm
     return err, new_theta
 
 
-def multi_step_ebop(s, a, r, snext, all_a, gamma, rho, theta, norm_value=2, incremental=False, steps=1):
+def multi_step_ebop(s, a, r, snext, absorbing,
+                    all_a, gamma, rho, theta, norm_value=2,
+                    incremental=False, steps=1):
     tot_err = 0.0
     t = theta
     for k in range(steps):
-        err_k, t = empirical_bop(s, a, r, snext, all_a, gamma, rho, t, norm_value, incremental)
+        err_k, t = empirical_bop(s, a, r, snext, absorbing,
+                                 all_a, gamma, rho, t,
+                                 norm_value, incremental)
         tot_err += err_k
     return tot_err, t
 
+
 class LBPO(object):
     def __init__(self, init_rho):
-        self.rho = theano.shared(value=np.array(init_rho, dtype=theano.config.floatX),
-                                 borrow=True, name='rho')
+        self.rho = theano.shared(
+            value=np.array(init_rho, dtype=theano.config.floatX),
+            borrow=True, name='rho')
         self.theta = T.matrix()
         self.outputs = [T.dot(self.theta, self.rho)]
         self.inputs = [self.theta]
@@ -83,7 +88,8 @@ class LBPO(object):
 
 class LQRRegressor(object):
     def model(self, s, a, omega):
-        q = - omega[:, 0] ** 2 * s * a - 0.5 * omega[:, 1] * a * a - 0.4 * omega[:, 1] * s * s
+        q = - omega[:, 0] ** 2 * s * a \
+            - 0.5 * omega[:, 1] * a * a - 0.4 * omega[:, 1] * s * s
         return q.ravel()
 
 
@@ -93,8 +99,9 @@ class LQG_PBO(object):
         # define output for b
         combinations = PolynomialFeatures._combinations(2, 3, False, False)
         n_output_features_ = sum(1 for _ in combinations) + 1
-        self.A_b = theano.shared(value=np.ones((n_output_features_,), dtype=theano.config.floatX),
-                                 borrow=True, name='A_b')
+        self.A_b = theano.shared(
+            value=np.ones((n_output_features_,), dtype=theano.config.floatX),
+            borrow=True, name='A_b')
         self.b_b = theano.shared(value=1.,
                                  borrow=True, name='b_b')
 
@@ -108,8 +115,9 @@ class LQG_PBO(object):
         # define output for k
         combinations = PolynomialFeatures._combinations(2, 2, False, False)
         n_output_features_ = sum(1 for _ in combinations) + 1
-        self.rho_k = theano.shared(value=np.ones((n_output_features_,), dtype=theano.config.floatX),
-                                   borrow=True, name='rho_k')
+        self.rho_k = theano.shared(
+            value=np.ones((n_output_features_,), dtype=theano.config.floatX),
+            borrow=True, name='rho_k')
 
         combinations = PolynomialFeatures._combinations(2, 2, False, False)
         L = [(self.theta[:, 0] ** 0).reshape([-1, 1])]
@@ -144,7 +152,8 @@ s = np.array([1., 2., 3.]).reshape(-1, 1)
 a = np.array([0., 3., 4.]).reshape(-1, 1)
 nexts = s + 1
 r = np.array([-1., -5., 0.])
-discrete_actions = np.array([1, 2, 3]).reshape(-1, 1)  # discretization of the actions
+absorbing = np.array([0., 0., 0.])
+discrete_actions = np.array([1, 2, 3]).reshape(-1, 1)
 # to be used for maximum estimate
 
 # =================================================================
@@ -160,36 +169,22 @@ assert np.allclose(bellmanop(rho, theta), gpbo.F_bellman_operator(theta)), \
     '{}, {}'.format(bellmanop(rho, theta), gpbo.F_bellman_operator(theta))
 assert np.allclose(lqr_reg(s, a, theta), gpbo.F_q(s, a, theta))
 
-berr = gpbo.F_bellman_err(s, a, nexts, r, theta, discrete_actions)
-tv = multi_step_ebop(s, a, r, nexts, discrete_actions, gamma, rho, theta,
+berr = gpbo.F_bellman_err(s, a, nexts, r, absorbing, theta, discrete_actions)
+tv = multi_step_ebop(s, a, r, nexts, absorbing,
+                     discrete_actions, gamma, rho, theta,
                      norm_value=NORM_VAL, incremental=INCREMENTAL, steps=ST)[0]
 assert np.allclose(berr, tv), '{}, {}'.format(berr, tv)
 print(tv)
 
-berr_grad = gpbo.F_grad_bellman_berr(s, a, nexts, r, theta, discrete_actions)
+berr_grad = gpbo.F_grad_bellman_berr(s, a, nexts, r, absorbing,
+                                     theta, discrete_actions)
 eps = np.sqrt(np.finfo(float).eps)
-f = lambda x: multi_step_ebop(s, a, r, nexts, discrete_actions, gamma, x, theta,
-                              norm_value=NORM_VAL, incremental=INCREMENTAL, steps=ST)[0]
-approx_grad = optimize.approx_fprime(rho.ravel(), f, eps).reshape(berr_grad[0].shape)
+f = lambda x: multi_step_ebop(s, a, r, nexts, absorbing,
+                              discrete_actions, gamma, x, theta,
+                              norm_value=NORM_VAL, incremental=INCREMENTAL,
+                              steps=ST)[0]
+approx_grad = optimize.approx_fprime(rho.ravel(), f, eps).reshape(
+    berr_grad[0].shape)
 print("{}\n{}".format(berr_grad, approx_grad))
-assert np.allclose(berr_grad, approx_grad), '{}, {}'.format(berr_grad, approx_grad)
-
-# =================================================================
-# TODO
-# it is also possible to use keras model
-from keras.models import Sequential
-from keras.layers import Dense
-
-def _model_evaluation(self, theta):
-    inv = theta
-    for el in self.flattened_layers:
-        print(el)
-        inv = el(inv)
-    return inv
-
-
-Sequential._model_evaluation = _model_evaluation
-model = Sequential()
-model.add(Dense(4, input_dim=2, init='uniform', activation='relu'))
-model.add(Dense(2, init='uniform', activation='linear'))
-model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
+assert np.allclose(berr_grad, approx_grad), '{}, {}'.format(berr_grad,
+                                                            approx_grad)

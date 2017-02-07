@@ -28,7 +28,8 @@ def split_dataset(dataset, state_dim, action_dim, reward_dim, last=None):
     actions = dataset[:last, state_dim:reward_idx]
     reward = dataset[:last, reward_idx]
     next_states = dataset[:last, nextstate_idx:nextstate_idx + state_dim]
-    return state, actions, reward, next_states
+    absorbing = dataset[:last, -2]
+    return state, actions, reward, next_states, absorbing
 
 
 def split_data_for_fqi(dataset, state_dim, action_dim, reward_dim, last=None):

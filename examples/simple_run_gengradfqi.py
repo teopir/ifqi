@@ -64,6 +64,6 @@ def tmetric(theta):
     return reg.get_k(theta.reshape(-1,2))
 
 fqi.fit(sast, r,
-        batch_size=1, nb_epoch=3, verbose=1,
+        batch_size=1, nb_epoch=3,
                             theta_metrics = {'k': tmetric}
 )

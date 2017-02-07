@@ -131,8 +131,8 @@ res = rho_regressor.model(theta)
 # rho_regressor.fit(None, None)
 ##########################################
 
-def terminal_evaluation(old_theta, new_theta):
-    if increment_base_termination(old_theta, new_theta, 2, 1e-2):
+def terminal_evaluation(old_theta, new_theta, tol_theta=1e-2):
+    if increment_base_termination(old_theta, new_theta, 2, tol_theta):
         estimator = LQG_Q()
         estimator.omega = new_theta[0]
         agent = Algorithm(estimator, state_dim, action_dim,
@@ -161,9 +161,10 @@ pbo = GradPBO(bellman_model=rho_regressor,
               steps_per_theta_update=None,
               verbose=1,
               norm_value=NORM_VALUE,
-              independent=INDEPENDENT,
-              # term_condition='theta_improvement')
-              term_condition=terminal_evaluation)
+              independent=INDEPENDENT)
+              # term_condition=lambda v1, v2:
+              # increment_base_termination(v1,v2,2,tol=1e-2))
+              #term_condition=lambda v1, v2: terminal_evaluation(v1,v2,1e-1))
 
 
 def tmetric(theta):
@@ -171,16 +172,17 @@ def tmetric(theta):
     return q_regressor.get_k(t)
 
 
-state, actions, reward, next_states = split_dataset(dataset,
+state, actions, reward, next_states, absorbing = split_dataset(dataset,
                                                     state_dim=state_dim,
                                                     action_dim=action_dim,
                                                     reward_dim=reward_dim)
 
 theta0 = np.array([6., 10.001], dtype='float32').reshape(1, -1)
 # theta0 = np.array([16., 10.001], dtype='float32').reshape(1, -1)
-history = pbo.fit(state, actions, next_states, reward, theta0,
+history = pbo.fit(state, actions, next_states, reward, absorbing, theta0,
                   batch_size=10, nb_epoch=EPOCH,
                   theta_metrics={'k': tmetric})
+
 ##########################################
 # Evaluate the final solution
 initial_states = np.array([[1, 2, 5, 7, 10]]).T
@@ -202,7 +204,8 @@ plt.xlabel('b')
 plt.ylabel('k')
 plt.colorbar()
 plt.savefig(
-    'LQG_MLP_{}_evaluated_weights_incremental_{}_activation_{}_steps_{}.png'.format(
+    'LQG_MLP_{}_evaluated_weights_incremental_{}_'
+    'activation_{}_steps_{}.png'.format(
         q_regressor.name(), INCREMENTAL,
         ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
@@ -241,7 +244,8 @@ plt.title('Application of Bellman operator')
 plt.xlabel('b')
 plt.ylabel('k')
 plt.savefig(
-    'LQG_MLP_{}_bpo_application_incremental_{}_activation_{}_steps_{}.png'.format(
+    'LQG_MLP_{}_bpo_application_incremental_{}_'
+    'activation_{}_steps_{}.png'.format(
         q_regressor.name(), INCREMENTAL,
         ACTIVATION, STEPS_AHEAD),
     bbox_inches='tight')
