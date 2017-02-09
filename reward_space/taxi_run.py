@@ -7,6 +7,87 @@ import numpy.linalg as LA
 from rank_nullspace import nullspace
 import matplotlib.pyplot as plt
 
+'''
+class SampleEstimator(object):
+
+    tol = 1e-10 #to avoid divisions by zero
+    P = None
+    mu = None
+    d_s_mu = None
+    d_sa_mu = None
+    d_sas = None
+    d_sasa = None
+
+    def __init__(self, dataset, gamma, state_space, action_space):
+
+        Works only for discrete mdps.
+        :param dataset: numpy array (n_samples,7) of the form
+            dataset[:,0] = current state
+            dataset[:,1] = current action
+            dataset[:,2] = reward
+            dataset[:,3] = next state
+            dataset[:,4] = discount
+            dataset[:,5] = a flag indicating whether the reached state is absorbing
+            dataset[:,6] = a flag indicating whether the episode is finished (absorbing state
+                           is reached or the time horizon is met)
+        :param gamma: discount factor
+        :param state_space: numpy array
+        :param action_space: numpy array
+
+        self.dataset = dataset
+        self.gamma = gamma
+        self.state_space = state_space
+        self.action_space = action_space
+
+    def estimate_P(self):
+        if self.P is not None:
+            return self.P
+
+        states = self.dataset[:, 0]
+        actions = self.dataset[:, 1]
+        next_states = self.dataset[:, 3]
+
+        nS = len(self.state_space)
+        nA = len(self.action_space)
+
+        P = np.zeros((nS * nA, nS), dtype=np.float32)
+        for s, a, s_next in zip(states, actions, next_states):
+            s_i = np.argwhere(self.state_space == s)
+            a_i = np.argwhere(self.action_space == a)
+            s_next_i = np.argwhere(self.state_space == s_next)
+            P[s_i * nA + a_i, s_next_i] += 1
+        row_sum = P.sum(axis=1)
+        P = np.apply_along_axis(lambda x: x / (row_sum + self.tol), axis=0, arr=P)
+        self.P = P
+        return P
+
+    def estimate_mu(self):
+        raise NotImplementedError()
+
+    def estimate_d_mu_s(self):
+        states = dataset[:, 0]
+        actions = dataset[:, 1]
+        discounts = dataset[:, 4]
+
+        nS = len(self.state_space)
+        nA = len(self.action_space)
+
+        d_s = np.zeros(nS)
+        d_a = np.zeros(nA)
+        d_sa = np.zeros(nS * nA)
+
+        for s, a, disc in zip(states, actions, discounts):
+            s_i = np.argwhere(self.state_space == s)
+            a_i = np.argwhere(self.action_space == a)
+            d_s[s_i] += disc
+            d_a[a_i] += disc
+            d_sa[s_i * nA + a_i] += disc
+
+        return d_s, d_a, d_sa
+
+'''
+
+
 def compute_mdp_parameters(mdp, fix_episodic=True):
     nS = mdp.observation_space.n
     nA = mdp.action_space.n
@@ -67,6 +148,79 @@ def compute_J(P, R, gamma, PI, mu):
     return la.multi_dot([delta_s, PI, R])
     '''
 
+def compute_P(dataset, s_idx, a_idx, s_next_idx, state_space, action_space):
+    states = dataset[:,s_idx]
+    actions = dataset[:,a_idx]
+    next_states = dataset[:,s_next_idx]
+
+    nS = len(state_space)
+    nA = len(action_space)
+
+    P = np.zeros((nS*nA, nS), dtype=np.float32)
+    for s, a, s_next in zip(states, actions, next_states):
+        s_i = np.argwhere(state_space == s)
+        a_i = np.argwhere(action_space == a)
+        s_next_i = np.argwhere(state_space == s_next)
+        P[s_i*nA + a_i, s_next_i] += 1
+    row_sum = P.sum(axis=1)
+    P = np.apply_along_axis(lambda x: x/(row_sum + 1e-10), axis=0, arr=P)
+    return P
+
+def compute_d_sas(dataset, s_idx, a_idx, disc_idx, end_idx, state_space, action_space):
+    states = dataset[:,s_idx]
+    actions = dataset[:,a_idx]
+    discounts = dataset[:, disc_idx]
+
+    nS = len(state_space)
+    nA = len(action_space)
+
+    d_sas = np.zeros((nS*nA, nS), dtype=np.float32)
+    count = np.zeros(nS*nA)
+
+    i = 0
+    while i < dataset.shape[0]:
+        j = i
+        s_i = np.argwhere(state_space == states[i])
+        a_i = np.argwhere(action_space == actions[i])
+        count[s_i * nA + a_i] += 1
+        while j < dataset.shape[0] and dataset[j,end_idx] == 0:
+            s_j = np.argwhere(state_space == states[j])
+            a_j = np.argwhere(action_space == actions[j])
+            d_sas[s_i * nA + a_i, s_j] += discounts[j]
+            j += 1
+        i += 1
+
+    #d_sas = np.apply_along_axis(lambda x: x/(count + 1e-10), axis=0, arr=d_sas)
+    d_sas /= n_episodes
+    return d_sas
+
+def compute_d_ss(dataset, s_idx, a_idx, disc_idx, end_idx, state_space, action_space):
+    states = dataset[:,s_idx]
+    actions = dataset[:,a_idx]
+    discounts = dataset[:, disc_idx]
+
+    nS = len(state_space)
+    nA = len(action_space)
+
+    d_ss = np.zeros((nS, nS), dtype=np.float32)
+    d_sasa = np.zeros((nS*nA, nS*nA), dtype=np.float32)
+
+    i = 0
+    while i < dataset.shape[0]:
+        j = i
+        s_i = np.argwhere(state_space == states[i])
+        a_i = np.argwhere(action_space == actions[i])
+        while j < dataset.shape[0] and dataset[j,end_idx] == 0:
+            s_j = np.argwhere(state_space == states[j])
+            a_j = np.argwhere(action_space == actions[j])
+            d_ss[s_i, s_j] += discounts[j]
+            d_sasa[s_i*nA+a_i, s_j*nA+a_j] += discounts[j]
+            j += 1
+        i += 1
+
+    #d_ss /= n_episodes
+    return d_ss, d_sasa
+
 def compute_counts(dataset, s_idx, a_idx, disc_idx, state_space, action_space):
     states = dataset[:,s_idx]
     actions = dataset[:,a_idx]
@@ -101,7 +255,7 @@ def estimate_Q(X, Q_true):
 
 def compute(mdp, n_episodes, prox_policy, opt_policy):
     dataset = evaluation.collect_episodes(mdp, prox_policy, n_episodes)
-
+    
     P, R_sas, R, D, mu, gamma, horizon = compute_mdp_parameters(mdp)
     PI = prox_policy.get_distribution()
     PI_opt = opt_policy.get_distribution()
@@ -134,14 +288,7 @@ def compute(mdp, n_episodes, prox_policy, opt_policy):
     X_true = nullspace(np.dot(C.T, np.diag(d_sa)))
     print('Rank X %s' % LA.matrix_rank(X))
 
-    print('R-estimation')
-    R_hat, w, rmse = estimate_Q(X, R)
-    J_hat = np.dot(d_sa,R_hat)
-    error = np.abs(R - R_hat)
-    mae = np.mean(error)
-    error_rel = np.abs((R - R_hat) / (R + 1e-8))
-    mare = np.mean(error_rel)
-    print('Results of LS deltaJ = %s J_hat = %s rmse = %s mae = %s mare = %s' % (J_true - J_hat, J_hat, rmse, mae, mare))
+
 
 
     print('Q-estimation')
@@ -150,6 +297,42 @@ def compute(mdp, n_episodes, prox_policy, opt_policy):
     error = np.abs(Q_true - Q_hat)
     mae = np.mean(error)
     error_rel = np.abs((Q_true - Q_hat) / (Q_true + 1e-8))
+    mare = np.mean(error_rel)
+    print('Results of LS deltaJ = %s J_hat = %s rmse = %s mae = %s mare = %s' % (J_true - J_hat, J_hat, rmse, mae, mare))
+
+    P_hat = compute_P(dataset, 0, 1, 3, range(mdp.observation_space.n),
+                                                 range(mdp.action_space.n))
+    Y = np.dot(np.eye(P_hat.shape[0]) - gamma * np.dot(P_hat, PI), X)
+    print('Rank Y %s' % LA.matrix_rank(Y))
+
+
+    print('R-estimation with P_hat')
+    R_hat, w, rmse = estimate_Q(Y, R)
+    J_hat = np.dot(d_sa,R_hat)
+    error = np.abs(R - R_hat)
+    mae = np.mean(error)
+    error_rel = np.abs((R - R_hat) / (R + 1e-8))
+    mare = np.mean(error_rel)
+    print('Results of LS deltaJ = %s J_hat = %s rmse = %s mae = %s mare = %s' % (J_true - J_hat, J_hat, rmse, mae, mare))
+
+    d_sas_hat = compute_d_sas(dataset, 0, 1, 4, -1, range(mdp.observation_space.n),
+                                                        range(mdp.action_space.n))
+
+    d_ss_hat, _ = compute_d_ss(dataset, 0, 1, 4, -1, range(mdp.observation_space.n),
+                                                        range(mdp.action_space.n))
+
+    #d_sasa_hat = np.dot(d_sas_hat, PI)
+    d_sasa_hat = LA.multi_dot([PI.T, d_ss_hat, PI])
+    #Z = nullspace(np.dot(C.T, np.dot(np.diag(d_sa_hat2), d_sasa_hat)))
+    Z = nullspace(np.dot(C.T, d_sasa_hat))
+    print('Rank Z %s' % LA.matrix_rank(Z))
+
+    print('R-estimation without P_hat')
+    R_hat, w, rmse = estimate_Q(Z, R)
+    J_hat = np.dot(d_sa,R_hat)
+    error = np.abs(R - R_hat)
+    mae = np.mean(error)
+    error_rel = np.abs((R - R_hat) / (R + 1e-8))
     mare = np.mean(error_rel)
     print('Results of LS deltaJ = %s J_hat = %s rmse = %s mae = %s mare = %s' % (J_true - J_hat, J_hat, rmse, mae, mare))
 
@@ -188,4 +371,5 @@ compute(mdp, n_episodes, prox_policy, opt_policy)
 print('\n2 STATE PARAMETERS')
 prox_policy = TaxiEnvPolicy2StateParameter(sigma=0.02)
 compute(mdp, n_episodes, prox_policy, opt_policy)
+
 plt.show()

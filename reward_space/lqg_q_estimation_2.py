@@ -114,14 +114,14 @@ action_bounds = np.array([[-max_action], [max_action]], ndmin=2)
 state_bounds = np.array([[-max_pos] , [max_pos]], ndmin=2)
 #K = mdp.computeOptimalK()
 K = -0.61803
-sigma = 0.1
+sigma = 0.01
 
 #K = compute_k_opt(mdp, 20, discount_factor, -0.62, -0.59, 0.005)
 
 policy = GaussianPolicy1D(K,sigma,action_bounds)
 
 #Collect samples
-n_episodes = 10
+n_episodes = 200
 dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
 dataset = add_discount(dataset, 5, discount_factor)
 states_actions = dataset[:,:2]
