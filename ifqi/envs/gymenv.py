@@ -14,15 +14,18 @@ class Gym(gym.Env):
     def __init__(self, name):
         self.env = gym.make(name)
         self.action_space = self.env.action_space
-        self.action_space.values = range(self.action_space.n)
+        if hasattr(self.action_space, 'values'):
+            self.action_space.values = range(self.action_space.n)
         self.observation_space = self.env.observation_space
+
+        self.initial_states = None
 
         # initialize state
         self.seed()
         self.reset()
 
     def step(self, action):
-        return self.env.step(int(action))
+        return self.env.step(action)
 
     def get_state(self):
         return self.env.state
