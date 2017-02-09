@@ -134,13 +134,24 @@ def compute(mdp, n_episodes, prox_policy, opt_policy):
     X_true = nullspace(np.dot(C.T, np.diag(d_sa)))
     print('Rank X %s' % LA.matrix_rank(X))
 
+    print('R-estimation')
+    R_hat, w, rmse = estimate_Q(X, R)
+    J_hat = np.dot(d_sa,R_hat)
+    error = np.abs(R - R_hat)
+    mae = np.mean(error)
+    error_rel = np.abs((R - R_hat) / (R + 1e-8))
+    mare = np.mean(error_rel)
+    print('Results of LS deltaJ = %s J_hat = %s rmse = %s mae = %s mare = %s' % (J_true - J_hat, J_hat, rmse, mae, mare))
 
+
+    print('Q-estimation')
     Q_hat, w, rmse = estimate_Q(X, Q_true)
+    J_hat = LA.multi_dot([mu.T, PI, Q_hat])
     error = np.abs(Q_true - Q_hat)
     mae = np.mean(error)
     error_rel = np.abs((Q_true - Q_hat) / (Q_true + 1e-8))
     mare = np.mean(error_rel)
-    print('Results of LS rmse = %s mae = %s mare = %s' % (rmse, mae, mare))
+    print('Results of LS deltaJ = %s J_hat = %s rmse = %s mae = %s mare = %s' % (J_true - J_hat, J_hat, rmse, mae, mare))
 
     # ------------------------------------Plots-------------------------------------------------------------------
     '''
@@ -152,15 +163,16 @@ def compute(mdp, n_episodes, prox_policy, opt_policy):
 
     f, axarr = plt.subplots(6, sharex=True)
     for i in range(6):
-        axarr[i].scatter(np.arange(500), Q_true[6 * np.arange(500) + i], c='b', marker='o')
-        axarr[i].scatter(np.arange(500), Q_hat[6 * np.arange(500) + i], c='r', marker='*')
-    plt.show()
+        axarr[i].plot(np.arange(500), Q_true[6 * np.arange(500) + i] - Q_hat[6 * np.arange(500) + i])
+        #axarr[i].scatter(np.arange(500), Q_true[6 * np.arange(500) + i], c='b', marker='o')
+        #axarr[i].scatter(np.arange(500), Q_hat[6 * np.arange(500) + i], c='r', marker='*')
+
 
 mdp = TaxiEnv()
 n_episodes = 1000
 
 opt_policy = TaxiEnvPolicy()
-'''
+
 print('1 GLOBAL PARAMETER')
 prox_policy = TaxiEnvPolicyOneParameter(3, 0.2, 3)
 compute(mdp, n_episodes, prox_policy, opt_policy)
@@ -172,7 +184,8 @@ compute(mdp, n_episodes, prox_policy, opt_policy)
 print('\n1 STATE PARAMETER')
 prox_policy = TaxiEnvPolicyStateParameter(3, 0.2, 3)
 compute(mdp, n_episodes, prox_policy, opt_policy)
-'''
+
 print('\n2 STATE PARAMETERS')
 prox_policy = TaxiEnvPolicy2StateParameter(sigma=0.02)
 compute(mdp, n_episodes, prox_policy, opt_policy)
+plt.show()
