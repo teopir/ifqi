@@ -90,4 +90,5 @@ class LunarLander(Environment):
         return self.env.state
 
     def render(self, mode='human', close=False):
+        return 
         self.env.render()
