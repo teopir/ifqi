@@ -181,7 +181,7 @@ class DQN:
         directory = os.path.dirname(folder + "/" + "sast" + str(datasetN) + ".npy")
         if not os.path.isdir(directory): os.makedirs(directory)
         np.save(folder + "/" + "sast" + str(datasetN), self.sast)
-        np.save("r" + str(datasetN), self.r)
+        np.save(folder + "/" + "r" + str(datasetN), self.r)
 
     def maxQA(self, states, absorbing, evaluation=False):
         """

@@ -75,7 +75,7 @@ for _ in range(500):
     while not dqn.step():
         pass
 
-dqn.save(datasetN)
+dqn.save(experimentName, datasetN)
 """
 dqn.env.env.close()
 gym.upload("/tmp/gym-results", api_key="sk_iydMqnBQ4uSb4EwG7nJ7Q")
