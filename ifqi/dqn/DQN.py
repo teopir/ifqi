@@ -4,6 +4,8 @@
 import numpy as np
 from numpy.matlib import repmat
 import time
+import os
+
 class DQN:
 
     def __init__(self, env, regr, batch_size = 100, epsilon=1.,epsilon_disc=0.99, discrete_actions = None, action_dim = None,state_dim=None,gamma=0.9):
@@ -22,7 +24,12 @@ class DQN:
         self.gamma = gamma
         self.renderize = False
         self.epsilon_disc = epsilon_disc
+        self.sameAction = 0
         self.i = 0
+        self.random_init = 200
+
+        self.countUndred = 0
+        self.countDiscRew = 0
         if isinstance(discrete_actions, np.ndarray):
             if len(discrete_actions.shape) > 1:
                 assert discrete_actions.shape[1] == action_dim
@@ -51,6 +58,10 @@ class DQN:
             print "End Of Episode"
             if hasattr(self,"disc_reward"):
                 print "discounted reward:" , self.disc_reward
+                if self.disc_reward >= 150.:
+                    self.countDiscRew += 1
+                print "Number of good Ep: ", self.countDiscRew
+                print "Number of good landings: ", self.countUndred
             self.n_step = 0
             self.disc_reward = 0
             self.i += 1
@@ -61,33 +72,63 @@ class DQN:
             self.epsilon = self.epsilon * self.epsilon_disc
 
         if self.first_time:
-            self.max_state = self.state
+            st = [self.env.env.lander.position.x,
+                  self.env.env.lander.position.y,
+                  self.env.env.lander.linearVelocity.x,
+                  self.env.env.lander.linearVelocity.y,
+                  self.env.env.lander.angle,
+                  self.env.env.lander.angularVelocity]
 
-        if self.first_time or np.random.rand() < self.epsilon:
-            a = self.env.action_space.sample()
-            self.first_time = False
+            self.max_state = np.array(st)
+            self.min_state = np.array(st)
+
+        if self.sameAction > 0:
+            a = self.action
+            self.sameAction -= 1
         else:
-            _, a = self.maxQA(np.matrix(self.state),np.matrix([[0.]]))
-            a = a[0]
+            if self.first_time or np.random.rand() < self.epsilon:
+                if np.random.rand() < 0.1:
+                    self.sameAction = np.random.randint(3) * 5 - 1
+                a = self.env.action_space.sample()
+                self.action = a
+                self.first_time = False
+            else:
+                #matrix
+                _, a = self.maxQA(np.array(self.state),np.array([[0.]]))
+                a = a[0]
 
         if self.renderize:
             self.env.render()
 
         next_state, reward, self.done, info = self.env.step(a)
-        x =  np.concatenate((np.matrix(self.max_state), np.abs(np.matrix(next_state))),axis=0)
+        if reward >= 100.:
+            self.countUndred += 1
+            print("Yay! ", reward)
+        st = np.array([self.env.env.lander.position.x,
+                  self.env.env.lander.position.y,
+                  self.env.env.lander.linearVelocity.x,
+                  self.env.env.lander.linearVelocity.y,
+                  self.env.env.lander.angle,
+                  self.env.env.lander.angularVelocity])
+        x =  np.concatenate((np.matrix(self.max_state), np.abs(np.matrix(st))),axis=0)
+        y =  np.concatenate((np.matrix(self.min_state), np.abs(np.matrix(st))),axis=0)
 
+        self.max_state = np.max(x,axis=0)
+        self.min_state = np.min(y,axis=0)
+        """print self.max_state
+        print self.min_state"""
         self.disc_reward += reward
         self.n_step += 1
 
 
-
-        new_el = np.matrix([self.state.tolist() + [a] + \
+        #matrix
+        new_el = np.array([self.state.tolist() + [a] + \
                  next_state.tolist() + [self.done]])
 
         self.sast = np.concatenate((self.sast, new_el), axis=0)
 
-
-        reward = np.matrix([[reward]])
+        #matrix
+        reward = np.array([[reward]])
         self.r = np.concatenate((self.r, reward), axis=0)
 
         indxs = np.random.permutation(self.sast.shape[0])
@@ -136,9 +177,11 @@ class DQN:
         """
         return X.reshape(-1, self.state_dim)
 
-    def save(self):
-        np.save("sast.np", self.sast)
-        np.save("r.np", self.r)
+    def save(self,folder,  datasetN):
+        directory = os.path.dirname(folder + "/" + "sast" + str(datasetN) + ".npy")
+        if not os.path.isdir(directory): os.makedirs(directory)
+        np.save(folder + "/" + "sast" + str(datasetN), self.sast)
+        np.save("r" + str(datasetN), self.r)
 
     def maxQA(self, states, absorbing, evaluation=False):
         """
