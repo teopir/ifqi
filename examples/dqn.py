@@ -37,7 +37,7 @@ mdp = LunarLander()
 discrete_actions = mdp.action_space.values
 
 
-mdp.seed(0)
+mdp.seed(datasetN)
 prng.seed(datasetN)
 np.random.seed(datasetN)
 random.seed(datasetN)
