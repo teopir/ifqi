@@ -87,6 +87,15 @@ class SampleEstimator(object):
 
 '''
 
+def my_nullspace(A):
+    print(A.shape)
+    r = LA.matrix_rank(A)
+    print(r)
+    r_null = max(A.shape[0], A.shape[1]) - r
+    print(r_null)
+    u, s, vh = LA.svd(A)
+    ns = vh[:r_null].conj().T
+    return ns
 
 def compute_mdp_parameters(mdp, fix_episodic=True):
     nS = mdp.observation_space.n
@@ -216,6 +225,11 @@ def compute_d_ss(dataset, s_idx, a_idx, disc_idx, end_idx, state_space, action_s
             d_ss[s_i, s_j] += discounts[j]
             d_sasa[s_i*nA+a_i, s_j*nA+a_j] += discounts[j]
             j += 1
+        if dataset[j,end_idx] == 1:
+            s_j = np.argwhere(state_space == states[j])
+            a_j = np.argwhere(action_space == actions[j])
+            d_ss[s_i, s_j] += discounts[j]
+            d_sasa[s_i * nA + a_i, s_j * nA + a_j] += discounts[j]
         i += 1
 
     #d_ss /= n_episodes
@@ -255,7 +269,7 @@ def estimate_Q(X, Q_true):
 
 def compute(mdp, n_episodes, prox_policy, opt_policy):
     dataset = evaluation.collect_episodes(mdp, prox_policy, n_episodes)
-    
+
     P, R_sas, R, D, mu, gamma, horizon = compute_mdp_parameters(mdp)
     PI = prox_policy.get_distribution()
     PI_opt = opt_policy.get_distribution()
@@ -324,7 +338,7 @@ def compute(mdp, n_episodes, prox_policy, opt_policy):
     #d_sasa_hat = np.dot(d_sas_hat, PI)
     d_sasa_hat = LA.multi_dot([PI.T, d_ss_hat, PI])
     #Z = nullspace(np.dot(C.T, np.dot(np.diag(d_sa_hat2), d_sasa_hat)))
-    Z = nullspace(np.dot(C.T, d_sasa_hat))
+    Z = my_nullspace(np.dot(C.T, d_sasa_hat))
     print('Rank Z %s' % LA.matrix_rank(Z))
 
     print('R-estimation without P_hat')
@@ -336,6 +350,22 @@ def compute(mdp, n_episodes, prox_policy, opt_policy):
     mare = np.mean(error_rel)
     print('Results of LS deltaJ = %s J_hat = %s rmse = %s mae = %s mare = %s' % (J_true - J_hat, J_hat, rmse, mae, mare))
 
+    '''
+    A = np.repeat(np.eye(500), 6, axis=0)
+    B = A - gamma * P_hat
+    Z = my_nullspace(np.vstack([B.T, np.dot(C.T, d_sasa_hat)]))
+    print('Rank Z %s' % LA.matrix_rank(Z))
+
+    print('R-estimation without P_hat refinement')
+    R_hat, w, rmse = estimate_Q(Z, R)
+    J_hat = np.dot(d_sa, R_hat)
+    error = np.abs(R - R_hat)
+    mae = np.mean(error)
+    error_rel = np.abs((R - R_hat) / (R + 1e-8))
+    mare = np.mean(error_rel)
+    print(
+        'Results of LS deltaJ = %s J_hat = %s rmse = %s mae = %s mare = %s' % (J_true - J_hat, J_hat, rmse, mae, mare))
+    '''
     # ------------------------------------Plots-------------------------------------------------------------------
     '''
     f, axarr = plt.subplots(2, sharex=True)
@@ -349,6 +379,7 @@ def compute(mdp, n_episodes, prox_policy, opt_policy):
         axarr[i].plot(np.arange(500), Q_true[6 * np.arange(500) + i] - Q_hat[6 * np.arange(500) + i])
         #axarr[i].scatter(np.arange(500), Q_true[6 * np.arange(500) + i], c='b', marker='o')
         #axarr[i].scatter(np.arange(500), Q_hat[6 * np.arange(500) + i], c='r', marker='*')
+
 
 
 mdp = TaxiEnv()
