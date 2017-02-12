@@ -138,12 +138,41 @@ action_dim = 1
 state_dim, action_dim = envs.get_space_info(environment)
 reward_idx = state_dim + action_dim
 if not loadSast:
-    dataset = evaluate.collect_episodes(environment,policy=None,n_episodes=size)
+    if not exp.config["mdp"]["mdpName"] == "LunarLander":
+        dataset = evaluate.collect_episodes(environment,policy=None,n_episodes=size)
+    else:
+
+        class Policy:
+            def __init__(self,policy_mdp):
+                self.sameAction = 0
+                self.action = 0
+                self.environment = policy_mdp
+
+            def draw_action(self, states, absorbing, evaluation=False):
+                if self.sameAction > 0:
+                    self.sameAction -= 1
+                    return self.action
+                else:
+                    self.sameAction = np.random.randint(3) * 4 - 1
+                    self.action = self.environment.action_space.sample()
+                    return self.action
+
+
+        dataset = evaluate.collect_episodes(environment,policy=Policy(environment),n_episodes=size)
     sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
     sastFirst, rFirst = sast, dataset[:, reward_idx]
 else:
-    sastFirst = sast = np.load("sast.np")
-    rFirst = np.load("r.np")
+    print ("load sast")
+    dataset = evaluate.collect_episodes(environment, policy=None, n_episodes=size)
+    sast = np.append(dataset[:, :reward_idx], dataset[:, reward_idx + 1:], axis=1)
+    sastFirst, rFirst = sast, dataset[:, reward_idx]
+    sastFirst_ = sast_ = np.load(experimentName + "/sast" + str(datasetN) + ".npy")
+    rFirst_ = np.load(experimentName + "/r" + str(datasetN) + ".npy")
+    sastFirst = sast = np.append(sast, sast_, axis=0)
+    print ("rFirst", rFirst.shape)
+    print ("rFirst_",rFirst_.shape)
+    rFirst_ = rFirst_.ravel()
+    rFirst = np.append(rFirst, rFirst_, axis=0)
 
 
 if "experienceReplay" in exp.config['experimentSetting']:
