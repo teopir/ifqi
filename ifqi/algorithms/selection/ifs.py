@@ -17,7 +17,8 @@ from sklearn.metrics import r2_score, mean_squared_error
 import sklearn
 
 if sklearn.__version__ == '0.17':
-    from sklearn.cross_validation import cross_val_score, check_cv, cross_val_predict
+    from sklearn.cross_validation import cross_val_score, check_cv, \
+        cross_val_predict
 else:
     from sklearn.model_selection import cross_val_score, check_cv, \
         cross_val_predict
@@ -55,7 +56,8 @@ def _my_fit_and_predict(estimator, X, y, train, test, verbose, fit_params,
         else:
             predictions_[:, estimator.classes_] = predictions
         predictions = predictions_
-    scores = r2_score(y_true=Y_test, y_pred=predictions, multioutput='raw_values')
+    scores = r2_score(y_true=Y_test, y_pred=predictions,
+                      multioutput='raw_values')
     return predictions, test, scores
 
 
@@ -219,7 +221,7 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
     def _estimator_type(self):
         return self.estimator._estimator_type
 
-    def fit(self, X, y):
+    def fit(self, X, y, preload_features=None):
         """Fit the IFS model and then the underlying estimator on the selected
            features.
 
@@ -230,10 +232,16 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
         y : array-like, shape = [n_samples]
             The target values.
-        """
-        return self._fit(X, y, self.features_names)
 
-    def _fit(self, X, y, step_score=None, features_names=None, ranking_th=0.005):
+        preload_features: {array-like}, shape = from 0 to n_features
+            The features to be preselected. It should be a list or array of
+            integers
+        """
+        return self._fit(X, y, features_names=self.features_names,
+                         preload_features=preload_features)
+
+    def _fit(self, X, y, features_names=None, preload_features=None,
+             ranking_th=0.005):
         X, y = check_X_y(X, y, accept_sparse=['csr', 'csc', 'coo'],
                          multi_output=True)
         # Initialization
@@ -272,20 +280,30 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
         self.scores_confidences_ = []
         self.features_per_it_ = []
 
-        target = y.copy()
+        if preload_features is not None:
+            preload_features = np.unique(preload_features).astype('int')
+            current_support_[preload_features] = True
+
+            X_selected = X[:, features[current_support_]]
+            y_hat, cv_scores = my_cross_val_predict(clone(self.estimator),
+                                                    X_selected, y, cv=cv)
+            target = y - y_hat
+        else:
+            target = y.copy()
 
         score, confidence_interval = -np.inf, 0
-        proceed = True
+        proceed = np.sum(current_support_) < X.shape[1]
         while proceed:
             if self.verbose > 0:
-                print('\nN-times variance of target: {}'.format(target.var() * target.shape[0]))
+                print('\nN-times variance of target: {}'.format(
+                    target.var() * target.shape[0]))
             # update values
             old_confidence_interval = confidence_interval
             old_score = score
 
             if self.scale:
                 target = StandardScaler().fit_transform(target.reshape(
-                   -1,1)).ravel()
+                    -1, 1)).ravel()
                 # target = MinMaxScaler().fit_transform(target.reshape(
                 #     -1,1)).ravel()
 
@@ -330,14 +348,20 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                     ranked_n = features_names[ranks]
                 else:
                     ranked_n = ['-'] * n_features
-                print('{:6}\t{:6}\t{:8}\t{}'.format('Rank', 'Index', 'Score', 'Feature Name'))
+                print('{:6}\t{:6}\t{:8}\t{}'.format('Rank', 'Index', 'Score',
+                                                    'Feature Name'))
                 for i in range(n_features):
                     idx = n_features - i - 1
                     if (coefs[ranks[idx]] < ranking_th) and (i > 2):
                         print(' ...')
                         break
-                    print('#{:6}\t{:6}\t{:6f}\t{}'.format(str(i), str(ranked_f[idx]), coefs[ranks[idx]], ranked_n[idx]))
-                print("\n Fit done in {} s and rank done in {} s".format(end_fit, end_rank))
+                    print('#{:6}\t{:6}\t{:6f}\t{}'.format(str(i),
+                                                          str(ranked_f[idx]),
+                                                          coefs[ranks[idx]],
+                                                          ranked_n[idx]))
+                print(
+                    "\n Fit done in {} s and rank done in {} s".format(end_fit,
+                                                                       end_rank))
 
             # if coefs[ranks][-1] < 1e-5:
             #     if self.verbose > 0:
@@ -360,7 +384,8 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
             if np.all(current_support_[step_features]):
                 if self.verbose > 0:
-                    print("Selected features: {} {}".format(features_names[step_features], step_features))
+                    print("Selected features: {} {}".format(
+                        features_names[step_features], step_features))
                     # if features_names is not None:
                     #     print("Selected features: {} {}".format(features_names[ranks][-threshold:], step_features))
                     # else:
@@ -377,7 +402,8 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
 
             start_t = time.time()
             # cross validates to obtain the scores
-            y_hat, cv_scores = my_cross_val_predict(clone(self.estimator), X_selected, y, cv=cv)
+            y_hat, cv_scores = my_cross_val_predict(clone(self.estimator),
+                                                    X_selected, y, cv=cv)
             # y_hat = cross_val_predict(clone(self.estimator), X_selected, y, cv=cv)
 
             # compute new target
@@ -392,15 +418,18 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             if len(cv_scores.shape) > 1:
                 cv_scores = np.mean(cv_scores, axis=1)
             m2 = np.mean(cv_scores * cv_scores)
-            confidence_interval_or = np.sqrt((m2 - score * score) / (n_splits - 1))
+            confidence_interval_or = np.sqrt(
+                (m2 - score * score) / (n_splits - 1))
 
             end_t = time.time() - start_t
 
             if self.verbose > 0:
                 # if features_names is not None:
-                print("Selected features: {} {}".format(features_names[step_features], step_features))
-                print("Total features: {} {}".format(features_names[tentative_support_],
-                                                     features[tentative_support_]))
+                print("Selected features: {} {}".format(
+                    features_names[step_features], step_features))
+                print("Total features: {} {}".format(
+                    features_names[tentative_support_],
+                    features[tentative_support_]))
                 # else:
                 #     print("Selected features: {}".format(step_features))
                 #     print("Total features: {}".format(features[tentative_support_]))
@@ -412,11 +441,12 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
             # check terminal condition
             proceed = score - old_score > old_confidence_interval + confidence_interval
             if self.verbose > 0:
-                print("PROCEED: {}\n\t{} - {} > {} + {}\n\t{} > {} )".format(proceed, score, old_score,
-                                                                             old_confidence_interval,
-                                                                             confidence_interval,
-                                                                             score - old_score,
-                                                                             old_confidence_interval + confidence_interval))
+                print("PROCEED: {}\n\t{} - {} > {} + {}\n\t{} > {} )".format(
+                    proceed, score, old_score,
+                    old_confidence_interval,
+                    confidence_interval,
+                    score - old_score,
+                    old_confidence_interval + confidence_interval))
 
             if proceed or np.sum(current_support_) == 0:
                 # last feature set proved to be informative
@@ -436,7 +466,8 @@ class IFS(BaseEstimator, MetaEstimatorMixin, SelectorMixin):
                 # keep old support and delete the current one (it is no more necessary)
                 del tentative_support_
                 if self.verbose > 0:
-                    print('Last feature {} not added to the set'.format(features_names[step_features]))
+                    print('Last feature {} not added to the set'.format(
+                        features_names[step_features]))
 
         # Set final attributes
         self.estimator_ = clone(self.estimator)

@@ -26,7 +26,7 @@ fs = RFS(feature_selector=selector,
          features_names=np.array(['S0', 'S1', 'S2', 'S3', 'A0', 'A1']),
          verbose=1)
 
-state, actions, reward, next_states = \
+state, actions, reward, next_states, absorbing = \
     split_dataset(dataset, state_dim, action_dim, reward_dim)
 
 # print(dataset[:10, :])
