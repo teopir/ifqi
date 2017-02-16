@@ -46,7 +46,7 @@ class Bicycle(Environment):
         # self.actionDim = 1
         # self.nStates = 0
         # self.nActions = 9
-        self.horizon = 1000
+        self.horizon = 50000
         self.gamma = 0.98
 
         self._noise = kwargs.setdefault('noise', 0.04)
@@ -273,7 +273,7 @@ class Bicycle(Environment):
             ret = 0.1 * (self._angleWrapPi(goal_angle_old) -
                          self._angleWrapPi(goal_angle))
             reward = ret
-        return self._getState(), reward, self._absorbing, {"goal":1}
+        return self._getState(), reward, self._absorbing, {"goal":goal}
 
     def _unit_vector(self, vector):
         """ Returns the unit vector of the vector.  """
