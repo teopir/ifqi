@@ -39,7 +39,7 @@ class LQG1D(Environment):
     }
 
     def __init__(self, discrete_reward=False):
-        self.horizon = 100
+        self.horizon = 1000
         self.gamma = 0.99
 
         self.discrete_reward = discrete_reward

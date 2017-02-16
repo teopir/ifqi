@@ -10,6 +10,72 @@ from utils import add_discount, chebvalNd, MinMaxScaler
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+
+class ContinuousEnvSampleEstimator(object):
+    tol = 1e-24  # to avoid divisions by zero
+
+    def __init__(self, dataset, gamma):
+
+        '''
+        Works only for discrete mdps.
+        :param dataset: numpy array (n_samples,7) of the form
+            dataset[:,0] = current state
+            dataset[:,1] = current action
+            dataset[:,2] = reward
+            dataset[:,3] = next state
+            dataset[:,4] = discount
+            dataset[:,5] = a flag indicating whether the reached state is absorbing
+            dataset[:,6] = a flag indicating whether the episode is finished (absorbing state
+                           is reached or the time horizon is met)
+        :param gamma: discount factor
+        '''
+        self.dataset = dataset
+        self.gamma = gamma
+        self.n_samples = dataset.shape[0]
+        self._estimate()
+
+    def _estimate(self):
+        states = self.dataset[:, 0]
+        actions = self.dataset[:, 1]
+        next_states = self.dataset[:, 3]
+        discounts = self.dataset[:, 4]
+
+        n_episodes = 0
+
+        d_sa_mu = np.zeros(self.n_samples)
+        d_sasa = np.zeros((self.n_samples,self.n_samples))
+        d_sasa_mu = np.zeros((self.n_samples,self.n_samples))
+
+        i = 0
+        while i < self.n_samples:
+            j = i
+
+            d_sa_mu[i] += discounts[i]
+
+            if i == 0 or self.dataset[i - 1, -1] == 1:
+                n_episodes += 1
+
+            while j < self.n_samples and self.dataset[j, -1] == 0:
+                d_sasa[i,j] += discounts[j] / discounts[i]
+                d_sasa_mu[i,j] += discounts[j]
+                j += 1
+
+            if j < self.n_samples:
+                d_sasa[i,j] += discounts[j] / discounts[i]
+                d_sasa_mu[i,j] += discounts[j]
+
+            i += 1
+
+        d_sa_mu /= n_episodes
+        d_sasa_mu /= n_episodes
+
+        self.d_sa_mu = d_sa_mu
+        self.d_sasa = d_sasa
+        self.d_sasa_mu = d_sasa_mu
+
+        self.J = 1.0 / n_episodes * np.sum(self.dataset[:, 2] * self.dataset[:, 4])
+
+
 def compute_feature_matrix(n_samples, n_features, states, actions, features):
     '''
     Computes the feature matrix X starting from the sampled data and
@@ -28,12 +94,11 @@ def compute_feature_matrix(n_samples, n_features, states, actions, features):
             X[i,j] = features[j]([states[i], actions[i]])
     return X
 
-def remove_projections(X, C, w):
+def remove_projections(X, C, W):
     '''
     Makes the columns of matrix X orthogonal to the columns of
-    matrix C, based on the weighted inner product with weights w
+    matrix C, based on the weighted inner product with weights W
     '''
-    W = np.diag(w)
     P_cx = LA.multi_dot([C.T, W, X])
     P_cc = LA.multi_dot([C.T, W, C])
     C_norms2 = np.diag(np.diag(P_cc)) 
@@ -57,12 +122,13 @@ def find_basis(X, w):
     U_ort_ort = np.sqrt(W_inv).dot(U_tilda_ort_ort)
     return U_ort_ort
 
+'''
 def compute_k_opt(mdp, n_episodes, discount_factor, k_min, k_max, k_step):
     _range = np.arange(k_min, k_max, k_step)
     grad_J_vec = np.zeros(len(_range))
     print('Finding the best parameter')
     for i,k in enumerate(_range):
-        policy = GaussianPolicy1D(k, sigma, action_bounds)
+        policy = GaussianPolicy1D(k, sigma)
         mdp.reset()
         dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
         dataset = add_discount(dataset, 5, discount_factor)
@@ -89,6 +155,7 @@ def compute_k_opt(mdp, n_episodes, discount_factor, k_min, k_max, k_step):
     best = _range[np.argmin(np.abs(grad_J_vec))]
     print('The best parameter is %f' % best)
     return best
+'''
 
 def estimate_Q(X, Q_true):
     '''
@@ -110,24 +177,22 @@ max_pos = mdp.max_pos
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 
 #Policy parameters
-action_bounds = np.array([[-max_action], [max_action]], ndmin=2)
-state_bounds = np.array([[-max_pos] , [max_pos]], ndmin=2)
-#K = mdp.computeOptimalK()
-K = -0.61803
+K = mdp.computeOptimalK()
 sigma = 0.01
 
-#K = compute_k_opt(mdp, 20, discount_factor, -0.62, -0.59, 0.005)
-
-policy = GaussianPolicy1D(K,sigma,action_bounds)
+policy = GaussianPolicy1D(K,sigma)
 
 #Collect samples
-n_episodes = 200
+n_episodes = 20
 dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
-dataset = add_discount(dataset, 5, discount_factor)
+dataset = dataset[(np.arange(500,1000) + np.arange(0,20000,1000)[:,np.newaxis]).ravel()]
+
+estimator = ContinuousEnvSampleEstimator(dataset, mdp.gamma)
+
 states_actions = dataset[:,:2]
 states = dataset[:,0]
 actions = dataset[:,1]
-discounts = dataset[:,-1]
+discounts = dataset[:,4]
 rewards = dataset[:,2]
 
 print('Dataset (sigma %f) has %d samples' % (sigma, dataset.shape[0]))
@@ -152,10 +217,29 @@ n_complement = 1
 X = compute_feature_matrix(n_samples, n_features, scaled_states, scaled_actions, cheb_basis)
 C = compute_feature_matrix(n_samples, n_complement, states, actions, complement)
 
-X_ort = remove_projections(X, C, discounts)
-X_ort_ort = find_basis(X_ort, discounts)
-print('Rank of feature matrix X %s/%s' % (X_ort_ort.shape[1], X.shape[1]))
+W = estimator.d_sasa_mu
+X_ort = remove_projections(X, C, W)
+#X_ort = remove_projections(X, C, np.diag(discounts)) 
+#Non mi interessa che sia ortonormale!!!
+#X_ort_ort = find_basis(X_ort, np.diag(discounts))
+#print('Rank of feature matrix X %s/%s' % (X_ort_ort.shape[1], X.shape[1]))
 
+rewards_hat, w, rmse = estimate_Q(X_ort, rewards)
+error = np.abs(rewards - rewards_hat)
+mae = np.mean(error)
+error_rel = np.abs((rewards - rewards_hat)/rewards)
+mare = np.mean(error_rel)
+
+
+grad_J_true = 1.0/n_episodes * LA.multi_dot([C.T, W, rewards])
+grad_J_hat = 1.0/n_episodes * LA.multi_dot([C.T, W, rewards])
+J_hat = 1.0/n_episodes * np.sum(rewards * discounts)
+print('Results of LS rmse = %s mae = %s mare = %s' % (rmse, mae, mare))
+print('True policy gradient %s' % grad_J_true)
+print('Estimated policy gradient %s' % grad_J_hat)
+print('Estimated expected return %s' % J_hat)
+
+'''
 
 #---------------------------Q-function evaluation-----------------------------
 Q_true = np.array(map(lambda s,a: mdp.computeQFunction(s, a, K, np.power(sigma,2)), states, actions))
@@ -224,3 +308,4 @@ ax.set_xlabel('s')
 ax.set_ylabel('|Q_true(s,*) - Q_hat(s,*)|/|Q_true(s,*)|')
 
 plt.show()
+'''

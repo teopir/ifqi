@@ -49,8 +49,9 @@ class GaussianPolicy1D(SimplePolicy):
     def draw_action(self, state, done):
         state = np.array(state, ndmin=1)
         action = np.dot(self.K, state) + self.np_random.randn() * self.sigma
-        bound_action = self.check_action_bounds(action)
-        return bound_action
+        #bound_action = self.check_action_bounds(action)
+        #return bound_action
+        return action
     
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
