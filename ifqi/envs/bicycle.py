@@ -235,6 +235,7 @@ class Bicycle(Environment):
                 y_b += (y_b - y_f) * (self._l - dist) / dist
 
             # Update psi
+            old_psi = psi
             if x_f == x_b and y_f - y_b < 0:
                 psi = numpy.pi
             elif y_f - y_b > 0:
@@ -269,9 +270,9 @@ class Bicycle(Environment):
 
             self._absorbing = False
             # return (4. - goal_angle**2) * self.reward_shaping
-            # ret =  0.1 * (self.angleWrapPi(old_psi) - self.angleWrapPi(psi))
-            ret = 0.1 * (self._angleWrapPi(goal_angle_old) -
-                         self._angleWrapPi(goal_angle))
+            ret =  0.1 * (self.angleWrapPi(old_psi) - self.angleWrapPi(psi))
+            #ret = 0.1 * (self._angleWrapPi(goal_angle_old) -
+            #             self._angleWrapPi(goal_angle))
             reward = ret
         return self._getState(), reward, self._absorbing, {"goal":goal, "dist":float(((self._position[:2] - self._goal_loc) ** 2).sum()), "pos_x":float(self._position[:1]), "pos_y":float(self._position[1:2])}
 
@@ -309,7 +310,7 @@ class Bicycle(Environment):
             self._goal_loc,
             numpy.array([x_f - x_b, y_f - y_b])) * numpy.pi / 180.
         """ modified to follow Ernst paper"""
-        return numpy.array([omega, omega_dot, theta, theta_dot, goal_angle])
+        return numpy.array([omega, omega_dot, theta, theta_dot, psi])
 
     def _angleWrapPi(self, x):
         while (x < -numpy.pi):
