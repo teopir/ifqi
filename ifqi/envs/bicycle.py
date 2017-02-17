@@ -52,6 +52,9 @@ class Bicycle(Environment):
         self._noise = kwargs.setdefault('noise', 0.04)
         self._random_start = kwargs.setdefault('random_start', False)
 
+        self.initial_states = numpy.zeros((9, 1))
+        self.initial_states[:, 0] = numpy.linspace(-numpy.pi, numpy.pi, 9)
+
         # select psi or psi_goal
         self._reward_function_psi = kwargs.setdefault('reward_function_psi',
                                                       True)
@@ -145,16 +148,22 @@ class Bicycle(Environment):
     def reset(self, state=None):
         self._absorbing = False
         self.goal = False
-
-        psi = numpy.random.rand() * 2*numpy.pi - numpy.pi
-
-
-        self._state.fill(0.0)
-        self._position.fill(0.0)
-        self._position[2] = self._l * numpy.cos(psi)
-        self._position[3] = self._l * numpy.sin(psi)
-        self._position[4] = psi  # numpy.arctan((self.position[1]-self.position[0])/(self.position[2] - self.position[3]))
-        return self._getState()
+        if state is None:
+            psi = numpy.random.rand() * 2*numpy.pi - numpy.pi
+            self._state.fill(0.0)
+            self._position.fill(0.0)
+            self._position[2] = self._l * numpy.cos(psi)
+            self._position[3] = self._l * numpy.sin(psi)
+            self._position[4] = psi  # numpy.arctan((self.position[1]-self.position[0])/(self.position[2] - self.position[3]))
+            return self._getState()
+        else:
+            psi = float(state)
+            self._state.fill(0.0)
+            self._position.fill(0.0)
+            self._position[2] = self._l * numpy.cos(psi)
+            self._position[3] = self._l * numpy.sin(psi)
+            self._position[4] = psi
+            return self._getState()
 
     def _step(self, action, render=False):
         intAction = int(action)
