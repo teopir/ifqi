@@ -270,7 +270,7 @@ class Bicycle(Environment):
 
             self._absorbing = False
             # return (4. - goal_angle**2) * self.reward_shaping
-            ret =  0.1 * (self.angleWrapPi(old_psi) - self.angleWrapPi(psi))
+            ret =  0.1 * (self._angleWrapPi(old_psi) - self._angleWrapPi(psi))
             #ret = 0.1 * (self._angleWrapPi(goal_angle_old) -
             #             self._angleWrapPi(goal_angle))
             reward = ret
