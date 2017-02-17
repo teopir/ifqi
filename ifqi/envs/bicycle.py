@@ -146,14 +146,8 @@ class Bicycle(Environment):
         self._absorbing = False
         self.goal = False
 
-        psi = 0.
-        """if self.uniform_psi:
-            psi = numpy.random.rand() * 2*numpy.pi - numpy.pi
-        else:
-            psi = [-numpy.pi, - 0.75 * numpy.pi , -0.5 * numpy.pi, -0.25 *
-            numpy.pi, 0 ,numpy.pi, 0.75 * numpy.pi , 0.5 * numpy.pi, 0.25 *
-            numpy.pi ][numpy.random.randint(9)]
-        """
+        psi = numpy.random.rand() * 2*numpy.pi - numpy.pi
+
 
         self._state.fill(0.0)
         self._position.fill(0.0)
