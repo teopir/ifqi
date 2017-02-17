@@ -48,7 +48,7 @@ class Bicycle(Environment):
         # self.nActions = 9
         self.horizon = 50000
         self.gamma = 0.98
-
+        self.x_random = True
         self._noise = kwargs.setdefault('noise', 0.04)
         self._random_start = kwargs.setdefault('random_start', False)
 
@@ -154,12 +154,15 @@ class Bicycle(Environment):
             numpy.pi, 0 ,numpy.pi, 0.75 * numpy.pi , 0.5 * numpy.pi, 0.25 *
             numpy.pi ][numpy.random.randint(9)]
         """
+        x=0.
+        if self.x_random:
+            x = numpy.random.rand() * 1000.
         self._state.fill(0.0)
         self._position.fill(0.0)
-        self._position[2] = self._l * numpy.cos(psi)
+        self._position[0] = x
+        self._position[2] = x + self._l * numpy.cos(psi)
         self._position[3] = self._l * numpy.sin(psi)
-        self._position[
-            4] = psi  # numpy.arctan((self.position[1]-self.position[0])/(self.position[2] - self.position[3]))
+        self._position[4] = psi  # numpy.arctan((self.position[1]-self.position[0])/(self.position[2] - self.position[3]))
         return self._getState()
 
     def _step(self, action, render=False):
@@ -273,7 +276,7 @@ class Bicycle(Environment):
             ret = 0.1 * (self._angleWrapPi(goal_angle_old) -
                          self._angleWrapPi(goal_angle))
             reward = ret
-        return self._getState(), reward, self._absorbing, {"goal":goal, "dist":float(((self._position[:2] - self._goal_loc) ** 2).sum())}
+        return self._getState(), reward, self._absorbing, {"goal":goal, "dist":float(((self._position[:2] - self._goal_loc) ** 2).sum()), "pos_x":float(self._position[:1]), "pos_y":float(self._position[1:2])}
 
     def _unit_vector(self, vector):
         """ Returns the unit vector of the vector.  """
