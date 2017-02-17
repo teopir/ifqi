@@ -260,7 +260,7 @@ class Bicycle(Environment):
             self._absorbing = True
             reward = -1.0
         elif self._isAtGoal():
-            goal = 1
+            goal = 1.
             self._absorbing = True
             reward = self._reward_goal
         elif not self._navigate:
