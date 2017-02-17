@@ -273,7 +273,7 @@ class Bicycle(Environment):
             ret = 0.1 * (self._angleWrapPi(goal_angle_old) -
                          self._angleWrapPi(goal_angle))
             reward = ret
-        return self._getState(), reward, self._absorbing, {"goal":goal, "dist":float((self._position[:2] - self._goal_loc) ** 2).sum())}
+        return self._getState(), reward, self._absorbing, {"goal":goal, "dist":float(((self._position[:2] - self._goal_loc) ** 2).sum())}
 
     def _unit_vector(self, vector):
         """ Returns the unit vector of the vector.  """
