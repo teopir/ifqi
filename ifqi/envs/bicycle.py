@@ -310,7 +310,7 @@ class Bicycle(Environment):
             self._goal_loc,
             numpy.array([x_f - x_b, y_f - y_b])) * numpy.pi / 180.
         """ modified to follow Ernst paper"""
-        return numpy.array([omega, omega_dot, theta, theta_dot, psi])
+        return numpy.array([omega, omega_dot, theta, theta_dot, goal_angle])
 
     def _angleWrapPi(self, x):
         while (x < -numpy.pi):
