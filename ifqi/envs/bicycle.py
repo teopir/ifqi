@@ -154,13 +154,10 @@ class Bicycle(Environment):
             numpy.pi, 0 ,numpy.pi, 0.75 * numpy.pi , 0.5 * numpy.pi, 0.25 *
             numpy.pi ][numpy.random.randint(9)]
         """
-        x=0.
-        if self.x_random:
-            x = numpy.random.rand() * 1000.
+
         self._state.fill(0.0)
         self._position.fill(0.0)
-        self._position[0] = x
-        self._position[2] = x + self._l * numpy.cos(psi)
+        self._position[2] = self._l * numpy.cos(psi)
         self._position[3] = self._l * numpy.sin(psi)
         self._position[4] = psi  # numpy.arctan((self.position[1]-self.position[0])/(self.position[2] - self.position[3]))
         return self._getState()
