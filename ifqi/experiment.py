@@ -13,7 +13,7 @@ from envs.invertedPendulum import InvPendulum
 from envs.acrobot import Acrobot
 from envs.acrobotGym import AcrobotGym
 from envs.bicycle import Bicycle
-from envs.bicycleNew import BicyleNew
+from envs.bicycleNew import BicycleNew
 from envs.swingPendulum import SwingPendulum
 from envs.swingUpPendulum import SwingUpPendulum
 from envs.cartPole import CartPole
