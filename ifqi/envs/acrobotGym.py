@@ -8,7 +8,7 @@ from gym.utils import seeding
 from .environment import Environment
 
 
-class CartPole(Environment):
+class AcrobotGym(Environment):
     """
     The CartPole environment.
 
@@ -18,20 +18,18 @@ class CartPole(Environment):
         'video.frames_per_second': 15
     }
 
-    def __init__(self, continuosReward = False):
+    def __init__(self):
 
         self.x_random = True
         self.gamma = 1.
 
-        self.env = gym.make('CartPole-v0')
+        self.env = gym.make('Acrobot-v1')
 
-        self.horizon = envs.registry.env_specs["CartPole-v0"].tags['wrapper_config.TimeLimit.max_episode_steps']
-
+        self.horizon = envs.registry.env_specs["Acrobot-v1"].tags['wrapper_config.TimeLimit.max_episode_steps']
+        print "horizon", self.horizon
         self.action_space = self.env.action_space
         self.action_space.values = range(self.action_space.n)
         self.observation_space = self.env.observation_space
-
-        self.continuousReward = continuosReward
         # initialize state
         self.seed()
         self.reset()
@@ -44,14 +42,11 @@ class CartPole(Environment):
         if state is None:
             self.env.reset()
             if self.x_random:
-                x = np.random.rand() * 2 * self.env.x_threshold - self.env.x_threshold #-2.4 2.4
-                dx = np.random.rand() * 7. - 3.5 #-3.5 3.5
-                th = np.random.rand() * 12 * 2 * math.pi / 360 - 12 * math.pi / 360 #-12 e 12
-                th *= 0.95
-                self.env.state[0] = x
-                self.env.state[1] = dx
-                dth = np.random.rand() * 6. - 3. #-3 e 3
-                self.env.state[3] = dth
+                self.env.state[0] = np.random.rand()  * np.pi
+                self.env.state[1] = np.random.rand() * np.pi
+                self.env.state[2] = np.random.rand() * 8.
+                self.env.state[3] = np.random.rand() *16
+
             return self.get_state()
         else:
             self.env.state = state
@@ -59,11 +54,6 @@ class CartPole(Environment):
 
     def step(self, action):
         ret = self.env.step(int(action))
-        ret = list(ret)
-        if self.continuousReward:
-            ret[1] = np.cos(ret[0][2] * 3.75)
-            print "reward", ret[1]
-        ret = tuple(ret)
         return ret
 
     def render(self, mode='human', close=False):
@@ -74,4 +64,4 @@ class CartPole(Environment):
         return [seed]
 
     def get_state(self):
-        return self.env.state
+        return self.env._get_ob()

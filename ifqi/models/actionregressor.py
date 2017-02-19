@@ -93,11 +93,11 @@ class ActionRegressor(object):
         predictions = np.zeros(x.shape[0])
         for i in range(self._actions.shape[0]):
             action = self._actions[i]
-            idxs = np.all(x[:, -1:] == action, axis=1)
 
-            if np.any(idxs):
-                p = self._models[i].predict(x[idxs, :-1], **kwargs)
-                predictions[idxs] = p
+            idxs1 = np.all(x[:, -1:].reshape((x.shape[0],-1)) == action, axis=1)
+            if np.any(idxs1):
+                p = self._models[i].predict(x[idxs1, :-1], **kwargs)
+                predictions[idxs1] = p
 
         return predictions
 

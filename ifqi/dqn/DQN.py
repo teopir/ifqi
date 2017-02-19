@@ -22,7 +22,7 @@ class DQN:
         self.horizon = self.env.horizon
         self.n_step = 0
         self.gamma = gamma
-        self.renderize = False
+        self.renderize = True
         self.epsilon_disc = epsilon_disc
         self.sameAction = 0
         self.i = 0
@@ -67,20 +67,16 @@ class DQN:
             self.i += 1
             print "episodio:", self.i
             print "epsilon:", self.epsilon
+            if hasattr(self,"max_state"):
+                print "max_state", self.max_state
+                print "min_state", self.min_state
 
             self.state = np.array(self.env.reset())
             self.epsilon = self.epsilon * self.epsilon_disc
 
         if self.first_time:
-            st = [self.env.env.lander.position.x,
-                  self.env.env.lander.position.y,
-                  self.env.env.lander.linearVelocity.x,
-                  self.env.env.lander.linearVelocity.y,
-                  self.env.env.lander.angle,
-                  self.env.env.lander.angularVelocity]
-
-            self.max_state = np.array(st)
-            self.min_state = np.array(st)
+            self.max_state = self.env.env.state #internal state for Acrobot
+            self.min_state = self.env.env.state
 
         if self.sameAction > 0:
             a = self.action
@@ -104,19 +100,7 @@ class DQN:
         if reward >= 100.:
             self.countUndred += 1
             print("Yay! ", reward)
-        st = np.array([self.env.env.lander.position.x,
-                  self.env.env.lander.position.y,
-                  self.env.env.lander.linearVelocity.x,
-                  self.env.env.lander.linearVelocity.y,
-                  self.env.env.lander.angle,
-                  self.env.env.lander.angularVelocity])
-        x =  np.concatenate((np.matrix(self.max_state), np.abs(np.matrix(st))),axis=0)
-        y =  np.concatenate((np.matrix(self.min_state), np.abs(np.matrix(st))),axis=0)
 
-        self.max_state = np.max(x,axis=0)
-        self.min_state = np.min(y,axis=0)
-        """print self.max_state
-        print self.min_state"""
         self.disc_reward += reward
         self.n_step += 1
 
@@ -149,6 +133,13 @@ class DQN:
         #print "y=",y[:10]
 
         self.regr.fit(self._sa, batch_r + self.gamma * y, nb_epoch=1, verbose=False)
+
+        #internal state for acrobot
+        x = np.concatenate((np.matrix(self.max_state), np.abs(np.matrix(self.env.env.state))), axis=0)
+        y = np.concatenate((np.matrix(self.min_state), np.abs(np.matrix(self.env.env.state))), axis=0)
+
+        self.max_state = np.max(x, axis=0)
+        self.min_state = np.min(y, axis=0)
 
         self.state = next_state[:]
 

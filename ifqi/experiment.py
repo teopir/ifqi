@@ -11,12 +11,15 @@ from models.regressor import Regressor
 from envs.carOnHill import CarOnHill
 from envs.invertedPendulum import InvPendulum
 from envs.acrobot import Acrobot
+from envs.acrobotGym import AcrobotGym
 from envs.bicycle import Bicycle
+from envs.bicycleNew import BicyleNew
 from envs.swingPendulum import SwingPendulum
 from envs.swingUpPendulum import SwingUpPendulum
 from envs.cartPole import CartPole
 from envs.lqg1d import LQG1D
 from envs.lunarLander import LunarLander
+from envs.walker import Walker
 import ifqi.envs as envs
 import envs.utils as spaceInfo
 from ifqi.fqi.FQI import FQI
@@ -70,10 +73,14 @@ class Experiment(object):
                 self.mdp = SwingUpPendulum()
             elif self.config['mdp']['mdpName'] == 'Acrobot':
                 self.mdp = Acrobot()
+            elif self.config['mdp']['mdpName'] == 'AcrobotGym':
+                self.mdp = AcrobotGym()
             elif self.config["mdp"]["mdpName"] == "BicycleBalancing":
                 self.mdp = Bicycle(navigate=False)
             elif self.config["mdp"]["mdpName"] == "BicycleNavigate":
                 self.mdp = Bicycle(navigate=True)
+            elif self.config["mdp"]["mdpName"] == "BicycleNew":
+                self.mdp = BicycleNew(navigate=True)
             elif self.config["mdp"]["mdpName"] == "SwingPendulum":
                 self.mdp = SwingPendulum()
             elif self.config["mdp"]["mdpName"] == "CartPole":
@@ -87,6 +94,8 @@ class Experiment(object):
                 self.mdp.discreteReward = True
             elif self.config["mdp"]["mdpName"] == "LunarLander":
                 self.mdp = LunarLander()
+            elif self.config["mdp"]["mdpName"] == "BipedalWalker":
+                self.mdp = Walker()
             else:
                 raise ValueError('Unknown mdp type.')
 
