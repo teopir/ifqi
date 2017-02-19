@@ -204,7 +204,7 @@ class BicycleNew(Environment):
         x_f = x_b + np.cos(psi) * self.l
         y_f = y_b + np.sin(psi) * self.l
         goal_angle = self._angle_between(
-            self._goal_loc,
+            self._goal_loc - np.array(x_b,y_b),
             np.array([x_f - x_b, y_f - y_b]))
         """ modified to follow Ernst paper"""
         return np.array([omega, omega_dot, theta, theta_dot, goal_angle])
