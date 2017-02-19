@@ -109,7 +109,7 @@ class BicycleNew(Environment):
             psi = np.random.rand() * 2*np.pi - np.pi
             self._state.fill(0.0)
             self._position.fill(0.0)
-            self._position[2] = self._l * np.cos(psi)
+            self._position[2] = psi
             return self._getState()
         else:
             psi = float(state)
