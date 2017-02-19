@@ -43,7 +43,7 @@ class BicycleNew(Environment):
     def __init__(self, **kwargs):
 
         self.horizon = 50000
-
+        self.x_random = True
         self.initial_states = np.zeros((9, 1))
         self.initial_states[:, 0] = np.linspace(-np.pi, np.pi, 9)
 
@@ -207,7 +207,11 @@ class BicycleNew(Environment):
             self._goal_loc - np.array(x_b,y_b),
             np.array([x_f - x_b, y_f - y_b]))
         """ modified to follow Ernst paper"""
-        return np.array([omega, omega_dot, theta, theta_dot, goal_angle])
+        if self.x_random:
+            return np.array([omega, omega_dot, theta, theta_dot, psi])
+        else:
+            return np.array([omega, omega_dot, theta, theta_dot, goal_angle])
+
 
     def _angleWrapPi(self, x):
         while (x < -np.pi):
