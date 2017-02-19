@@ -134,7 +134,7 @@ action_dim = 1
 # ------------------------------------------------------------------------------
 # Dataset Generation
 # ------------------------------------------------------------------------------
-
+environment.x_random = True
 state_dim, action_dim = envs.get_space_info(environment)
 reward_idx = state_dim + action_dim
 if not loadSast:
@@ -320,17 +320,18 @@ for repetition in range(actualRepetition, repetitions):
 
         if iteration % evaluationEveryNIteration == 0 or iteration==1:
 
-
+            k = 1
             kwargs = {"initial_states":None, "metric":"discounted"}
             if hasattr(environment,"initial_states"):
                 kwargs["initial_states"] = environment.initial_states
+                k = environment.initial_states.shape[0]
             if hasattr(environment,"metric"):
                 kwargs["metric"] = environment.metric
             if screen:
                 kwargs["render"] = True
 
             start_eval = time.time()
-            dic_env = evaluate.evaluate_policy(environment, fqi, nEvaluation, **kwargs)
+            dic_env = evaluate.evaluate_policy(environment, fqi, k * nEvaluation, **kwargs)
             end_eval = time.time()
 
             # ---------------------------------------------------------------------------
