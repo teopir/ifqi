@@ -85,7 +85,7 @@ class BicycleNew(Environment):
         self.M_c = 15.
         self.M_d = 1.7
         self.M_p = 60.
-        self.M = self.M_c + self.M_d
+        self.M = self.M_c + self.M_p
         self.r = 0.34
         self.sigma_dot = self.v / self.r
         self.I_bc = (13./3. * self.M_c * self.h**2 + self.M_p * (self.h + self.d_CM)**2)
@@ -146,7 +146,7 @@ class BicycleNew(Environment):
         omega_t1 = omega + self.dt * omega_dot
         omega_dot_t1 = omega_dot + self.dt * (
             1. / self.I_bc * (self.M * self.h * self.g * np.sin(phi) - np.cos(phi) *
-                               (self.I_dc * self.sigma_dot * theta_dot + np.sign(theta)) * self.v**2 * (self.M_d * self.r * (invr_f + invr_b) + self.M *self.h * invr_CM))
+                               (self.I_dc * self.sigma_dot * theta_dot + np.sign(theta) * self.v**2 * (self.M_d * self.r * (invr_f + invr_b) + self.M *self.h * invr_CM)))
         )
 
         if np.abs(theta + self.dt * theta_dot) <= 80./180. * np.pi:
