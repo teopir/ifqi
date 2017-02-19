@@ -140,13 +140,12 @@ class BicycleNew(Environment):
         invr_f = np.abs(np.sin(theta)) / self.l
         invr_b = np.abs(np.tan(theta)) / self.l
         invr_CM = 0.
-
-        if theta != 0:
+        if theta != 0.:
             invr_CM = 1. / np.sqrt((self.l - self.c)**2 + (1. / invr_b)**2)
 
         omega_t1 = omega + self.dt * omega_dot
         omega_dot_t1 = omega_dot + self.dt * (
-            1. / self.I_bc  * (self.M * self.h * self.g * np.sin(phi) - np.cos(phi) *
+            1. / self.I_bc * (self.M * self.h * self.g * np.sin(phi) - np.cos(phi) *
                                (self.I_dc * self.sigma_dot * theta_dot + np.sign(theta)) * self.v**2 * (self.M_d * self.r * (invr_f + invr_b) + self.M *self.h * invr_CM))
         )
 
@@ -159,8 +158,6 @@ class BicycleNew(Environment):
             theta_dot_t1 = theta_dot + self.dt * ((T - self.I_dv * self.sigma_dot * omega_dot) / self.I_dl)
         else:
             theta_dot_t1 = 0.
-
-        psi_t1 = psi + self.dt * np.sign(theta) * self.v * invr_b
 
         x_b_t1 = x_b + self.dt * self.v * np.cos(psi)
         y_b_t1 = y_b + self.dt * self.v * np.sin(psi)
