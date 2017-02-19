@@ -174,11 +174,12 @@ class BicycleNew(Environment):
             self._absorbing = False
             reward = 0.1 * (self._angleWrapPi(psi) - self._angleWrapPi(psi_t1))
 
-        self._state = omega_t1, omega_dot_t1, theta_t1, theta_dot_t1
-        self._position = x_b_t1, y_b_t1, psi_t1
+        self._state = np.array([omega_t1, omega_dot_t1, theta_t1, theta_dot_t1])
+        self._position = np.array([x_b_t1, y_b_t1, psi_t1])
 
         return self._getState(), reward, self._absorbing, {"goal": 1. if self._isAtGoal() else 0.,
-                                                           "dist": float(((self._position[:2] - self._goal_loc) ** 2).sum()), "pos_x": float(self._position[:1]),
+                                                           "dist": float(((self._position[:2] - self._goal_loc) ** 2).sum()),
+                                                           "pos_x": float(self._position[:1]),
                                                            "pos_y": float(self._position[1:2])}
 
     def _unit_vector(self, vector):
