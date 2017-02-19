@@ -310,10 +310,13 @@ class Bicycle(Environment):
         omega, omega_dot, omega_ddot, theta, theta_dot = tuple(self._state)
         x_f, y_f, x_b, y_b, psi = tuple(self._position)
         goal_angle = self._angle_between(
-            self._goal_loc,
-            numpy.array([x_f - x_b, y_f - y_b])) * numpy.pi / 180.
+            self._goal_loc - numpy.array(x_b,y_b),
+            numpy.array([x_f - x_b, y_f - y_b]))
         """ modified to follow Ernst paper"""
-        return numpy.array([omega, omega_dot, theta, theta_dot, goal_angle])
+        if self.x_random:
+            return numpy.array([omega, omega_dot, theta, theta_dot, psi])
+        else:
+            return numpy.array([omega, omega_dot, theta, theta_dot, goal_angle])
 
     def _angleWrapPi(self, x):
         while (x < -numpy.pi):
