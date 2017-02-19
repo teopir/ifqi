@@ -94,7 +94,16 @@ class BicycleNew(Environment):
         self.I_dl = 0.5 * self.M_d * self.r**2
         self.l = 1.11
 
+        # gym attributes
+        self.viewer = None
+        high = numpy.array([numpy.inf, numpy.inf, numpy.inf, numpy.inf, numpy.inf])  # todo fix
+        low = -high
+        self.observation_space = spaces.Box(low=low, high=high)
 
+        nactions = 9
+        self.action_space = fqispaces.DiscreteValued(range(9), decimals=0)
+
+        # initialize state
         self._seed()
         self.reset()
 
