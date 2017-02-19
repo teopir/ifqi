@@ -96,7 +96,7 @@ class BicycleNew(Environment):
 
         # gym attributes
         self.viewer = None
-        high = numpy.array([numpy.inf, numpy.inf, numpy.inf, numpy.inf, numpy.inf])  # todo fix
+        high = np.array([np.inf, np.inf, np.inf, np.inf, np.inf])  # todo fix
         low = -high
         self.observation_space = spaces.Box(low=low, high=high)
 
