@@ -171,8 +171,6 @@ class Bicycle(Environment):
         omega, omega_dot, omega_ddot, theta, theta_dot = tuple(self._state)
         x_f, y_f, x_b, y_b, psi = tuple(self._position)
 
-        goal_angle_old = self._angle_between(
-            self._goal_loc, numpy.array([x_f - x_b, y_f - y_b])) * numpy.pi / 180.
         if x_f == x_b and (y_f - y_b) < 0:
             old_psi = numpy.pi
         elif (y_f - y_b) > 0:
@@ -255,7 +253,7 @@ class Bicycle(Environment):
         if numpy.abs(omega) > self._state_range[0, 1]:  # Bicycle fell over
             self._absorbing = True
             reward = -1.0
-        elif self._isAtGoal():
+        elif self._isAtGoal() and self._navigate:
             goal = 1.
             self._absorbing = True
             reward = self._reward_goal
@@ -263,16 +261,9 @@ class Bicycle(Environment):
             self._absorbing = False
             reward = self._reward_shaping
         else:
-            goal_angle = self._angle_between(
-                self._goal_loc, numpy.array([x_f - x_b, y_f - y_b])) * \
-                         numpy.pi / 180.
-
             self._absorbing = False
-            # return (4. - goal_angle**2) * self.reward_shaping
-            ret =  0.1 * (self._angleWrapPi(old_psi) - self._angleWrapPi(psi))
-            #ret = 0.1 * (self._angleWrapPi(goal_angle_old) -
-            #             self._angleWrapPi(goal_angle))
-            reward = ret
+            reward = 0.1 * (self._angleWrapPi(old_psi) - self._angleWrapPi(psi))
+
         return self._getState(), reward, self._absorbing, {"goal":goal, "dist":float(((self._position[:2] - self._goal_loc) ** 2).sum()), "pos_x":float(self._position[:1]), "pos_y":float(self._position[1:2])}
 
     def _unit_vector(self, vector):
@@ -280,15 +271,6 @@ class Bicycle(Environment):
         return vector / numpy.linalg.norm(vector)
 
     def _angle_between(self, v1, v2):
-        """ Returns the angle in radians between vectors 'v1' and 'v2'::
-
-                >>> angle_between((1, 0, 0), (0, 1, 0))
-                1.5707963267948966
-                >>> angle_between((1, 0, 0), (1, 0, 0))
-                0.0
-                >>> angle_between((1, 0, 0), (-1, 0, 0))
-                3.141592653589793
-        """
         v1_u = self._unit_vector(v1)
         v2_u = self._unit_vector(v2)
         return numpy.arccos(numpy.clip(numpy.dot(v1_u, v2_u), -1.0, 1.0))
@@ -305,14 +287,31 @@ class Bicycle(Environment):
     def _getState(self):
         omega, omega_dot, omega_ddot, theta, theta_dot = tuple(self._state)
         x_f, y_f, x_b, y_b, psi = tuple(self._position)
-        goal_angle = self._angle_between(
-            self._goal_loc - numpy.array(x_b,y_b),
-            numpy.array([x_f - x_b, y_f - y_b]))
+        x_g, y_g = tuple(self._goal_loc)
+        """psi"""
+        if x_f == x_b and (y_f - y_b) < 0:
+            psi = numpy.pi
+        elif (y_f - y_b) > 0:
+            psi = numpy.arctan((x_b - x_f) / (y_f - y_b))
+        else:
+            psi = numpy.sign(x_b - x_f) * (numpy.pi / 2.) - \
+                      numpy.arctan((y_f - y_b) / (x_b - x_f))
+        """goal_angle"""
+        goal_angle=0.
+        if x_g == x_b and (y_g - y_b) < 0:
+            goal_angle = numpy.pi
+        elif (y_g - y_b) > 0:
+            goal_angle = numpy.arctan((x_b - x_g) / (y_g - y_b))
+        else:
+            goal_angle = numpy.sign(x_b - x_g) * (numpy.pi / 2.) - \
+                      numpy.arctan((y_g - y_b) / (x_b - x_g))
+        """"""
+        psi_goal = goal_angle - psi
         """ modified to follow Ernst paper"""
         if self.x_random:
             return numpy.array([omega, omega_dot, theta, theta_dot, psi])
         else:
-            return numpy.array([omega, omega_dot, theta, theta_dot, goal_angle])
+            return numpy.array([omega, omega_dot, theta, theta_dot, psi_goal])
 
     def _angleWrapPi(self, x):
         while (x < -numpy.pi):
