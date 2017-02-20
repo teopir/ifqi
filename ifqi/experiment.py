@@ -71,6 +71,8 @@ class Experiment(object):
                 self.mdp = CarOnHill()
             elif self.config['mdp']['mdpName'] == 'SwingUpPendulum':
                 self.mdp = SwingUpPendulum()
+            elif self.config['mdp']['mdpName'] == 'SwingUpPendulumDisc':
+                self.mdp = SwingUpPendulum(cont_reward=False)
             elif self.config['mdp']['mdpName'] == 'Acrobot':
                 self.mdp = Acrobot()
             elif self.config['mdp']['mdpName'] == 'AcrobotGym':
