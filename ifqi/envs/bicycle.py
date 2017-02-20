@@ -42,18 +42,14 @@ class Bicycle(Environment):
 
     def __init__(self, **kwargs):
 
-        # self.stateDim = 5
-        # self.actionDim = 1
-        # self.nStates = 0
-        # self.nActions = 9
         self.horizon = 50000
         self.gamma = 0.98
         self.x_random = True
         self._noise = kwargs.setdefault('noise', 0.04)
         self._random_start = kwargs.setdefault('random_start', False)
 
-        self.initial_states = numpy.zeros((9, 1))
-        self.initial_states[:, 0] = numpy.linspace(-numpy.pi, numpy.pi, 9)
+        self.initial_states = numpy.zeros((1, 1))
+        self.initial_states[0, 0] = numpy.pi / 2.
 
         # select psi or psi_goal
         self._reward_function_psi = kwargs.setdefault('reward_function_psi',

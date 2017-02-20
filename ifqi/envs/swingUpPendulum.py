@@ -14,7 +14,7 @@ class SwingUpPendulum(Environment):
         'video.frames_per_second': 100
     }
 
-    def __init__(self):
+    def __init__(self, cont_reward=True):
         self.gamma = 1.
         self.metric = "average"
         self.state_dim = 2
@@ -28,6 +28,7 @@ class SwingUpPendulum(Environment):
         self.tup = 0
 
         # initialize state
+        self.cont_reward = cont_reward
         self.seed()
         self.reset()
 
@@ -45,12 +46,13 @@ class SwingUpPendulum(Environment):
 
     def step(self, action):
         ret = self.env.step(action)
-        ret = list(ret)
-        if abs(ret[0][0] - 1) < 0.1:
-            self.tup += self.env.dt
-        reward = ret[0][0]
-        ret[-1] = {"t_up": self.tup}
-        ret = tuple(ret)
+        if self.cont_reward:
+            ret = list(ret)
+            if abs(ret[0][0] - 1) < 0.1:
+                self.tup += self.env.dt
+            reward = ret[0][0]
+            ret[-1] = {"t_up": self.tup}
+            ret = tuple(ret)
         return ret
 
     def get_state(self):
