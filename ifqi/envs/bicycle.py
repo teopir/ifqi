@@ -306,7 +306,7 @@ class Bicycle(Environment):
             goal_angle = numpy.sign(x_b - x_g) * (numpy.pi / 2.) - \
                       numpy.arctan((y_g - y_b) / (x_b - x_g))
         """"""
-        psi_goal = goal_angle - psi
+        psi_goal = self._angleWrapPi(goal_angle - psi)
         """ modified to follow Ernst paper"""
         if self.x_random:
             return numpy.array([omega, omega_dot, theta, theta_dot, psi])
