@@ -49,7 +49,7 @@ class Bicycle(Environment):
         self._random_start = kwargs.setdefault('random_start', False)
 
         self.initial_states = numpy.zeros((1, 1))
-        self.initial_states[0, 0] = numpy.pi / 2.
+        self.initial_states[0, 0] = 0.
 
         # select psi or psi_goal
         self._reward_function_psi = kwargs.setdefault('reward_function_psi',
@@ -306,11 +306,11 @@ class Bicycle(Environment):
             goal_angle = numpy.sign(x_b - x_g) * (numpy.pi / 2.) - \
                       numpy.arctan((y_g - y_b) / (x_b - x_g))
         """"""
-        psi_goal = self._angleWrapPi(goal_angle - psi)
+        psi_goal =  self._angleWrapPi(self._angleWrapPi(goal_angle) - self._angleWrapPi(psi))
         """ modified to follow Ernst paper"""
-        if self.x_random:
+        if self.x_random or not self._navigate: #Generazione del dataset
             return numpy.array([omega, omega_dot, theta, theta_dot, psi])
-        else:
+        else: #Valutazione
             return numpy.array([omega, omega_dot, theta, theta_dot, psi_goal])
 
     def _angleWrapPi(self, x):
