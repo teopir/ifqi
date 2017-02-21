@@ -296,17 +296,11 @@ class Bicycle(Environment):
         else:
             psi = numpy.sign(x_b - x_f) * (numpy.pi / 2.) - \
                       numpy.arctan((y_f - y_b) / (x_b - x_f))
-        """goal_angle"""
-        goal_angle=0.
-        if x_g == x_b and (y_g - y_b) < 0:
-            goal_angle = numpy.pi
-        elif (y_g - y_b) > 0:
-            goal_angle = numpy.arctan((x_b - x_g) / (y_g - y_b))
-        else:
-            goal_angle = numpy.sign(x_b - x_g) * (numpy.pi / 2.) - \
-                      numpy.arctan((y_g - y_b) / (x_b - x_g))
-        """"""
-        psi_goal =  self._angleWrapPi(self._angleWrapPi(goal_angle) - self._angleWrapPi(psi))
+
+        psi_goal = self._angleWrapPi(self._angle_between(
+            self._goal_loc - numpy.array([x_b,y_b]),
+            numpy.array([x_f - x_b, y_f - y_b])))
+
         """ modified to follow Ernst paper"""
         if self.x_random or not self._navigate: #Generazione del dataset
             return numpy.array([omega, omega_dot, theta, theta_dot, psi])
