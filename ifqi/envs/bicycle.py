@@ -250,21 +250,27 @@ class Bicycle(Environment):
 
         reward = 0
         goal = 0
-        if numpy.abs(omega) > self._state_range[0, 1]:  # Bicycle fell over
-            self._absorbing = True
-            reward = -1.0
-        elif self._isAtGoal() and self._navigate:
-            goal = 1.
-            self._absorbing = True
-            reward = self._reward_goal
-        elif not self._navigate:
-            self._absorbing = False
-            reward = self._reward_shaping
+        if self._navigate:
+            if numpy.abs(omega) > self._state_range[0, 1]:  # Bicycle fell over
+                self._absorbing = True
+                reward = -1.0
+            else:
+                self._absorbing = False
+                reward = 0.1 * (self._angleWrapPi(old_psi) - self._angleWrapPi(psi))
+            if self._isAtGoal():
+                goal = 1.
+                reward = 1.
         else:
-            self._absorbing = False
-            reward = 0.1 * (self._angleWrapPi(old_psi) - self._angleWrapPi(psi))
+            if numpy.abs(omega) > self._state_range[0, 1]:  # Bicycle fell over
+                self._absorbing = True
+                reward = -1.0
+            else:
+                self._absorbing = False
+                reward = - numpy.abs(omega) / self._state_range[0, 1]
 
-        return self._getState(), reward, self._absorbing, {"goal":goal, "dist":float(((self._position[:2] - self._goal_loc) ** 2).sum()), "pos_x":float(self._position[:1]), "pos_y":float(self._position[1:2])}
+        return self._getState(), reward, self._absorbing, {"goal": goal, "dist": float(
+            ((self._position[:2] - self._goal_loc) ** 2).sum()), "pos_x": float(self._position[:1]),
+                                                           "pos_y": float(self._position[1:2])}
 
     def _unit_vector(self, vector):
         """ Returns the unit vector of the vector.  """
