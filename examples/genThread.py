@@ -205,6 +205,8 @@ elif env_name == "SwingPendulum":
                                                               initial_states=initial_states)
 elif env_name == "Bicycle":
     out = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
+elif env_name == "BicycleBalancing":
+    out = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
 elif env_name == "CartPole":
     out = evaluate.evaluate_policy(mdp, fqi, 1*nEval)
 elif env_name == "CartPoleCont":
