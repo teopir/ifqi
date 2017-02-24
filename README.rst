@@ -24,6 +24,12 @@ Installing everything
 To install the whole set of features, you will need additional packages installed.
 You can install everything by running ``pip install -e '.[all]'``.
 
+Content
+-------
+
+This framework provides FQI and B-FQI algorithms and a number of classical RL environemnts (often using OpenAI Gym ones).
+It is possible to run many different experiments just by writing a configuration file, to store the results, and to plot them. All the configuration of the experiment that we have done for the ICML submission "Boosted Fitted Q-Iteration" are here provided. It is possible to run and plot the results with two line of bash code.
+
 ICML Submission: Boosted Fitted Q-Iteration
 ===========================================
 
