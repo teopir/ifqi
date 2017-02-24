@@ -1,7 +1,7 @@
 iFQI
 ******
 
-**iFQI is a toolkit for solving Reinforcement Learning problem using bot Fitted Q-Iteration or Boosted Fitted Q-Iteration **
+**iFQI is a toolkit for solving Reinforcement Learning problem using bot Fitted Q-Iteration or Boosted Fitted Q-Iteration**
 
 .. contents:: **Contents of this document**
    :depth: 2
