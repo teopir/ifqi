@@ -62,7 +62,6 @@ class CartPole(Environment):
         ret = list(ret)
         if self.continuousReward:
             ret[1] = np.cos(ret[0][2] * 3.75)
-            print "reward", ret[1]
         ret = tuple(ret)
         return ret
 
