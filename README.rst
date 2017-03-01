@@ -24,33 +24,23 @@ Installing everything
 To install the whole set of features, you will need additional packages installed.
 You can install everything by running ``pip install -e '.[all]'``.
 
+Content
+-------
 
-What's new
-----------
-- 2016-XX-YY: Initial release
+This framework provides FQI and B-FQI algorithms and a number of classical RL environemnts (often using OpenAI Gym ones).
+It is possible to run many different experiments just by writing a configuration file, to store the results, and to plot them. All the configuration of the experiment that we have done for the ICML submission "Boosted Fitted Q-Iteration" are here provided. It is possible to run and plot the results with two line of bash code.
 
-How to set and run and experiment
-=================================
+ICML Submission: Boosted Fitted Q-Iteration
+===========================================
 
-Prepare a configuration file
-----------------------------
+How to run the experiments
+--------------------------
 
-First of all you need a json file where its described how the experiment will be performed. When you'll run the experiment with a same json configuration file, you'll get exactly the same outcome.
-In the configuration file you'll define for examples
+It is possible, after the correct installation of the present library, to execute all the experiment presented in the paper, and so to let the reader to verify by its own the result shown, but also to start from these experiment and run a self-made ones.
+The goal of available experiments is - as stated in the paper - to compare FQI and B-FQI with different environments and under different aspects.
 
-1) The environemnt 
-2) Which regressors will you use (you can define many of them in the same experiment, with different parameters)
-3) You'll define the number of dataset that you'll use to learn. The datasets will be generated from your selected environment, with random policy.
-4) You can choose the dataset sizes: the size correspond to the number of episodes that will be used to compose your datasets. Remember that if you will insert more than one size, in your experiment you will generate n dataset with size1, n dataset with size2, and so on.. 
-5) You can choose the number of repetitions: if the repetition is equal to 1, than one regressor will perform the learning procedure only once, but the fitting of a regressor is often stochastic, so here there is the possibility to run the learning procedure over the same dataset different number of times and collect all the outcomes
-6) You can choose how often you would like to evaluate your learning procedure (so how many iteration you vould like to run the policy found and collect the scores). You can also choose how many episodes run every times to evaluate the policy found: if the environment is deterministic, you will set this number to one, but will be a good idea to evaluate your policy more than once if your environment is stochastic
-7) The number of FQI iterations (this will depend more or less in how many iteration you belive you'll find a good policy.) If you have a lot of iterations (like 100), it is wise to don't evaluate your policy every iteration, but something like once every 5 iteration for example. The evaluation of a policy is an expensive procedure.
-8) ...
-
-Run the experiment
-------------------
-
-All you have to do is just prepare the json file as described above, and then call
+All the configuration files, followed by a brief description will be found in the folder **ICML Submission**.
+Place yourself in one of the folders contained in **ICMLSubmission** (depending on which experiment you would like to run)
 
 .. code:: shell
 
@@ -61,13 +51,62 @@ The **configFilename.json** file is the name of the configuration file as descri
 As ExperimentThreadManager (as the name suggest) can run a different number of thread to exploit thread level parallelism, you can set **threadNumber** 1 if you don't want to have parallelism, or more than one if you want to use more than one thread (ideally you will set this parameter equal to the number of cores you would like to use).
 There is also the possibility to continue one experiment after have killed it with the option **-c** or **-cont**: Of course the thread that were killed will need to be executed, but the ones already executed and terminated will be skipped (if they will have saved the last iteration of the algorithm on disk).
 
+Plots the results
+-----------------
 
-ICML Submission: Boosted Fitted Q-Iteration
--------------------------------------------
+Once an experiment has ended, you probably would like to plot it. All the variable subject of study are saved on the disk in many different numpy files. The easiest way to plot the results in a human-readable way is to use **examples/plot.py** or **examples/plot3D.py** depending on the situation.
 
-It is possible, after the correct installation of the present library, to execute all the experiment presented in the paper, and so to let the reader to verify by its own the result shown, but also to start from these experiment and run a self-made ones.
-The goal of available experiments is - as stated in the paper - to compare FQI and B-FQI with different environments and under different aspects.
+The plots have many parameters that were used to provide nice plots, in order to don't confuse the reader, we provide here the right line to plot each different experiment.
 
-All the configuration files, followed by a brief description will be found in the folder **ICML Submission**.
+Plotting the bicycle
+--------------------
+
+These are the plots of the plots of the performance of the bicycle in the article and in appendix
+
+.. code:: shell
+	python ../../plot.py BicycleBalET score 
+	python ../../plot.py BicycleBalMLP score  -m
+	python ../../plot.py BicycleBalET steps 
+	python ../../plot.py BicycleBalMLP steps  -m
+	
+Plotting the CartPole
+---------------------
+
+Dataset Analysis
+
+.. code:: shell
+
+	python ../../plot.py CartPoleContMLPDS score --size -m -l 
+	python ../../plot.py CartPoleContETDS score --size -l
+	
+Complexity Analysis
+	
+.. code:: shell	
+	python ../../plot3D.py CartPoleContET score -1 -1 -t
+	python ../../plot3D.py CartPoleContMLP score -1 -1 -m -t
+
+Plotting the SwingUpPendulum
+----------------------------
+
+Dataset Analysis
+
+.. code:: shell
+
+	python ../../plot.py SwingUpPendulumMLPDS score --size -m -l 
+	python ../../plot.py SwingUpPendulumETDS score --size -l
+	
+Dataset Analysis
+	
+.. code:: shell	
+
+	python ../../plot3D.py SwingUpPendulumET score -1 -1
+	python ../../plot3D.py SwingUpPendulumMLP score -1 -1 -m
+
+use parameter -tl when the legend cover the lines.
+
+
+
+
+
 
 
