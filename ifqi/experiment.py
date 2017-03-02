@@ -123,7 +123,6 @@ class Experiment(object):
             params = {'regressor_class':ExtraTreesRegressor, 'n_estimators': modelConfig['nEstimators'],
                       'criterion': self.config["regressors"][index]['supervisedAlgorithm']
                                               ['criterion'],
-                      'min_samples_split': modelConfig['minSamplesSplit'],
                       'min_samples_leaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'DecisionTree':
             model = Ensemble
@@ -138,7 +137,6 @@ class Experiment(object):
             params = {'ens_regressor_class':Regressor,'regressor_class':ExtraTreesRegressor, 'n_estimators': modelConfig['nEstimators'],
                       'criterion': self.config["regressors"][index]['supervisedAlgorithm']
                                               ['criterion'],
-                      'min_samples_split': modelConfig['minSamplesSplit'],
                       'min_samples_leaf': modelConfig['minSamplesLeaf']}
         elif modelConfig['modelName'] == 'MLP':
             model = Regressor
@@ -167,6 +165,10 @@ class Experiment(object):
         else:
             raise ValueError('Unknown estimator type.')
 
+        if "minSampleSplit" in modelConfig:
+            params["min_sample_split"] = modelConfig["minSampleSplit"]
+        if "max_features" in modelConfig:
+            params["max_features"] = modelConfig["max_features"]
         if modelConfig['modelName'] in ["ExtraTree", "ExtraTreeEnsemble", "DecisionTree"]:
             if "max_depth" in modelConfig: params["max_depth"] = modelConfig["max_depth"]
             if "min_weight_fraction_leaf" in modelConfig: params["min_weight_fraction_leaf"] = modelConfig["min_weight_fraction_leaf"]
