@@ -74,7 +74,7 @@ class BicycleNew(Environment):
         self._goal_rsqrd = 100.0
         self._navigate = kwargs.setdefault('navigate', True)
 
-        self._goal_loc = np.array([1000., 0])
+        self._goal_loc = np.array([1000., 0.])
 
         self.dt = 0.01
         self.v =  10./3.6
@@ -129,9 +129,11 @@ class BicycleNew(Environment):
 
     def _step(self, action, render=False):
         intAction = int(action)
+        assert self.action_space.contains(intAction)
         T = 2. * ((intAction / 3) - 1)  # Torque on handle bars
         d = 0.02 * ((intAction % 3) - 1)  # Displacement of center of mass (in meters)
         w = (np.random.random()-0.5) * self._noise # Noise between [-0.02, 0.02] meters
+        # w = np.random.uniform(low=-self._noise, high=self._noise)
 
         omega, omega_dot,  theta, theta_dot = tuple(self._state)
         x_b, y_b, psi = tuple(self._position)
@@ -140,44 +142,52 @@ class BicycleNew(Environment):
         invr_f = np.abs(np.sin(theta)) / self.l
         invr_b = np.abs(np.tan(theta)) / self.l
         invr_CM = 0.
-        if theta != 0.:
+        if not np.isclose(theta, 0., atol=1e-6):
             invr_CM = 1. / np.sqrt((self.l - self.c)**2 + (1. / invr_b)**2)
 
         omega_t1 = omega + self.dt * omega_dot
+        tmp1 = self.M * self.h * self.g * np.sin(phi)
+        tmp2 = self.I_dc * self.sigma_dot * theta_dot
+        tmp3 = self.M_d * self.r * (invr_f + invr_b) + self.M *self.h * invr_CM
         omega_dot_t1 = omega_dot + self.dt * (
-            1. / self.I_bc * (self.M * self.h * self.g * np.sin(phi) - np.cos(phi) *
-                               (self.I_dc * self.sigma_dot * theta_dot + np.sign(theta) * self.v**2 * (self.M_d * self.r * (invr_f + invr_b) + self.M *self.h * invr_CM)))
+            1. / self.I_bc * (tmp1
+                              - np.cos(phi)
+                              * (tmp2 + np.sign(theta) * self.v**2 * tmp3)
+                              )
         )
 
-        if np.abs(theta + self.dt * theta_dot) <= 80./180. * np.pi:
-            theta_t1 = theta + self.dt * theta_dot
-        else:
-            theta_t1 = np.sign(theta + self.dt * theta_dot) * 80./180. * np.pi
-
-        if np.abs(theta + self.dt * theta_dot) <= 80./180. * np.pi:
-            theta_dot_t1 = theta_dot + self.dt * ((T - self.I_dv * self.sigma_dot * omega_dot) / self.I_dl)
-        else:
+        theta_t1 = theta + self.dt * theta_dot
+        if np.abs(theta_t1) > 80./180. * np.pi:
+            theta_t1 = np.sign(theta_t1) * 80./180. * np.pi
             theta_dot_t1 = 0.
+        else:
+            theta_dot_t1 = theta_dot + self.dt * (
+            (T - self.I_dv * self.sigma_dot * omega_dot) / self.I_dl)
 
         x_b_t1 = x_b + self.dt * self.v * np.cos(psi)
         y_b_t1 = y_b + self.dt * self.v * np.sin(psi)
 
         psi_t1 = psi + self.dt * np.sign(theta) * self.v * invr_b
 
+        # check reward and terminal condition
         if np.abs(omega_t1) > 12./180. * np.pi:
             self._absorbing = True
-            reward = -1
+            reward = -1.
         else:
             self._absorbing = False
-            reward = 0.1 * (self._angleWrapPi(psi) - self._angleWrapPi(psi_t1))
+            reward = 0.0
+            # reward = 0.1 * (self._angleWrapPi(psi) - self._angleWrapPi(
+            #     psi_t1)) if self._navigate else 0.0
 
         self._state = np.array([omega_t1, omega_dot_t1, theta_t1, theta_dot_t1])
         self._position = np.array([x_b_t1, y_b_t1, psi_t1])
 
-        return self._getState(), reward, self._absorbing, {"goal": 1. if self._isAtGoal() else 0.,
-                                                           "dist": float(((self._position[:2] - self._goal_loc) ** 2).sum()),
-                                                           "pos_x": float(self._position[:1]),
-                                                           "pos_y": float(self._position[1:2])}
+        return self._getState(), \
+               reward, self._absorbing, \
+               {"goal": 1. if self._isAtGoal() else 0.,
+                "dist": np.linalg.norm(self._position[:2] - self._goal_loc, 2),
+                "pos_x": float(self._position[:1]),
+                "pos_y": float(self._position[1:2])}
 
     def _unit_vector(self, vector):
         """ Returns the unit vector of the vector.  """
@@ -192,9 +202,8 @@ class BicycleNew(Environment):
     def _isAtGoal(self):
         # Anywhere in the goal radius
         if self._navigate:
-            return np.sqrt(
-                max(0., ((self._position[:2] - self._goal_loc) ** 2).sum() -
-                    self._goal_rsqrd)) < 1.e-5
+            distance = np.linalg.norm(self._position[:2] - self._goal_loc, 2)
+            return distance < np.sqrt(self._goal_rsqrd)
         else:
             return False
 
@@ -203,9 +212,12 @@ class BicycleNew(Environment):
         x_b, y_b, psi = tuple(self._position)
         x_f = x_b + np.cos(psi) * self.l
         y_f = y_b + np.sin(psi) * self.l
-        goal_angle = self._angle_between(
-            self._goal_loc - np.array(x_b,y_b),
-            np.array([x_f - x_b, y_f - y_b]))
+        goal_angle = self._angleWrapPi(
+            self._angle_between(
+                self._goal_loc - np.array([x_b,y_b]),
+                np.array([x_f - x_b, y_f - y_b])
+            )
+        )
         """ modified to follow Ernst paper"""
         if self.x_random:
             return np.array([omega, omega_dot, theta, theta_dot, psi])
