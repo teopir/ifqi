@@ -82,7 +82,7 @@ class Experiment(object):
             elif self.config["mdp"]["mdpName"] == "BicycleNavigate":
                 self.mdp = Bicycle(navigate=True)
             elif self.config["mdp"]["mdpName"] == "BicycleNew":
-                self.mdp = BicycleNew(navigate=True)
+                self.mdp = BicycleNew()
             elif self.config["mdp"]["mdpName"] == "SwingPendulum":
                 self.mdp = SwingPendulum()
             elif self.config["mdp"]["mdpName"] == "CartPole":
