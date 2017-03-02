@@ -200,11 +200,7 @@ class BicycleNew(Environment):
 
     def _isAtGoal(self):
         # Anywhere in the goal radius
-        if self._navigate:
-            distance = np.linalg.norm(self._position[:2] - self._goal_loc, 2)
-            return distance < np.sqrt(self._goal_rsqrd)
-        else:
-            return False
+        return False
 
     def _getState(self):
         omega, omega_dot, theta, theta_dot = tuple(self._state)
