@@ -42,10 +42,10 @@ class BicycleNew(Environment):
 
     def __init__(self, **kwargs):
 
-        self.horizon = 5000
+        self.horizon = 50000
         self.x_random = True
-        self.initial_states = np.zeros((1, 1))
-        self.initial_states[0, 0] = 0
+        self.initial_states = np.zeros((9, 1))
+        self.initial_states[:, 0] = np.linspace(-np.pi,np.pi,9)
 
         self.gamma = 0.98
 
