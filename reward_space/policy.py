@@ -244,6 +244,27 @@ class TaxiEnvPolicy(SimplePolicy):
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
 
+class TaxiEnvRandomPolicy(SimplePolicy):
+
+    def __init__(self):
+        self.nS = 500
+        self.nA = 6
+        self.PI = np.ones((self.nS, self.nA)) / self.nA
+        self.PI2 = np.zeros((self.nS, self.nS * self.nA))
+        self.PI2[np.repeat(np.arange(self.nS),self.nA), np.arange(self.nS*self.nA)] = 1. / self.nA
+        self.seed()
+
+    def draw_action(self, state, done):
+        action = self.np_random.choice(6, p=self.PI[np.asscalar(state)])
+        return action
+
+    def get_distribution(self):
+        return self.PI2
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+
+
 class TaxiEnvPolicyOneParameter(SimplePolicy):
 
     def __init__(self, mu, sigma, opt_idx):
@@ -435,6 +456,8 @@ class TaxiEnvPolicy2Parameter(SimplePolicy):
 
 
 '''
+TODO check the following code
+
 from discrete_gaussian import DiscreteGaussian
 class TaxiEnvPolicyStateParameter2(SimplePolicy):
 

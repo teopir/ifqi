@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.polynomial.chebyshev import chebvander, chebval
 from numpy.polynomial.legendre import legval
+import numpy.linalg as la
 
 def chebvanderNd(samples,n_dim,deg):
     '''
@@ -59,18 +60,6 @@ def legvalNd(x,deg):
         c[d] = 0
     return prod
 
-def add_discount(dataset, endofepisode_idx, discount_factor):
-    new_dataset = np.zeros(shape=(dataset.shape[0], dataset.shape[1]+1))
-    new_dataset[:,:-1] = dataset
-    t = 0
-    for i in range(new_dataset.shape[0]):
-        new_dataset[i,-1] = discount_factor**t
-        t += 1
-        if new_dataset[i,endofepisode_idx] == 1:
-            t = 0
-    return new_dataset
-
-
 class MinMaxScaler(object):
     '''
     Applies linear transformation from [x1,x2] to [y1,y2] s.t.
@@ -116,9 +105,56 @@ class EpisodeIterator:
             self.start_episode = self.end_episode
             self.end_episode = self.__find_episode_end()
             return curr_episode
-            
-            
-            
+
+
+def compute_feature_matrix(n_samples, n_features, states, actions, features):
+    '''
+    Computes the feature matrix X starting from the sampled data and
+    the feature functions
+
+    :param n_samples: number of samples
+    :param n_features: number of features
+    :param states: the states encountered in the run
+    :param actions: the actions performed in the run
+    :param features: a list of functions, each one is a feature
+    :return: X the feature matrix n_samples x n_features
+    '''
+    X = np.zeros(shape=(n_samples, n_features))
+    for i in range(n_samples):
+        for j in range(n_features):
+            X[i, j] = features[j]([states[i], actions[i]])
+    return X
+
+
+def remove_projections(X, C, W):
+    '''
+    Makes the columns of matrix X orthogonal to the columns of
+    matrix C, based on the weighted inner product with weights W
+    '''
+    P_cx = la.multi_dot([C.T, W, X])
+    P_cc = la.multi_dot([C.T, W, C])
+    C_norms2 = np.diag(np.diag(P_cc))
+    P_cx_n = (np.power(C_norms2, -1)).dot(P_cx)
+    X_ort = X - C.dot(P_cx_n)
+    return X_ort
+
+
+def find_basis(X, w):
+    '''
+    Finds an orthonormal basis for the space of the columns of matrix X
+    based on the weighted inner product with weights w
+    '''
+
+    W = np.diag(w)
+    W_inv = np.diag(np.power(w, -1))
+
+    X_tilda_ort = np.sqrt(W).dot(X)
+    U_ort, s_ort, V_ort = la.svd(X_tilda_ort)
+    tol = s_ort.max() * max(X_tilda_ort.shape) * np.finfo(
+        s_ort.dtype).eps  # as done in numpy
+    U_tilda_ort_ort = U_ort[:, :s_ort.shape[0]][:, s_ort > tol]
+    U_ort_ort = np.sqrt(W_inv).dot(U_tilda_ort_ort)
+    return U_ort_ort
             
             
             

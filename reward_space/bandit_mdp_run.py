@@ -4,7 +4,6 @@ import numpy as np
 import ifqi.envs as envs
 from policy import BanditPolicy
 from ifqi.envs.bandit import Bandit
-from utils import add_discount
 from operator import itemgetter
 from itertools import groupby
 from rank_nullspace import nullspace

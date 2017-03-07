@@ -107,11 +107,6 @@ class TaxiEnv(discrete.DiscreteEnv):
         assert 0 <= i < 5
         return reversed(out)
 
-    '''
-    def computeQ(self, policy):
-        PI = policy.get_distribution()
-    '''
-
     def _render(self, mode='human', close=False):
         if close:
             return
