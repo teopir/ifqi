@@ -1,5 +1,6 @@
 from .acrobot import Acrobot
 from .bicycle import Bicycle
+from .bicycleNew import BicycleNew
 from .carOnHill import CarOnHill
 from .cartPole import CartPole
 from .invertedPendulum import InvPendulum
