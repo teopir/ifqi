@@ -102,7 +102,7 @@ elif env_name=="Bicycle":
     discrete_actions = mdp.action_space.values
 elif env_name=="BicycleBalancing":
     sizeDS = 1000
-    mdp = envs.Bicycle(navigate=False)
+    mdp = envs.BicycleNew()
     discrete_actions = mdp.action_space.values
 elif env_name=="CartPole":
     sizeDS = 2000
