@@ -38,7 +38,7 @@ class BicycleNew(Environment):
         'video.frames_per_second': 15
     }
 
-    name = "Bicycle"
+    name = "BicycleNew"
 
     def __init__(self, **kwargs):
 

@@ -8,5 +8,5 @@ from .lunarLander import LunarLander
 from .swingPendulum import SwingPendulum
 from .utils import get_space_info
 
-__all__ = ['Acrobot', 'Bicycle', 'CarOnHill', 'CartPole', 'InvPendulum',
+__all__ = ['Acrobot', 'Bicycle', 'BicycleNew','CarOnHill', 'CartPole', 'InvPendulum',
            'LQG1D','LunarLander', 'SwingPendulum']
