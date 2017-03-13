@@ -266,7 +266,7 @@ class Bicycle(Environment):
                 reward = -1.0
             else:
                 self._absorbing = False
-                reward = 0. #- numpy.abs(omega) / self._state_range[0, 1]
+                reward = numpy.abs(omega) / self._state_range[0, 1]
 
         return self._getState(), reward, self._absorbing, {"goal": goal, "dist": float(
             ((self._position[:2] - self._goal_loc) ** 2).sum()), "pos_x": float(self._position[:1]),
