@@ -3,6 +3,18 @@ from numpy.polynomial.chebyshev import chebvander, chebval
 from numpy.polynomial.legendre import legval
 import numpy.linalg as la
 
+def exponentiated_gradient_decent(df, x0, lrate=0.1, max_iter=100, tol=1e-6):
+    ite = 0
+    x = x0
+    grad = df(ite)
+    while ite < max_iter and la.norm(grad) > tol:
+        ite += 1
+        grad = df(ite)
+        x = x * np.exp(-lrate * grad)
+    return x
+
+
+
 def chebvanderNd(samples,n_dim,deg):
     '''
     Args:

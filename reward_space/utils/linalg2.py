@@ -25,7 +25,7 @@ def nullspace(A, criterion='rank', atol=1e-13, rtol=0):
     ns = vh[nnz:].conj().T
     return ns
 
-def range(A, atol=1e-13, rtol=0):
+def range(A, criterion='rank', atol=1e-13, rtol=0):
     """Compute an approximate basis for the range of A.
 
     The algorithm used by this function is based on the singular value
@@ -55,9 +55,12 @@ def range(A, atol=1e-13, rtol=0):
 
     A = np.atleast_2d(A)
     u, s, vh = la.svd(A)
-    tol = max(atol, rtol * s[0])
-    nnz = (s >= tol)
-    ns = u[:,nnz:]
+    if criterion == 'tol':
+        tol = max(atol, rtol * s[0])
+        nnz = (s >= tol).sum()
+    else:
+        nnz = la.matrix_rank(A)
+    ns = u[:,:nnz]
     return ns
 
 def lsq(X, y, w=None):
