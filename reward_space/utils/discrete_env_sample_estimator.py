@@ -153,7 +153,8 @@ class DiscreteEnvSampleEstimator(SampleEstimator):
         D1 = np.diag(np.power(d + self.tol, -0.5))
 
         if operator == 'norm-laplacian':
-            L = la.multi_dot([D1, D - W, D1])
+            L = np.eye(nA*nS) - la.multi_dot([D1, W, D1])
+            #L = la.multi_dot([D1, D - W, D1])
         elif operator == 'comb-laplacian':
             L = D - W
         elif operator == 'random-walk':

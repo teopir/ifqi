@@ -11,78 +11,71 @@ from reward_space.utils.discrete_env_sample_estimator import DiscreteEnvSampleEs
 from reward_space.utils.discrete_mdp_wrapper import DiscreteMdpWrapper
 import reward_space.utils.linalg2 as la2
 
-def LSestimate(X, Q_true):
-    '''
-    Performs LS estimation of the Q function starting from the orthonormal
-    basis X and the target Q_true
-    '''
-    w, residuals, rank, _ =  la.lstsq(X, Q_true)
-    rmse = np.sqrt(residuals/X.shape[0])
-    Q_hat = X.dot(w)
-    return Q_hat, w, rmse
+def mdp_norm(f, mdp_wrap):
+    d_sa_mu = mdp_wrap.compute_d_sa_mu()
+    res = la.multi_dot([f, np.diag(d_sa_mu), f[:, np.newaxis]])
+    return np.sqrt(res / sum(d_sa_mu))
 
-def PVF_estimation(estimator, Q_true, mu, J_true, PI, plot=False):
+def pvf_estimation(estimator, mdp_wrap, perform_estimation=False, plot=False):
 
     #PVF basis on policy
-    eigval_on, PVF_on = estimator.compute_PVF(3000, operator='norm-laplacian',
-                                        method='on-policy')
-
+    eigval_on, pvf_on = estimator.compute_PVF(mdp_wrap.nS * mdp_wrap.nA, method='on-policy')
     #PVF basis off policy
-    eigval_off, PVF_off = estimator.compute_PVF(3000, operator='norm-laplacian',
-                                        method='off-policy')
-    ks = np.arange(0, 501, 50)
+    eigval_off, pvf_off = estimator.compute_PVF(mdp_wrap.nS * mdp_wrap.nA, method='off-policy')
+
+    if not perform_estimation:
+        return (eigval_on, pvf_on), (eigval_off, pvf_off)
+
+    ks = np.arange(0, 51, 5)
     ks[0] = 1
 
     #Polynomial basis
-    poly = np.ones(3000) * np.arange(1, 3001)[:, np.newaxis] ** np.arange(0,3000)
+    poly = np.ones(mdp_wrap.nS * mdp_wrap.nA) * np.arange(1, mdp_wrap.nS * \
+        mdp_wrap.nA + 1)[:, np.newaxis] ** np.arange(0,mdp_wrap.nS * mdp_wrap.nA)
 
     err_PVF_on, err_PVF_off, err_poly = [], [], []
+    Q_true = mdp_wrap.compute_Q_function()
+    norm_Q = mdp_norm(Q_true, mdp_wrap)
 
     for k in ks:
-        Q_hat, w, rmse, _ = la2.lsq(PVF_on[:, :k], Q_true)
-        J_hat = la.multi_dot([mu.T, PI, Q_hat])
-        err_PVF_on.append(abs(J_hat - J_true))
-        print('PVF on-policy k = %s deltaJ = %s J_hat = %s rmse = %s' % (
-        k, abs(J_true - J_hat), J_hat, rmse))
+        Q_hat, w, rmse, _ = la2.lsq(pvf_on[:, :k], Q_true)
+        err_PVF_on.append(mdp_norm(Q_true - Q_hat, mdp_wrap) / norm_Q)
+        print('PVF on-policy k = %s error = %s' % (k, err_PVF_on[-1]))
 
-        Q_hat, w, rmse, _ = la2.lsq(PVF_off[:, :k], Q_true)
-        J_hat = la.multi_dot([mu.T, PI, Q_hat])
-        err_PVF_off.append(abs(J_hat - J_true))
-        print('PVF off-policy k = %s deltaJ = %s J_hat = %s rmse = %s' % (
-            k, abs(J_true - J_hat), J_hat, rmse))
+        Q_hat, w, rmse, _ = la2.lsq(pvf_off[:, :k], Q_true)
+        err_PVF_off.append(mdp_norm(Q_true - Q_hat, mdp_wrap) / norm_Q)
+        print('PVF off-policy k = %s error = %s' % (k, err_PVF_off[-1]))
 
         Q_hat, w, rmse, _ = la2.lsq(poly[:, :k], Q_true)
-        J_hat = la.multi_dot([mu.T, PI, Q_hat])
-        err_poly.append(abs(J_hat - J_true))
-        print('poly k = %s deltaJ = %s J_hat = %s rmse = %s' % (
-            k, abs(J_true - J_hat), J_hat, rmse))
+        err_poly.append(mdp_norm(Q_true - Q_hat, mdp_wrap) / norm_Q)
+        print('poly k = %s error = %s' % (k, err_poly[-1]))
 
     if plot:
         fig, ax = plt.subplots()
-        ax.plot(ks, err_PVF_on, c='r',  label='norm-lapl PVF on-policy')
-        ax.plot(ks, err_PVF_off, c='b', label='norm-lapl PVF off-policy')
-        ax.plot(ks, err_poly, c='g',label='polynomial basis')
+        ax.plot(ks, err_PVF_on, c='r', marker='o', label='norm-lapl PVF on-policy')
+        ax.plot(ks, err_PVF_off, c='b', marker='o', label='norm-lapl PVF off-policy')
+        ax.plot(ks, err_poly, c='g', marker='o', label='polynomial basis')
         ax.legend(loc='upper right')
         ax.set_xlabel('number of features')
-        ax.set_ylabel('delta J')
+        ax.set_ylabel('||Q_hat-Q_true||d(s,a) / ||Q_true||d(s,a)')
         plt.savefig('img/Q-function approx.png')
         plt.show()
 
-    return (eigval_on, PVF_on), (eigval_off, PVF_off)
+    return (eigval_on, pvf_on), (eigval_off, pvf_off)
 
 def Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, PVF, eigval, mdp_wrap, estimator, PI_tilde):
 
     d_sa_mu = mdp_wrap.compute_d_sa_mu()
-    A_true = (np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(Q_true)
+    Q_true = mdp_wrap.compute_Q_function()
+    V_true = np.repeat(mdp_wrap.compute_V_function()[:mdp_wrap.nS], mdp_wrap.nA)
+    A_true = Q_true - V_true
+
+    norm_Q = mdp_norm(Q_true, mdp_wrap)
+    norm_A = mdp_norm(A_true, mdp_wrap)
 
     #Find the orthogonal complement
     Phi_Q = la2.nullspace(np.dot(C.T, np.diag(d_sa_mu_hat)))
     print('Number of Q-features (rank of Phi_Q) %s' % la.matrix_rank(Phi_Q))
-
-    Q_hat, w, rmse, _ = la2.lsq(Phi_Q, Q_true)
-    J_hat = la.multi_dot([mu.T, PI, Q_hat])
-    print('Results of LS deltaJ = %s J_hat = %s rmse = %s' % (
-            abs(J_true - J_hat), J_hat, rmse))
 
     #Project PVFs onto orthogonal complement
     PVF_hat, W, _, _ = la2.lsq(Phi_Q, PVF)
@@ -90,54 +83,47 @@ def Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, PVF, eigval, mdp_wrap, 
     #New basis function rank
     rank = eigval / la.norm(PVF_hat, axis=0)
     ind = rank.argsort()
+    rank = rank[ind]
     PVF_hat = PVF_hat[:, ind]
 
     PVF_hat = PVF_hat / la.norm(PVF_hat, axis=0)
 
-    ks = np.arange(0, 501, 50)
+    ks = np.arange(0, 51, 5)
     ks[0] = 1
 
     err_PVF_hat, err_rand, sdev_err_rand = [], [], []
     err_PVF_hat_A, err_rand_A, sdev_err_rand_A = [], [], []
+
     trials = 20
 
-    norm_Q_true = np.asscalar(la.multi_dot([Q_true, np.diag(d_sa_mu), Q_true[:, np.newaxis]]))
-    norm_A_true = np.asscalar(la.multi_dot([A_true, np.diag(d_sa_mu), A_true[:, np.newaxis]]))
+    PRF_hat = np.dot(np.eye(mdp_wrap.nS * mdp_wrap.nA) - PI_tilde, PVF_hat)
+    print(rank)
+    rank = rank / la.norm(PRF_hat, axis=0)
+    print(rank)
+    ind = rank.argsort()
+    PRF_hat = PRF_hat[:, ind]
 
     for k in ks:
-        Q_hat, w, rmse, _ = la2.lsq(PVF_hat[:, :k], Q_true)
-        #A_hat = (np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(Q_hat)
-        A_hat, _, _, _ = la2.lsq((np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(PVF_hat[:, :k]), A_true)
+        PVF_hat_k = la2.range(PVF_hat[:, :k])
+        Q_hat, w, rmse, _ = la2.lsq(PVF_hat_k, Q_true)
+        PRF_hat_k = la2.range(PRF_hat[:, :k])
+        A_hat, _, _, _ = la2.lsq(PRF_hat_k, A_true)
 
-        J_hat = la.multi_dot([mu.T, PI, Q_hat])
-        #err_PVF_hat.append(abs(J_hat - J_true))
-        print('PVF_hat k = %s deltaJ = %s J_hat = %s rmse = %s' % (
-        k, abs(J_true - J_hat), J_hat, rmse))
+        err_PVF_hat_A.append(mdp_norm(A_true-A_hat, mdp_wrap) / norm_A)
+        err_PVF_hat.append(mdp_norm(Q_true-Q_hat, mdp_wrap) / norm_Q)
 
-        err_PVF_hat_A.append(np.asscalar(la.multi_dot([(A_true-A_hat), np.diag(d_sa_mu), (A_true-A_hat)[:, np.newaxis]])) / norm_A_true)
-        err_PVF_hat.append(np.asscalar(la.multi_dot([(Q_true-Q_hat), np.diag(d_sa_mu), (Q_true-Q_hat)[:, np.newaxis]])) / norm_Q_true)
-
-        deltaJ = []
-        rmsem = 0
+        print('GPVF ranked k = %s error = %s' % (k, err_PVF_hat[-1]))
+        print('GPRF ranked k = %s error = %s' % (k, err_PVF_hat_A[-1]))
 
         err_ite_Q, err_ite_A = [], []
         for i in range(trials):
             choice = np.random.choice(PVF_hat.shape[1], k, replace=False)
             Q_hat, w, rmse, _ = la2.lsq(PVF_hat[:,choice], Q_true)
-            A_hat, _, _, _ = la2.lsq(
-                (np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(
-                    PVF_hat[:, choice]), A_true)
+            V_hat = np.repeat(PI.dot(Q_hat), mdp_wrap.nA)
+            A_hat = Q_hat - V_hat
 
-            J_hat = la.multi_dot([mu.T, PI, Q_hat])
-            deltaJ.append(abs(J_hat - J_true))
-            rmsem += rmse
-
-            err_ite_A.append(np.asscalar(
-                la.multi_dot([(A_true - A_hat), np.diag(d_sa_mu),
-                             (A_true - A_hat)[:, np.newaxis]])) / norm_A_true)
-            err_ite_Q.append(np.asscalar(
-                la.multi_dot([(Q_true - Q_hat), np.diag(d_sa_mu),
-                             (Q_true - Q_hat)[:, np.newaxis]])) / norm_Q_true)
+            err_ite_A.append(mdp_norm(A_true-A_hat, mdp_wrap) / norm_A)
+            err_ite_Q.append(mdp_norm(Q_true-Q_hat, mdp_wrap) / norm_Q)
 
         err_rand.append(np.mean(err_ite_Q))
         sdev_err_rand.append(np.std(err_ite_Q))
@@ -145,27 +131,23 @@ def Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, PVF, eigval, mdp_wrap, 
         err_rand_A.append(np.mean(err_ite_A))
         sdev_err_rand_A.append(np.std(err_ite_A))
 
-        #err_rand.append(np.mean(deltaJ))
-        #sdev_err_rand.append(np.std(deltaJ))
-        print('random k = %s deltaJ = %s J_hat = %s rmse = %s' % (
-                k, np.mean(deltaJ), J_hat, rmsem/trials))
+        print('GPVF random k = %s error = %s' % (k, err_rand[-1]))
+        print('GPRF random k = %s error = %s' % (k, err_rand_A[-1]))
 
     fig, ax = plt.subplots()
-    ax.plot(ks, err_PVF_hat, marker='o', label='gradient PVF')
-    ax.errorbar(ks, err_rand, marker='d', yerr=sdev_err_rand, label='random')
+    ax.plot(ks, err_PVF_hat, marker='o', label='GPVF ranked')
+    ax.errorbar(ks, err_rand, marker='d', yerr=sdev_err_rand, label='GPVF random')
     ax.legend(loc='upper right')
     ax.set_xlabel('number of features')
-    #ax.set_ylabel('delta J')
     ax.set_ylabel('||Q_hat-Q_true||d(s,a) / ||Q_true||d(s,a)')
     fig.suptitle('Q-function approx with PVF')
     plt.savefig('img/Q-function approx gradient.png')
 
     fig, ax = plt.subplots()
-    ax.plot(ks, err_PVF_hat_A, marker='o', label='gradient PVF')
-    ax.errorbar(ks, err_rand_A, marker='d', yerr=sdev_err_rand_A, label='random')
+    ax.plot(ks, err_PVF_hat_A, marker='o', label='GPRF ranked')
+    ax.errorbar(ks, err_rand_A, marker='d', yerr=sdev_err_rand_A, label='GPRF random')
     ax.legend(loc='upper right')
     ax.set_xlabel('number of features')
-    #ax.set_ylabel('delta J')
     ax.set_ylabel('||A_hat-A_true||d(s,a) / ||A_true||d(s,a)')
     fig.suptitle('A-function approx with PVF')
     plt.savefig('img/A-function approx gradient.png')
@@ -173,63 +155,6 @@ def Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, PVF, eigval, mdp_wrap, 
 
     return Phi_Q, PVF_hat
 
-def R_estimation(estimator, mdp_wrap, PI, Phi_Q, d_sa_mu, J_true, R, PVF_hat):
-    P_hat = estimator.get_P()
-    Phi_R_1 = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - mdp_wrap.gamma * np.dot(P_hat, PI),Phi_Q)
-    print('Number of R-features (rank of Phi_R_1) %s' % la.matrix_rank(Phi_R_1))
-
-    print(la.matrix_rank(PVF_hat))
-
-    PRF_hat = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - mdp_wrap.gamma * np.dot(estimator.P, PI),PVF_hat)
-
-    PRF_hat = PRF_hat / la.norm(PRF_hat, axis=0)
-
-    print(la.matrix_rank(PRF_hat))
-    print(la.matrix_rank(Phi_R_1))
-    print(la.matrix_rank(np.hstack([Phi_R_1, PRF_hat])))
-
-    R_hat_1, w, rmse, _ = la2.lsq(PRF_hat, R)
-    J_hat = np.dot(d_sa_mu, R_hat_1)
-    print('Results of LS deltaJ = %s J_hat = %s rmse = %s' % (
-        abs(J_true - J_hat), J_hat, rmse))
-
-    ks = np.arange(0, 501, 50)
-    ks[0] = 1
-
-    err_PVF_hat, err_rand, sdev_err_rand = [], [], []
-    trials = 20
-    for k in ks:
-        R_hat, w, rmse, _ = la2.lsq(PRF_hat[:, :k], R)
-
-        J_hat = np.dot(d_sa_mu, R_hat)
-        err_PVF_hat.append(abs(J_hat - J_true))
-        print('PRF_hat k = %s deltaJ = %s J_hat = %s rmse = %s' % (
-            k, abs(J_true - J_hat), J_hat, rmse))
-
-        deltaJ = []
-        rmsem = 0
-        deltaJ_2 = 0
-        for i in range(trials):
-            choice = np.random.choice(Phi_R_1.shape[1], k, replace=False)
-            R_hat, w, rmse, _ = la2.lsq(Phi_R_1[:, choice], R)
-
-            J_hat = np.dot(d_sa_mu, R_hat)
-            deltaJ.append(abs(J_hat - J_true))
-            rmsem += rmse
-
-        err_rand.append(np.mean(deltaJ))
-        sdev_err_rand.append(np.std(deltaJ))
-        print('random k = %s deltaJ = %s J_hat = %s rmse = %s' % (
-            k, np.mean(deltaJ), J_hat, rmsem / trials))
-
-    fig, ax = plt.subplots()
-    ax.plot(ks, err_PVF_hat, marker='o', label='gradient PVF')
-    ax.errorbar(ks, err_rand, marker='d', yerr=sdev_err_rand, label='random')
-    ax.legend(loc='upper right')
-    ax.set_xlabel('number of features')
-    ax.set_ylabel('delta J')
-    plt.savefig('img/R-function approx 1.png')
-    plt.show()
 
 def compute_trajectory_features(dataset, phi, state_space, action_space):
     i = 0
@@ -309,7 +234,106 @@ def plot_state_function(mdp, f, title, _cmap='coolwarm'):
 
     fig.suptitle(title)
 
-def compute(mdp, n_episodes, prox_policy, opt_policy, random_policy, plot=False):
+def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space):
+
+    n_samples = dataset.shape[0]
+    n_features = reward_features.shape[1]
+    n_states_actions = policy_hessian.shape[0]
+    n_params = policy_hessian.shape[1]
+    n_states, n_actions = len(state_space), len(action_space)
+
+    episode_reward_features = np.zeros((n_episodes, n_features))
+    episode_hessian = np.zeros((n_episodes, n_params, n_params))
+
+    i = 0
+    episode = 0
+    while i < n_samples:
+        s = np.argwhere(state_space == dataset[i, 0])
+        a = np.argwhere(action_space == dataset[i, 1])
+        index = s * n_actions + a
+
+        d = dataset[i, 4]
+
+        episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
+        episode_hessian[episode, :, :] += np.outer(policy_gradient[index, :].squeeze(), \
+                    policy_gradient[index, :].squeeze()) + policy_hessian[index, :, :].squeeze()
+
+        if dataset[i, -1] == 1:
+            episode += 1
+
+        i += 1
+
+    return_hessians = 1. / n_episodes * np.tensordot(episode_reward_features.T, episode_hessian, axes=1)
+
+
+    import scipy.optimize as opt
+
+    def loss(x):
+        hessian = np.tensordot(x, return_hessians, axes = 1)
+        eigval, eigvec = la.eigh(hessian)
+        return eigval[-1]
+
+    def constraint(x):
+        return la.norm(np.dot(reward_features, x)) - 1
+
+    res = opt.minimize(loss, np.ones(n_features),
+                       constraints=({'type': 'eq', 'fun': constraint}),
+                       options={'disp': True},
+                       tol=1e-24)
+    print(res)
+
+    return res.x
+
+def maximum_entropy(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space):
+
+    n_samples = dataset.shape[0]
+    n_features = reward_features.shape[1]
+    n_params = policy_gradient.shape[1]
+    n_states, n_actions = len(state_space), len(action_space)
+
+    episode_reward_features = np.zeros((n_episodes, n_features))
+    episode_hessian = np.zeros((n_episodes, n_params, n_params))
+
+    i = 0
+    episode = 0
+    while i < n_samples:
+        s = np.argwhere(state_space == dataset[i, 0])
+        a = np.argwhere(action_space == dataset[i, 1])
+        index = s * n_actions + a
+
+        d = dataset[i, 4]
+
+        episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
+        if dataset[i, -1] == 1:
+            episode += 1
+
+        i += 1
+
+    import scipy.optimize as opt
+
+    def loss(x):
+        episode_reward = np.dot(episode_reward_features, x)
+        exp_episode_reward = np.exp(episode_reward)
+        partition_function = np.sum(exp_episode_reward)
+        episode_prob = exp_episode_reward / partition_function
+        log_episode_prob = np.log(episode_prob)
+        return -np.sum(log_episode_prob)
+
+    def constraint(x):
+        return la.norm(np.dot(reward_features, x)) - 1
+
+    res = opt.minimize(loss, np.ones(n_features),
+                       constraints=({'type': 'eq', 'fun': constraint}),
+                       options={'disp': True},
+                       tol=1e-24)
+    print(res)
+
+    return res.x
+
+
+
+
+def compute(mdp, n_episodes, prox_policy, opt_policy, plot=False):
     print('Collecting samples from optimal approx policy...')
     dataset = evaluation.collect_episodes(mdp, prox_policy, n_episodes)
     print('Dataset made of %s samples' % (dataset.shape[0]))
@@ -345,8 +369,7 @@ def compute(mdp, n_episodes, prox_policy, opt_policy, random_policy, plot=False)
         plot_state_action_function(mdp, R , 'R-function')
         plot_state_action_function(mdp, A_true, 'A-function')
         plot_state_action_function(mdp, mdp_wrap.compute_d_sa_mu(), 'd(s,a)')
-        plot_state_function(mdp, mdp_wrap.compute_V_function()[:500], 'V-function')
-        plot_state_action_function(mdp, abs(R - A_true) / abs(R+1e-24) * mdp_wrap.compute_d_sa_mu(), 'relative error R vs A')
+        plot_state_function(mdp, mdp_wrap.compute_V_function()[:mdp_wrap.nS], 'V-function')
         plt.show()
 
     #Sample estimates
@@ -367,16 +390,11 @@ def compute(mdp, n_episodes, prox_policy, opt_policy, random_policy, plot=False)
 
     Phi_Q = la2.nullspace(np.dot(C.T, np.diag(d_sa_mu_hat)))
     Q_hat, w, rmse, _ = la2.lsq(Phi_Q, Q_true)
-
     print('Number of Q-features (rank of Phi_Q) %s' % la.matrix_rank(Phi_Q))
 
-    PI_tilde = np.repeat(PI, mdp_wrap.nA, axis=0)
-    A_true = (np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(Q_true)
-
     Phi_A = (np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(Phi_Q)
-    print('Number of R-features (rank of Phi_R) %s' % la.matrix_rank(Phi_A))
     Phi_A = la2.range(Phi_A)
-
+    print('Number of R-features (rank of Phi_R) %s' % la.matrix_rank(Phi_A))
     A_hat, w, rmse, _ = la2.lsq(Phi_A, A_true)
 
     if plot:
@@ -386,10 +404,31 @@ def compute(mdp, n_episodes, prox_policy, opt_policy, random_policy, plot=False)
         plot_state_action_function(mdp, abs(Q_hat - Q_true) / abs(Q_true+1e-24) * mdp_wrap.compute_d_sa_mu(), 'relative error Q vs Q_hat')
 
     print('-' * 100)
-    (eigval, pvf) , (_, _) = PVF_estimation(estimator, Q_true, mu, J_true, PI, plot=False)
+    (eigval_on, pvf_on) , (eigval_off, pvf_off) = pvf_estimation(estimator, mdp_wrap, perform_estimation=False, plot=False)
 
     print('-' * 100)
-    Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, pvf, eigval, mdp_wrap, estimator, PI_tilde)
+    _, phi = Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, pvf_on, eigval_on, mdp_wrap, estimator, PI_tilde)
+
+    phi = (np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(phi)
+    G = prox_policy.gradient_log_pdf()
+    H = prox_policy.H.T
+
+    print(phi.shape)
+
+    #w = estimate_hessian(dataset, n_episodes, G, H, phi[:,:200], mdp_wrap.state_space, mdp_wrap.action_space)
+    w = maximum_entropy(dataset, n_episodes, G, phi[:,:20], mdp_wrap.state_space, mdp_wrap.action_space)
+    R_hat_hessian = np.dot(phi[:,:20], w)
+    print(R_hat_hessian)
+    print(la.norm(R_hat_hessian))
+    A_true = A_true / la.norm(A_true)
+    norm = np.asscalar(la.multi_dot(
+        [(A_true ), np.diag(d_sa_mu),
+         (A_true )[:, np.newaxis]]))
+    error = np.asscalar(la.multi_dot([(A_true - R_hat_hessian), np.diag(d_sa_mu), (A_true - R_hat_hessian)[:, np.newaxis]]))
+    print(A_true)
+    print(la.norm(A_true - R_hat_hessian))
+    print(norm)
+
 
     '''
     phi_tau = compute_trajectory_features(dataset, Phi_A, mdp_wrap.state_space, mdp_wrap.action_space)
@@ -431,6 +470,6 @@ prox_policy = TaxiEnvPolicyStateParameter(3, 0.2, 3)
 compute(mdp, n_episodes, prox_policy, opt_policy)
 '''
 print('\n2 STATE PARAMETERS')
-prox_policy = TaxiEnvPolicy2StateParameter(sigma=0.02)
-compute(mdp, n_episodes, prox_policy, opt_policy, random_policy)
+prox_policy = TaxiEnvPolicy2StateParameter(sigma=0.01)
+compute(mdp, n_episodes, prox_policy, opt_policy)
 

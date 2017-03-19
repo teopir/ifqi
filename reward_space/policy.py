@@ -342,7 +342,7 @@ class TaxiEnvPolicyStateParameter(SimplePolicy):
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
-
+'''
 class TaxiEnvPolicy2StateParameter(SimplePolicy):
 
     def __init__(self, sigma):
@@ -379,43 +379,61 @@ class TaxiEnvPolicy2StateParameter(SimplePolicy):
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
+'''
+class TaxiEnvPolicy2StateParameter(SimplePolicy):
 
-        class TaxiEnvPolicy2StateParameter(SimplePolicy):
+    def __init__(self, sigma):
+        self.opt_policy = compute_policy()
+        self.nS = 500
+        self.nA = 6
+        self.PI = np.zeros((self.nS, self.nA))
+        self.PI2 = np.zeros((self.nS, self.nS * self.nA))
+        self.C = np.zeros((self.nS * self.nA, 2 * self.nS))
+        self.H = np.zeros((2 * self.nS, 2 * self.nS, self.nS * self.nA))
 
-            def __init__(self, sigma):
-                self.opt_policy = compute_policy()
-                self.nS = 500
-                self.nA = 6
-                self.PI = np.zeros((self.nS, self.nA))
-                self.PI2 = np.zeros((self.nS, self.nS * self.nA))
-                self.C = np.zeros((self.nS * self.nA, 2 * self.nS))
+        for i in range(self.nS):
+            opt_a = self.opt_policy[i]
+            self.PI[i, opt_a] = 1. / (1. + (self.nA - 1) * np.exp(-0.5 / sigma))
+            self.PI2[i, i * self.nA + opt_a] = self.PI[i, opt_a]
+            self.C[i * self.nA + opt_a, 2 * i] = 0.
+            self.C[i * self.nA + opt_a, 2 * i + 1] = 0.
 
-                for i in range(self.nS):
-                    opt_a = self.opt_policy[i]
-                    self.PI[i, opt_a] = 1. / (1. + (self.nA - 1) * np.exp(-0.5 / sigma))
-                    self.PI2[i, i * self.nA + opt_a] = self.PI[i, opt_a]
-                    self.C[i * self.nA + opt_a, 2 * i] = 0.
-                    self.C[i * self.nA + opt_a, 2 * i + 1] = 0.
-                    idx2 = np.delete(np.arange(self.nA), opt_a)
-                    for ind, j in enumerate(idx2):
-                        self.PI[i, j] = np.exp(-0.5 / sigma) / (1. + (self.nA - 1) * np.exp(-0.5 / sigma))
-                        self.PI2[i, i * self.nA + j] = self.PI[i, j]
-                        self.C[i * self.nA + j, 2 * i] = np.cos(ind * 2 * np.pi / (self.nA - 1)) / sigma
-                        self.C[i * self.nA + j, 2 * i + 1] = np.sin(ind * 2 * np.pi / (self.nA - 1)) / sigma
-                self.seed()
+            h_cos = -sum(np.cos(2 * np.pi * np.arange(0, self.nA-1) / (self.nA - 1)) ** 2) * np.exp(-0.5 / sigma) / (1. + (self.nA - 1) * np.exp(-0.5 / sigma))
+            h_sin = -sum(np.sin(2 * np.pi * np.arange(0, self.nA-1) / (self.nA - 1)) ** 2) * np.exp(-0.5 / sigma) / (1. + (self.nA - 1) * np.exp(-0.5 / sigma))
+            h_cos_sin = -sum(np.cos(2 * np.pi * np.arange(0, self.nA-1) / (self.nA - 1)) * np.sin(2 * np.pi * np.arange(0, self.nA-1) / (self.nA - 1))) *np.exp(-0.5 / sigma) / (1. + (self.nA - 1) * np.exp(-0.5 / sigma))
 
-            def get_distribution(self):
-                return self.PI2
+            self.H[2 * i, 2 * i, i * self.nA + opt_a] = h_cos
+            self.H[2 * i + 1, 2 * i + 1, i * self.nA + opt_a] = h_sin
+            self.H[2 * i + 1, 2 * i, i * self.nA + opt_a] = h_cos_sin
+            self.H[2 * i, 2 * i + 1, i * self.nA + opt_a] = h_cos_sin
 
-            def draw_action(self, state, done):
-                action = self.np_random.choice(6, p=self.PI[np.asscalar(state)])
-                return action
 
-            def gradient_log_pdf(self):
-                return self.C
+            idx2 = np.delete(np.arange(self.nA), opt_a)
+            for ind, j in enumerate(idx2):
+                self.PI[i, j] = np.exp(-0.5 / sigma) / (1. + (self.nA - 1) * np.exp(-0.5 / sigma))
+                self.PI2[i, i * self.nA + j] = self.PI[i, j]
+                self.C[i * self.nA + j, 2 * i] = np.cos(ind * 2 * np.pi / (self.nA - 1)) / sigma
+                self.C[i * self.nA + j, 2 * i + 1] = np.sin(ind * 2 * np.pi / (self.nA - 1)) / sigma
 
-            def seed(self, seed=None):
-                self.np_random, seed = seeding.np_random(seed)
+                self.H[2 * i, 2 * i, i * self.nA + j] = h_cos
+                self.H[2 * i + 1, 2 * i + 1, i * self.nA + j] = h_sin
+                self.H[2 * i + 1, 2 * i, i * self.nA + j] = h_cos_sin
+                self.H[2 * i, 2 * i + 1, i * self.nA + j] = h_cos_sin
+
+        self.seed()
+
+    def get_distribution(self):
+        return self.PI2
+
+    def draw_action(self, state, done):
+        action = self.np_random.choice(6, p=self.PI[np.asscalar(state)])
+        return action
+
+    def gradient_log_pdf(self):
+        return self.C
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
 
 class TaxiEnvPolicy2Parameter(SimplePolicy):
 
@@ -427,18 +445,36 @@ class TaxiEnvPolicy2Parameter(SimplePolicy):
         self.PI2 = np.zeros((self.nS, self.nS * self.nA))
         self.C = np.zeros((self.nS * self.nA, 2))
 
+        self.H = np.zeros((2, 2, self.nS * self.nA))
+        h_cos = -sum(np.cos(2 * np.pi * np.arange(0, self.nA - 1) / (self.nA - 1)) ** 2) * np.exp(-0.5 / sigma) / (1. + (self.nA - 1) * np.exp(-0.5 / sigma))
+        h_sin = -sum(np.sin(2 * np.pi * np.arange(0, self.nA - 1) / (self.nA - 1)) ** 2) * np.exp(-0.5 / sigma) / (1. + (self.nA - 1) * np.exp(-0.5 / sigma))
+        h_cos_sin = -sum(np.cos(2 * np.pi * np.arange(0, self.nA - 1) / (self.nA - 1)) * np.sin(2 * np.pi * np.arange(0, self.nA - 1) / (self.nA - 1))) * np.exp(-0.5 / sigma) / (1. + (self.nA - 1) * np.exp(-0.5 / sigma))
+
+
         for i in range(self.nS):
             opt_a= self.opt_policy[i]
             self.PI[i,opt_a] = 1. / (1. + (self.nA - 1) * np.exp(-0.5/sigma))
             self.PI2[i,i*self.nA + opt_a] = self.PI[i,opt_a]
             self.C[i*self.nA + opt_a, 0] = 0.
             self.C[i*self.nA + opt_a, 1] = 0.
+
+            self.H[0, 0, i * self.nA + opt_a] = h_cos
+            self.H[1, 1, i * self.nA + opt_a] = h_sin
+            self.H[0, 1, i * self.nA + opt_a] = h_cos_sin
+            self.H[1, 0, i * self.nA + opt_a] = h_cos_sin
+
             idx2 = np.delete(np.arange(self.nA), opt_a)
             for ind,j in enumerate(idx2):
                 self.PI[i, j] = np.exp(-0.5/sigma) / (1. + (self.nA - 1) * np.exp(-0.5/sigma))
                 self.PI2[i, i * self.nA + j] = self.PI[i, j]
                 self.C[i * self.nA + j, 0] = np.cos(ind * 2 * np.pi / (self.nA - 1))/sigma
                 self.C[i * self.nA + j, 1] = np.sin(ind * 2 * np.pi / (self.nA - 1))/sigma
+
+                self.H[0, 0, i * self.nA + j] = h_cos
+                self.H[1, 1, i * self.nA + j] = h_sin
+                self.H[0, 1, i * self.nA + j] = h_cos_sin
+                self.H[1, 0, i * self.nA + j] = h_cos_sin
+
         self.seed()
 
     def get_distribution(self):
