@@ -30,6 +30,7 @@ class DiscreteEnvSampleEstimator(SampleEstimator):
     def _estimate(self):
         states = self.dataset[:, 0]
         actions = self.dataset[:, 1]
+        rewards = self.dataset[:, 2]
         next_states = self.dataset[:, 3]
         discounts = self.dataset[:, 4]
 
@@ -40,15 +41,8 @@ class DiscreteEnvSampleEstimator(SampleEstimator):
 
         P = np.zeros((nS * nA, nS))
         mu = np.zeros(nS)
-
         d_s_mu = np.zeros(nS)
         d_sa_mu = np.zeros(nS * nA)
-
-        d_sas2 = np.zeros((nS * nA, nS))
-        d_sasa = np.zeros((nS * nA, nS * nA))
-        d_sasa2 = np.zeros((nS * nA, nS * nA))
-
-        d_sasa_mu = np.zeros((nS * nA, nS * nA))
 
         i = 0
         while i < self.dataset.shape[0]:
@@ -65,60 +59,22 @@ class DiscreteEnvSampleEstimator(SampleEstimator):
                 mu[s_i] += 1
                 n_episodes += 1
 
-            while j < self.dataset.shape[0] and self.dataset[j, -1] == 0:
-                s_j = np.argwhere(self.state_space == states[j])
-                a_j = np.argwhere(self.action_space == actions[j])
-                if j > i:
-                    d_sas2[s_i * nA + a_i, s_j] += discounts[j] / discounts[i]
-                    d_sasa2[s_i * nA + a_i, s_j * nA + a_j] += discounts[j] / \
-                                                               discounts[i]
-                d_sasa[s_i * nA + a_i, s_j * nA + a_j] += discounts[j] / \
-                                                          discounts[i]
-                d_sasa_mu[s_i * nA + a_i, s_j * nA + a_j] += discounts[j]
-                j += 1
-
-            if j < self.dataset.shape[0]:
-                s_j = np.argwhere(self.state_space == states[j])
-                a_j = np.argwhere(self.action_space == actions[j])
-                if j > i:
-                    d_sas2[s_i * nA + a_i, s_j] += discounts[j] / discounts[i]
-                    d_sasa2[s_i * nA + a_i, s_j * nA + a_j] += discounts[j] / \
-                                                               discounts[i]
-                d_sasa[s_i * nA + a_i, s_j * nA + a_j] += discounts[j] / \
-                                                          discounts[i]
-                d_sasa_mu[s_i * nA + a_i, s_j * nA + a_j] += discounts[j]
-
             i += 1
 
         sa_count = P.sum(axis=1)
         self.sa_count = sa_count
-        s_count = P.sum(axis=0)
-        P = np.apply_along_axis(lambda x: x / (sa_count + self.tol), axis=0,
-                                arr=P)
-
+        P = np.apply_along_axis(lambda x: x / (sa_count + self.tol), axis=0, arr=P)
         mu /= mu.sum()
 
         d_s_mu /= n_episodes
         d_sa_mu /= n_episodes
-        d_sas2 = d_sas2 / (sa_count[:, np.newaxis] + self.tol)
-        d_sasa2 = d_sasa2 / (sa_count[:, np.newaxis] + self.tol) + np.eye(
-            nS * nA)
-        d_sasa /= (sa_count[:, np.newaxis] + self.tol)
-
-        d_sasa_mu /= n_episodes
 
         self.P = P
         self.mu = mu
         self.d_s_mu = d_s_mu
         self.d_sa_mu = d_sa_mu
-        self.d_sas2 = d_sas2
-        self.d_sasa = d_sasa
-        self.d_sasa2 = d_sasa2
 
-        self.d_sasa_mu = d_sasa_mu
-
-        self.J = 1.0 / n_episodes * np.sum(
-            self.dataset[:, 2] * self.dataset[:, 4])
+        self.J = 1.0 / n_episodes * np.sum(rewards * discounts)
 
 
 
@@ -161,7 +117,10 @@ class DiscreteEnvSampleEstimator(SampleEstimator):
             L = la.solve(np.diag(d + self.tol), W)
 
         if np.allclose(L.T, L):
-            eigval, eigvec = la.eigh(L)
+            U, s, V = la.svd(L)
+            eigval = s[::-1]
+            eigvec = U[:,::-1]
+            #eigval, eigvec = la.eigh(L)
         else:
             eigval, eigvec = la.eig(L)
             eigval, eigvec = abs(eigval), abs(eigvec)

@@ -1,6 +1,7 @@
 import numpy as np
 from gym.utils import seeding
 from taxi_policy_iteration import compute_policy
+from scipy.stats import multivariate_normal
 
 class Policy(object):
     
@@ -10,6 +11,45 @@ class Policy(object):
 
     def draw_action(self, state, done):
         pass
+
+
+class DiscreteGaussianPolicy(Policy):
+
+    def __init__(self, ndim, mu, sigma, features, state_space, action_space):
+        self.ndim = ndim
+        self.mu = np.array(mu, ndmin=1)
+        self.sigma = np.array(sigma, ndmin=2)
+        self.features = features
+        self.state_space = state_space
+        self.action_space = action_space
+        self.n_states = len(state_space)
+        self.n_actions = len(action_space)
+
+    def get_idxs(self, state, action):
+        s_idx = np.argwhere(self.state_space == state)
+        a_idx = np.argwhere(self.action_space == action)
+        idx = s_idx * self.n_actions + a_idx
+        idxs = s_idx + np.arange(self.n_actions)
+        return idx, idxs
+
+    def pdf(self, state, action):
+        idx, idxs = self.get_idxs(state, action)
+        num = multivariate_normal(self.features[idx], self.mu, self.sigma)
+        den = np.sum(multivariate_normal(self.features[idxs], self.mu, self.sigma))
+        return num / den
+
+    def gradient_log(self, state, action):
+        idx, idxs = self.get_idxs(state, action)
+        num = np.sum((self.features[idx] - self.features[idxs]) * multivariate_normal(self.features[idxs], self.mu, self.sigma))
+        den = np.sum(multivariate_normal(self.features[idxs], self.mu, self.sigma))
+        return num / den
+
+    def gradient(self, state, action):
+        return self.gradient_log(state, action) * self.pdf(state, action)
+
+    def hessian(self, state, action):
+        pass
+
 
 class SimplePolicy(Policy):
     
@@ -223,13 +263,13 @@ class BanditPolicy(SimplePolicy):
 class TaxiEnvPolicy(SimplePolicy):
 
     def __init__(self):
-        policy = compute_policy()
+        self.policy = compute_policy()
         self.nS = 500
         self.nA = 6
         self.PI = np.zeros((self.nS, self.nA))
         self.PI2 = np.zeros((self.nS, self.nS * self.nA))
-        s = np.array(policy.keys())
-        a = np.array(policy.values())
+        s = np.array(self.policy.keys())
+        a = np.array(self.policy.values())
         self.PI[s, a] = 1.
         self.PI2[s, s * self.nA + a] = 1.
         self.seed()
@@ -548,3 +588,94 @@ class TaxiEnvPolicyStateParameter2(SimplePolicy):
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
 '''
+
+class BoltzmannPolicy(Policy):
+
+    def __init__(self, features, parameters):
+        self.features = features
+        self.parameters = parameters
+        self.n_states = self.features.shape[0]
+        self.n_actions = self.parameters.shape[0]
+        self.n_parameters = self.features.shape[1]
+
+        self.state_action_features = np.zeros((self.n_states * self.n_actions, self.n_actions * self.n_parameters))
+        self.state_action_parameters = parameters.ravel()[:, np.newaxis]
+        row_index = np.tile(np.arange(self.n_states * self.n_actions), self.n_parameters)
+        col_index = np.tile(np.arange(self.n_parameters * self.n_actions), self.n_states)
+        features_repeated = np.repeat(features, self.n_actions, axis=0).ravel()
+        self.state_action_features[row_index, col_index] = features_repeated
+
+        self._build_density()
+        self._build_grad_hess()
+
+        self.seed()
+
+    def _build_density(self):
+        numerators = np.exp(np.dot(self.features, self.parameters.T))
+        denominators = np.sum(numerators, axis=1)[:, np.newaxis]
+
+        self.pi = numerators / denominators
+        self.pi2 = np.zeros((self.n_states, self.n_actions * self.n_states))
+        row_index = np.arange(self.n_states)[:, np.newaxis]
+        col_index = np.arange(self.n_states * self.n_actions).reshape(self.n_states, self.n_actions)
+        self.pi2[row_index, col_index] = self.pi
+
+    def _build_grad_hess(self):
+        self.grad_log = np.zeros((self.n_states * self.n_actions, self.n_parameters * self.n_actions))
+        self.hess_log = np.zeros((self.n_states * self.n_actions, self.n_parameters * self.n_actions, self.n_parameters * self.n_actions))
+        for state in range(self.n_states):
+            row_index = state * self.n_actions + np.arange(self.n_actions)
+            num_sum = np.sum(self.state_action_features[row_index] * \
+                             np.exp(np.dot(self.state_action_features[row_index], self.state_action_parameters)), axis=0)
+            den_sum = np.sum(np.exp(np.dot(self.state_action_features[row_index], \
+                                           self.state_action_parameters)))
+            hess_num_sum = np.dot(self.state_action_features[row_index].T, self.state_action_features[row_index] * \
+                             np.exp(np.dot(self.state_action_features[row_index], self.state_action_parameters)))
+            self.hess_log[row_index] = - hess_num_sum / den_sum
+            for action in range(self.n_actions):
+                index = state * self.n_actions + action
+                phi = self.state_action_features[index]
+                self.grad_log[index] = phi - num_sum / den_sum
+
+    def pdf(self, state, action):
+        num = np.exp(np.dot(self.features[state], self.parameters[action].T))
+        den = np.sum(np.exp(np.dot(self.features[state], self.parameters.T)))
+        return num / den
+
+    def get_pi(self, type_='state-action'):
+        if type_ == 'state-action':
+            return self.pi2
+        elif type_ == 'state':
+            return self.pi
+        elif type_ == 'function':
+            return self.pdf
+        else:
+            raise NotImplementedError
+
+    def gradient_log(self, type_='state-action'):
+        if type_ == 'state-action':
+            return self.grad_log
+        else:
+            raise NotImplementedError
+
+    def hessian_log(self, type_='state-action'):
+        if type_ == 'state-action':
+            return self.hess_log
+        else:
+            raise NotImplementedError
+
+    def draw_action(self, state, done):
+        action = self.np_random.choice(self.n_actions, p=self.pi[np.asscalar(state)])
+        return action
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+
+
+
+
+
+
+
+
+

@@ -10,6 +10,8 @@ from matplotlib import cm
 from reward_space.utils.discrete_env_sample_estimator import DiscreteEnvSampleEstimator
 from reward_space.utils.discrete_mdp_wrapper import DiscreteMdpWrapper
 import reward_space.utils.linalg2 as la2
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.linear_model import LogisticRegression
 
 def mdp_norm(f, mdp_wrap):
     d_sa_mu = mdp_wrap.compute_d_sa_mu()
@@ -26,7 +28,7 @@ def pvf_estimation(estimator, mdp_wrap, perform_estimation=False, plot=False):
     if not perform_estimation:
         return (eigval_on, pvf_on), (eigval_off, pvf_off)
 
-    ks = np.arange(0, 51, 5)
+    ks = np.arange(0, 501, 50)
     ks[0] = 1
 
     #Polynomial basis
@@ -79,6 +81,7 @@ def Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, PVF, eigval, mdp_wrap, 
 
     #Project PVFs onto orthogonal complement
     PVF_hat, W, _, _ = la2.lsq(Phi_Q, PVF)
+    print(la.norm(PVF_hat, axis=1))
 
     #New basis function rank
     rank = eigval / la.norm(PVF_hat, axis=0)
@@ -88,7 +91,7 @@ def Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, PVF, eigval, mdp_wrap, 
 
     PVF_hat = PVF_hat / la.norm(PVF_hat, axis=0)
 
-    ks = np.arange(0, 51, 5)
+    ks = np.arange(0, 501, 50)
     ks[0] = 1
 
     err_PVF_hat, err_rand, sdev_err_rand = [], [], []
@@ -104,9 +107,11 @@ def Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, PVF, eigval, mdp_wrap, 
     PRF_hat = PRF_hat[:, ind]
 
     for k in ks:
-        PVF_hat_k = la2.range(PVF_hat[:, :k])
+        #PVF_hat_k = la2.range(PVF_hat[:, :k])
+        PVF_hat_k = PVF[:, :k]
         Q_hat, w, rmse, _ = la2.lsq(PVF_hat_k, Q_true)
-        PRF_hat_k = la2.range(PRF_hat[:, :k])
+        #PRF_hat_k = la2.range(PRF_hat[:, :k])
+        PRF_hat_k = PRF_hat[:, :k]
         A_hat, _, _, _ = la2.lsq(PRF_hat_k, A_true)
 
         err_PVF_hat_A.append(mdp_norm(A_true-A_hat, mdp_wrap) / norm_A)
@@ -341,8 +346,8 @@ def compute(mdp, n_episodes, prox_policy, opt_policy, plot=False):
     mdp_wrap = DiscreteMdpWrapper(mdp, episodic=True)
 
     PI_opt = opt_policy.get_distribution()
-    PI = prox_policy.get_distribution()
-    C = prox_policy.gradient_log_pdf()
+    PI = prox_policy.get_pi()
+    C = prox_policy.gradient_log()
 
     estimator = DiscreteEnvSampleEstimator(dataset,
                                 mdp_wrap.gamma,
@@ -382,11 +387,11 @@ def compute(mdp, n_episodes, prox_policy, opt_policy, plot=False):
     print('True expected reward approx opt policy J_true = %g' % J_true)
     print('Estimated expected reward approx opt policy J_true = %g' % J_hat)
 
-    grad_J_hat = 1.0 / n_episodes * la.multi_dot([C.T, np.diag(d_sa_mu_hat), Q_true])
+    grad_J_hat = la.multi_dot([C.T, np.diag(d_sa_mu_hat), Q_true])
     grad_J_true = la.multi_dot([C.T, np.diag(d_sa_mu), Q_true])
     print('Dimension of the subspace %s' % la.matrix_rank(np.dot(C.T, np.diag(d_sa_mu_hat))))
-    print('True policy gradient (2-norm) %s' % la.norm(grad_J_hat))
-    print('Estimated policy gradient (2-norm)%s' % la.norm(grad_J_true))
+    print('True policy gradient (2-norm) %s' % la.norm(grad_J_true, 2))
+    print('Estimated policy gradient (2-norm) %s' % la.norm(grad_J_hat, 2))
 
     Phi_Q = la2.nullspace(np.dot(C.T, np.diag(d_sa_mu_hat)))
     Q_hat, w, rmse, _ = la2.lsq(Phi_Q, Q_true)
@@ -404,19 +409,19 @@ def compute(mdp, n_episodes, prox_policy, opt_policy, plot=False):
         plot_state_action_function(mdp, abs(Q_hat - Q_true) / abs(Q_true+1e-24) * mdp_wrap.compute_d_sa_mu(), 'relative error Q vs Q_hat')
 
     print('-' * 100)
-    (eigval_on, pvf_on) , (eigval_off, pvf_off) = pvf_estimation(estimator, mdp_wrap, perform_estimation=False, plot=False)
+    (eigval_on, pvf_on) , (eigval_off, pvf_off) = pvf_estimation(estimator, mdp_wrap, perform_estimation=True, plot=True)
 
     print('-' * 100)
     _, phi = Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, pvf_on, eigval_on, mdp_wrap, estimator, PI_tilde)
 
     phi = (np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(phi)
-    G = prox_policy.gradient_log_pdf()
-    H = prox_policy.H.T
-
+    G = prox_policy.gradient_log()
+    H = prox_policy.hessian_log()
+    '''
     print(phi.shape)
 
-    #w = estimate_hessian(dataset, n_episodes, G, H, phi[:,:200], mdp_wrap.state_space, mdp_wrap.action_space)
-    w = maximum_entropy(dataset, n_episodes, G, phi[:,:20], mdp_wrap.state_space, mdp_wrap.action_space)
+    w = estimate_hessian(dataset, n_episodes, G, H, phi[:,:200], mdp_wrap.state_space, mdp_wrap.action_space)
+    #w = maximum_entropy(dataset, n_episodes, G, phi[:,:20], mdp_wrap.state_space, mdp_wrap.action_space)
     R_hat_hessian = np.dot(phi[:,:20], w)
     print(R_hat_hessian)
     print(la.norm(R_hat_hessian))
@@ -428,33 +433,60 @@ def compute(mdp, n_episodes, prox_policy, opt_policy, plot=False):
     print(A_true)
     print(la.norm(A_true - R_hat_hessian))
     print(norm)
-
-
     '''
-    phi_tau = compute_trajectory_features(dataset, Phi_A, mdp_wrap.state_space, mdp_wrap.action_space)
 
-    def loss(w):
-        num = np.exp(np.dot(phi_tau, w))
-        den = np.sum(num, axis=0)
-        return -np.sum(np.log(num/den))
+def build_state_features(mdp, binary=True):
+    state_features = np.zeros((mdp.nS, 2))
+    for i in range(mdp.nS):
+        lst = list(mdp.decode(i))
+        state_features[i, :] = [lst[0]*5 + lst[1], lst[2]*5 + lst[3]]
 
-    def gradient(w):
-        pw = np.exp(np.dot(phi_tau, w))
-        num = np.sum(phi_tau * pw[:,np.newaxis], axis=0)
-        den = np.sum(pw, axis=0)
-        return -(np.sum(phi_tau, axis=0) - num/den)
+    if not binary:
+        return state_features
+    else:
+        enc = OneHotEncoder(sparse=False)
+        enc.fit(state_features)
+        state_features_binary = enc.transform(state_features)
+    return state_features_binary
+
+def fit_maximum_likelihood_policy(state_features, optimal_action):
+    lr = LogisticRegression(penalty='l2',
+                            tol=1e-5,
+                            C=np.inf,
+                            solver='newton-cg',
+                            fit_intercept=False,
+                            intercept_scaling=1,
+                            max_iter=100,
+                            multi_class='multinomial',
+                            verbose=0,
+                            n_jobs=1)
+
+    lr.fit(state_features, optimal_action)
+    action_weights = lr.coef_
+    pi_prox = lr.predict_proba(state_features)
+    return action_weights, pi_prox
 
 
-    import scipy.optimize as opt
-    x0 = np.zeros(phi_tau.shape[1])
-    print(opt.minimize(loss, x0, tol=1e-24))
-    '''
 
 mdp = TaxiEnv()
 n_episodes = 1000
 
+print('Computing optimal policy...')
 opt_policy = TaxiEnvPolicy()
-random_policy = TaxiEnvRandomPolicy()
+pi_opt = opt_policy.PI
+
+print('Building state features...')
+state_features = build_state_features(mdp)
+
+print('Computing maximum likelihood Boltrzman policy...')
+action_weights, pi_prox = fit_maximum_likelihood_policy(state_features, opt_policy.policy.values())
+d_kl = np.sum(pi_opt * np.log(pi_opt / pi_prox + 1e-24))
+print('KL divergence = %s' % d_kl)
+
+from policy import BoltzmannPolicy
+policy =  BoltzmannPolicy(state_features, action_weights)
+compute(mdp, n_episodes, policy, opt_policy)
+
 
 '''
 print('1 GLOBAL PARAMETER')
@@ -468,8 +500,8 @@ compute(mdp, n_episodes, prox_policy, opt_policy)
 print('\n1 STATE PARAMETER')
 prox_policy = TaxiEnvPolicyStateParameter(3, 0.2, 3)
 compute(mdp, n_episodes, prox_policy, opt_policy)
-'''
+
 print('\n2 STATE PARAMETERS')
 prox_policy = TaxiEnvPolicy2StateParameter(sigma=0.01)
 compute(mdp, n_episodes, prox_policy, opt_policy)
-
+'''
