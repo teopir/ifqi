@@ -1,7 +1,7 @@
 from __future__ import print_function
 from ifqi.envs import TaxiEnv
-from policy import  TaxiEnvPolicy, TaxiEnvPolicyStateParameter, TaxiEnvPolicy2StateParameter, TaxiEnvPolicyOneParameter, TaxiEnvPolicy2Parameter, TaxiEnvRandomPolicy
 from ifqi.evaluation import evaluation
+from policy import BoltzmannPolicy, TaxiEnvPolicy
 import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as plt
@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from reward_space.utils.discrete_env_sample_estimator import DiscreteEnvSampleEstimator
 from reward_space.utils.discrete_mdp_wrapper import DiscreteMdpWrapper
+from reward_space.proto_value_functions.proto_value_functions_estimator import  ProtoValueFunctionsEstimator
 import reward_space.utils.linalg2 as la2
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.linear_model import LogisticRegression
@@ -240,6 +241,41 @@ def plot_state_function(mdp, f, title, _cmap='coolwarm'):
     fig.suptitle(title)
 
 def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space):
+    n_samples = dataset.shape[0]
+    n_features = reward_features.shape[1]
+    n_states_actions = policy_hessian.shape[0]
+    n_params = policy_hessian.shape[1]
+    n_states, n_actions = len(state_space), len(action_space)
+
+    episode_reward_features = np.zeros((n_episodes, n_features))
+    episode_hessian = np.zeros((n_episodes, n_params, n_params))
+
+    i = 0
+    episode = 0
+    while i < n_samples:
+        s = np.argwhere(state_space == dataset[i, 0])
+        a = np.argwhere(action_space == dataset[i, 1])
+        index = s * n_actions + a
+
+        d = dataset[i, 4]
+
+        episode_reward_features[episode, :] += d * reward_features[index,
+                                                   :].squeeze()
+        episode_hessian[episode, :, :] += np.outer(
+            policy_gradient[index, :].squeeze(), \
+            policy_gradient[index, :].squeeze()) + policy_hessian[index, :, :].squeeze()
+
+        if dataset[i, -1] == 1:
+            episode += 1
+
+        i += 1
+
+    return_hessians = 1. / n_episodes * np.tensordot(episode_reward_features.T,
+                                                     episode_hessian, axes=1)
+
+    return return_hessians
+'''
+def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space):
 
     n_samples = dataset.shape[0]
     n_features = reward_features.shape[1]
@@ -288,6 +324,25 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
     print(res)
 
     return res.x
+'''
+def trace_minimization(hessians):
+    n_parameters = hessians[0].shape[0]
+    import cvxpy as cvx
+    w = cvx.Variable(n_parameters)
+    hessian_final = cvx.Variable(n_parameters, n_parameters)
+    hessian_final = w[0] * hessians[0]
+    for i in range(1, len(hessians)):
+        hessian_final += w[i] * hessians[i]
+
+    cvx
+
+
+
+    pass
+
+def maximum_eigenvalue_minimizarion(hessians):
+    pass
+
 
 def maximum_entropy(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space):
 
@@ -339,6 +394,7 @@ def maximum_entropy(dataset, n_episodes, policy_gradient, reward_features, state
 
 
 def compute(mdp, n_episodes, prox_policy, opt_policy, plot=False):
+
     print('Collecting samples from optimal approx policy...')
     dataset = evaluation.collect_episodes(mdp, prox_policy, n_episodes)
     print('Dataset made of %s samples' % (dataset.shape[0]))
@@ -456,7 +512,7 @@ def fit_maximum_likelihood_policy(state_features, optimal_action):
                             solver='newton-cg',
                             fit_intercept=False,
                             intercept_scaling=1,
-                            max_iter=100,
+                            max_iter=300,
                             multi_class='multinomial',
                             verbose=0,
                             n_jobs=1)
@@ -467,41 +523,276 @@ def fit_maximum_likelihood_policy(state_features, optimal_action):
     return action_weights, pi_prox
 
 
+def estimate(features, target, scorer, ks):
 
-mdp = TaxiEnv()
-n_episodes = 1000
+    error = []
+    target_hat = []
+    for k in ks:
+        y_hat, _, _, _, = la2.lsq(features[:, :k], target)
+        error.append(scorer.score(target, y_hat))
+        target_hat.append(y_hat)
+    return target_hat, error
 
-print('Computing optimal policy...')
-opt_policy = TaxiEnvPolicy()
-pi_opt = opt_policy.PI
+class Scorer(object):
 
-print('Building state features...')
-state_features = build_state_features(mdp)
+    def __init__(self,
+                 weights,
+                 p=2):
+        self.weights = weights
+        self.p = p
 
-print('Computing maximum likelihood Boltrzman policy...')
-action_weights, pi_prox = fit_maximum_likelihood_policy(state_features, opt_policy.policy.values())
-d_kl = np.sum(pi_opt * np.log(pi_opt / pi_prox + 1e-24))
-print('KL divergence = %s' % d_kl)
+    def score(self,
+              actual,
+              predicted):
 
-from policy import BoltzmannPolicy
-policy =  BoltzmannPolicy(state_features, action_weights)
-compute(mdp, n_episodes, policy, opt_policy)
+        return self.norm(actual - predicted) / self.norm(actual)
+
+    def norm(self, vector):
+        weighted_vector = vector * np.power(self.weights, 1. / self.p)
+        return la.norm(weighted_vector, self.p)
+
+    def __str__(self):
+        return '||.||%s weighted' % self.p
+
+if __name__ == '__main__':
+
+    plot = False
+    perform_estimation_pvf = True
+    plot_pvf = True
+    perform_estimation_gpvf = True
+    plot_gpvf = True
+    kmin, kmax, kstep = 0, 201, 20
+    on_policy = True
+    off_policy = False
+    methods = []
+    if on_policy:
+        methods.append('on-policy')
+    if off_policy:
+        methods.append('off-policy')
+    plot_hessians = True
+
+    tol = 1e-24
+    mdp = TaxiEnv()
+    n_episodes = 1000
+
+    print('Computing optimal policy...')
+    opt_policy = TaxiEnvPolicy()
+    pi_opt = opt_policy.PI
+
+    '''
+    print('Building state features...')
+    state_features = build_state_features(mdp)
 
 
-'''
-print('1 GLOBAL PARAMETER')
-prox_policy = TaxiEnvPolicyOneParameter(3, 0.2, 3)
-compute(mdp, n_episodes, prox_policy, opt_policy)
+    print('Computing maximum likelihood Boltrzman policy...')
+    action_weights, pi_prox = fit_maximum_likelihood_policy(state_features, opt_policy.policy.values())
+    d_kl = np.sum(pi_opt * np.log(pi_opt / pi_prox + 1e-24))
+    n_parameters = action_weights.shape[0] * action_weights.shape[1]
+    print('Number of features %s Number of parameters %s' % (state_features.shape[1], n_parameters))
+    print('KL divergence = %s' % d_kl)
 
-print('\n2 GLOBAL PARAMETERS')
-prox_policy = TaxiEnvPolicy2Parameter(sigma=0.02)
-compute(mdp, n_episodes, prox_policy, opt_policy)
+    policy =  BoltzmannPolicy(state_features, action_weights)
+    '''
 
-print('\n1 STATE PARAMETER')
-prox_policy = TaxiEnvPolicyStateParameter(3, 0.2, 3)
-compute(mdp, n_episodes, prox_policy, opt_policy)
 
-print('\n2 STATE PARAMETERS')
-prox_policy = TaxiEnvPolicy2StateParameter(sigma=0.01)
-compute(mdp, n_episodes, prox_policy, opt_policy)
-'''
+    from reward_space.policy import TaxiEnvPolicy2Parameter
+    policy = TaxiEnvPolicy2Parameter(0.02)
+    n_parameters = 1000
+
+
+
+
+    print('Collecting samples from optimal approx policy...')
+    dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
+    n_samples = dataset.shape[0]
+    print('Dataset made of %s samples' % n_samples)
+
+    mdp_wrap = DiscreteMdpWrapper(mdp, episodic=True)
+    pi_opt = opt_policy.get_distribution()
+    pi = policy.get_pi()
+    G = policy.gradient_log()
+
+    # Optimal deterministic policy
+    mdp_wrap.set_policy(pi_opt)
+    J_opt = mdp_wrap.compute_J()
+
+    # Optimal approx policy
+    mdp_wrap.set_policy(pi)
+    d_sa_mu = mdp_wrap.compute_d_sa_mu()
+    D = np.diag(d_sa_mu) + tol
+    R = mdp_wrap.non_ep_R
+    J_true = mdp_wrap.compute_J()
+    Q_true = mdp_wrap.compute_Q_function()
+    pi_tilde = np.repeat(pi, mdp_wrap.nA, axis=0)
+    A_true = (np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde).dot(Q_true)
+    V_true = mdp_wrap.compute_V_function()[:mdp_wrap.nS]
+
+    if plot:
+        plot_state_action_function(mdp, Q_true, 'Q-function')
+        plot_state_action_function(mdp, R , 'R-function')
+        plot_state_action_function(mdp, A_true, 'A-function')
+        plot_state_action_function(mdp, d_sa_mu, 'd(s,a)')
+        plot_state_function(mdp, V_true, 'V-function')
+
+    #---------------------------------------------------------------------------
+    #Sample estimations of return and gradient
+    print('-' * 100)
+
+    print('Estimating return and gradient...')
+    estimator = DiscreteEnvSampleEstimator(dataset,
+                                           mdp_wrap.gamma,
+                                           mdp_wrap.state_space,
+                                           mdp_wrap.action_space)
+
+    d_s_mu_hat = estimator.get_d_s_mu()
+    d_sa_mu_hat = np.dot(pi.T, d_s_mu_hat)
+    D_hat = np.diag(d_sa_mu_hat)
+    J_hat = estimator.get_J()
+
+    print('Expected reward opt det policy J_opt = %g' % J_opt)
+    print('True expected reward approx opt policy J_true = %g' % J_true)
+    print('Estimated expected reward approx opt policy J_hat = %g' % J_hat)
+
+    grad_J_hat = la.multi_dot([G.T, D_hat, Q_true])
+    grad_J_true = la.multi_dot([G.T, D, Q_true])
+    print('Dimension of the subspace %s/%s' % (la.matrix_rank(np.dot(G.T, D)), n_parameters))
+    print('True policy gradient (2-norm) DJ_true = %s' % la.norm(grad_J_true, 2))
+    print('Estimated policy gradient (2-norm) DJ_hat = %s' % la.norm(grad_J_hat, 2))
+
+    #---------------------------------------------------------------------------
+    #Q-function and A-function estimation with PVFs
+    print('-' * 100)
+
+    print('Q-function and A-function estimation with pvf')
+    ks = np.arange(kmin, kmax, kstep)
+    ks[0] = 1
+
+    errors_pvf = []
+    Q_hat_pvf = []
+    pvfs = []
+    eigvals_pvf = []
+    errors_prf = []
+
+    scorer = Scorer(d_sa_mu / sum(d_sa_mu))
+
+    if perform_estimation_pvf and plot_pvf:
+        fig, ax = plt.subplots()
+        ax.set_xlabel('number of features')
+        ax.set_ylabel(scorer.__str__())
+        fig.suptitle('Q-function approx with PVF')
+
+        fig2, ax2 = plt.subplots()
+        ax2.set_xlabel('number of features')
+        ax2.set_ylabel(scorer.__str__())
+        fig2.suptitle('A-function approx with PVF')
+
+    for method in methods:
+        print('Fitting ProtoValue Functions %s ...' % method)
+        pvf_estimator = ProtoValueFunctionsEstimator(mdp_wrap.state_space,
+                                                     mdp_wrap.action_space,
+                                                     'norm-laplacian',
+                                                     method)
+        pvf_estimator.fit(dataset)
+        eigval, pvf = pvf_estimator.transform(kmax)
+        prf = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, pvf)
+        pvfs.append(pvf)
+        eigvals_pvf.append(eigval)
+
+        if perform_estimation_pvf:
+            q_hat, error_q = estimate(pvf, Q_true, scorer, ks)
+            a_hat, error_a = estimate(prf, A_true, scorer, ks)
+            Q_hat_pvf.append(q_hat)
+            errors_pvf.append(error_q)
+            errors_prf.append(error_a)
+
+            if plot_pvf:
+                ax.plot(ks, errors_pvf[-1], marker='o', label='PVF ' + method)
+                ax.legend(loc='upper right')
+
+                ax2.plot(ks, errors_prf[-1], marker='o', label='PRF ' + method)
+                ax2.legend(loc='upper right')
+
+    #---------------------------------------------------------------------------
+    #Q-function and A-function estimation with GPVFs
+    print('-' * 100)
+
+    print('Q-function and A-function estimation with gpvf')
+
+    errors_gpvf = []
+    Q_hat_gpvf = []
+    gpvfs = []
+    errors_gprf = []
+
+    if perform_estimation_gpvf and plot_gpvf and not plot_pvf:
+        fig, ax = plt.subplots()
+        ax.set_xlabel('number of features')
+        ax.set_ylabel(scorer.__str__())
+        fig.suptitle('Q-function approx with GPVF')
+
+        fig2, ax2 = plt.subplots()
+        ax2.set_xlabel('number of features')
+        ax2.set_ylabel(scorer.__str__())
+        fig2.suptitle('A-function approx with GPVF')
+
+    for i in range(len(methods)):
+        print('Fitting ProtoReward Functions %s ...' % methods[i])
+        G_basis = la2.range(G)
+        projection_matrix = np.eye(mdp_wrap.nA * mdp_wrap.nS) - la.multi_dot([G_basis, la.inv(la.multi_dot([G_basis.T, D, G_basis])), G_basis.T, D])
+        gpvf = np.dot(projection_matrix, pvfs[i])
+        gpvf = la2.range(gpvf)
+        gpvfs.append(gpvf)
+        gprf = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, gpvf)
+
+        if perform_estimation_gpvf:
+            q_hat, error_q = estimate(gpvf, Q_true, scorer, ks)
+            a_hat, error_a = estimate(gprf, Q_true, scorer, ks)
+            Q_hat_gpvf.append(q_hat)
+            errors_gpvf.append(error_q)
+            errors_gprf.append(error_a)
+
+            if plot_gpvf:
+                ax.plot(ks, errors_gpvf[-1], marker='o', label='GPVF ' + method)
+                ax.legend(loc='upper right')
+
+                ax2.plot(ks, errors_gprf[-1], marker='o', label='GPRF ' + method)
+                ax2.legend(loc='upper right')
+
+
+    #---------------------------------------------------------------------------
+    #Hessian estimation
+    print('-' * 100)
+
+    print('Estimating hessians...')
+    H = policy.hessian_log()
+
+    r_true = R[:, np.newaxis] / la.norm(R)
+    gprf = gprf / la.norm(gprf, axis=0)
+    hessian_true = estimate_hessian(dataset, n_episodes, G, H, r_true, \
+                                    mdp_wrap.state_space, mdp_wrap.action_space)[0]
+    hessian_hat = estimate_hessian(dataset, n_episodes, G, H, gprf, \
+                                    mdp_wrap.state_space, mdp_wrap.action_space)
+
+    print('Computing traces...')
+    trace_true = np.trace(hessian_true)
+    trace_hat = np.trace(hessian_hat, axis1=1, axis2=2)
+
+    print('Computing max eigenvalue...')
+    eigval_true, _ = la.eigh(hessian_true)
+    eigmax_true = eigval_true[-1]
+    eigval_hat, _ = la.eigh(hessian_hat)
+    eigmax_hat = eigval_hat[:, -1]
+
+    if plot_hessians:
+        fig, ax = plt.subplots()
+        ax.set_xlabel('trace')
+        ax.set_ylabel('max eigval')
+        fig.suptitle('Hessians')
+        ax.scatter(trace_hat, eigmax_hat, color='b', marker='o')
+        ax.scatter([trace_true], [eigmax_true], color='r', marker='*')
+        #ax.fill_between([-1,0], -1, 0, facecolor='green', alpha=0.5)
+
+    plt.show()
+
+
+
+

@@ -517,15 +517,18 @@ class TaxiEnvPolicy2Parameter(SimplePolicy):
 
         self.seed()
 
-    def get_distribution(self):
+    def get_pi(self):
         return self.PI2
 
     def draw_action(self, state, done):
         action = self.np_random.choice(6, p=self.PI[np.asscalar(state)])
         return action
 
-    def gradient_log_pdf(self):
+    def gradient_log(self):
         return self.C
+
+    def hessian_log(self):
+        return self.H.T
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
