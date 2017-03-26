@@ -326,19 +326,23 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
     return res.x
 '''
 def trace_minimization(hessians):
+
     n_parameters = hessians[0].shape[0]
+
     import cvxpy as cvx
-    w = cvx.Variable(n_parameters)
-    hessian_final = cvx.Variable(n_parameters, n_parameters)
-    hessian_final = w[0] * hessians[0]
-    for i in range(1, len(hessians)):
-        hessian_final += w[i] * hessians[i]
+    w = cvx.Variable(5)
+    print(type(w))
 
-    cvx
+    constraints = [cvx.norm(w) <= 1]
+    objective = cvx.Minimize(cvx.trace(w))
+    problem = cvx.Problem(objective, constraints)
+
+    result = problem.solve()
+    print(w.value)
 
 
 
-    pass
+
 
 def maximum_eigenvalue_minimizarion(hessians):
     pass
@@ -528,7 +532,8 @@ def estimate(features, target, scorer, ks):
     error = []
     target_hat = []
     for k in ks:
-        y_hat, _, _, _, = la2.lsq(features[:, :k], target)
+        X = la2.range(features[:, :k])
+        y_hat, _, _, _, = la2.lsq(X, target)
         error.append(scorer.score(target, y_hat))
         target_hat.append(y_hat)
     return target_hat, error
@@ -557,11 +562,11 @@ class Scorer(object):
 if __name__ == '__main__':
 
     plot = False
-    perform_estimation_pvf = True
-    plot_pvf = True
-    perform_estimation_gpvf = True
-    plot_gpvf = True
-    kmin, kmax, kstep = 0, 201, 20
+    perform_estimation_pvf = False
+    plot_pvf = False
+    perform_estimation_gpvf = False
+    plot_gpvf = False
+    kmin, kmax, kstep = 0, 3001, 300
     on_policy = True
     off_policy = False
     methods = []
@@ -583,7 +588,6 @@ if __name__ == '__main__':
     print('Building state features...')
     state_features = build_state_features(mdp)
 
-
     print('Computing maximum likelihood Boltrzman policy...')
     action_weights, pi_prox = fit_maximum_likelihood_policy(state_features, opt_policy.policy.values())
     d_kl = np.sum(pi_opt * np.log(pi_opt / pi_prox + 1e-24))
@@ -597,9 +601,7 @@ if __name__ == '__main__':
 
     from reward_space.policy import TaxiEnvPolicy2Parameter
     policy = TaxiEnvPolicy2Parameter(0.02)
-    n_parameters = 1000
-
-
+    n_parameters = 2
 
 
     print('Collecting samples from optimal approx policy...')
@@ -694,9 +696,23 @@ if __name__ == '__main__':
                                                      method)
         pvf_estimator.fit(dataset)
         eigval, pvf = pvf_estimator.transform(kmax)
-        prf = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, pvf)
-        pvfs.append(pvf)
         eigvals_pvf.append(eigval)
+        pvfs.append(pvf)
+
+        print('Q-function estimation PVF')
+        Q_hat, _, _, _ = la2.lsq(pvf, Q_true)
+        print(scorer.score(Q_true, Q_hat))
+
+        #Compure and rank prf
+        prf = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, pvf)
+        eigval_prf = eigval / la.norm(prf, axis=0)
+        rank = eigval_prf.argsort()
+        prf = prf[:, rank]
+        prf = prf / la.norm(prf, axis=0)
+
+        print('A-function estimation PRF')
+        A_hat, _, _, _ = la2.lsq(prf, A_true)
+        print(scorer.score(A_true, A_hat))
 
         if perform_estimation_pvf:
             q_hat, error_q = estimate(pvf, Q_true, scorer, ks)
@@ -722,6 +738,7 @@ if __name__ == '__main__':
     Q_hat_gpvf = []
     gpvfs = []
     errors_gprf = []
+    eigvals_gpvf = []
 
     if perform_estimation_gpvf and plot_gpvf and not plot_pvf:
         fig, ax = plt.subplots()
@@ -739,13 +756,35 @@ if __name__ == '__main__':
         G_basis = la2.range(G)
         projection_matrix = np.eye(mdp_wrap.nA * mdp_wrap.nS) - la.multi_dot([G_basis, la.inv(la.multi_dot([G_basis.T, D, G_basis])), G_basis.T, D])
         gpvf = np.dot(projection_matrix, pvfs[i])
-        gpvf = la2.range(gpvf)
+
+        #Re rank the gpvfs
+        eigval = eigvals_pvf[i] / la.norm(gpvf, axis=0)
+        rank = eigval.argsort()
+        eigval = eigval[rank]
+        gpvf = gpvf[:, rank]
+        gpvf = gpvf / la.norm(gpvf, axis=0)
         gpvfs.append(gpvf)
+        eigvals_gpvf.append(eigval)
+
+        print('Q-function estimation GPVF')
+        Q_hat, _, _, _ = la2.lsq(gpvf, Q_true)
+        print(scorer.score(Q_true, Q_hat))
+
+        # Compute and rank prf
         gprf = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, gpvf)
+        eigval_gprf = eigval / la.norm(gprf, axis=0)
+        rank = eigval_gprf.argsort()
+        gprf = gprf[:, rank]
+        gprf = gprf / la.norm(gprf, axis=0)
+
+        print('A-function estimation PRF')
+        A_hat, _, _, _ = la2.lsq(gprf, A_true)
+        print(scorer.score(A_true, A_hat))
+
 
         if perform_estimation_gpvf:
             q_hat, error_q = estimate(gpvf, Q_true, scorer, ks)
-            a_hat, error_a = estimate(gprf, Q_true, scorer, ks)
+            a_hat, error_a = estimate(gprf, A_true, scorer, ks)
             Q_hat_gpvf.append(q_hat)
             errors_gpvf.append(error_q)
             errors_gprf.append(error_a)
@@ -765,7 +804,7 @@ if __name__ == '__main__':
     print('Estimating hessians...')
     H = policy.hessian_log()
 
-    r_true = R[:, np.newaxis] / la.norm(R)
+    r_true = A_true[:, np.newaxis] / la.norm(A_true)
     gprf = gprf / la.norm(gprf, axis=0)
     hessian_true = estimate_hessian(dataset, n_episodes, G, H, r_true, \
                                     mdp_wrap.state_space, mdp_wrap.action_space)[0]
@@ -788,8 +827,22 @@ if __name__ == '__main__':
         ax.set_ylabel('max eigval')
         fig.suptitle('Hessians')
         ax.scatter(trace_hat, eigmax_hat, color='b', marker='o')
-        ax.scatter([trace_true], [eigmax_true], color='r', marker='*')
-        #ax.fill_between([-1,0], -1, 0, facecolor='green', alpha=0.5)
+        ax.scatter(trace_true, eigmax_true, color='r', marker='d', s=100)
+        ax.set_xlim([-1e-20, 1e-20])
+        ax.set_ylim([-1e-20, 1e-20])
+
+        fig, ax = plt.subplots()
+        ax.set_xlabel('feature')
+        ax.set_ylabel('eigval-trace')
+        fig.suptitle('Hessians')
+        idx = trace_hat.argsort()
+        trace_hat = trace_hat[idx]
+        eigmax_hat = eigmax_hat[idx]
+        ax.plot(np.arange(len(trace_hat)), trace_hat, label='Trace')
+        ax.plot(np.arange(len(eigmax_hat)), eigmax_hat, label='MaxEigval')
+        ax.plot(np.arange(len(trace_hat)), [trace_true]*len(trace_hat), label='True Trace')
+        ax.plot(np.arange(len(eigmax_hat)),[eigmax_true]*len(trace_hat), label='True MaxEigval')
+        ax.legend(loc='upper right')
 
     plt.show()
 
