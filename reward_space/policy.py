@@ -603,7 +603,7 @@ class BoltzmannPolicy(Policy):
 
         self.state_action_features = np.zeros((self.n_states * self.n_actions, self.n_actions * self.n_parameters))
         self.state_action_parameters = parameters.ravel()[:, np.newaxis]
-        row_index = np.tile(np.arange(self.n_states * self.n_actions), self.n_parameters)
+        row_index = np.repeat(np.arange(self.n_states * self.n_actions), self.n_parameters)
         col_index = np.tile(np.arange(self.n_parameters * self.n_actions), self.n_states)
         features_repeated = np.repeat(features, self.n_actions, axis=0).ravel()
         self.state_action_features[row_index, col_index] = features_repeated

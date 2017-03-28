@@ -13,6 +13,8 @@ from reward_space.proto_value_functions.proto_value_functions_estimator import  
 import reward_space.utils.linalg2 as la2
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.linear_model import LogisticRegression
+import cvxpy
+import time
 
 def mdp_norm(f, mdp_wrap):
     d_sa_mu = mdp_wrap.compute_d_sa_mu()
@@ -325,27 +327,44 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
 
     return res.x
 '''
-def trace_minimization(hessians):
 
-    n_parameters = hessians[0].shape[0]
+def trace_minimization(hessians, features, threshold):
+    n_states_actions = hessians.shape[0]
+    n_parameters = hessians.shape[1]
+    w = cvxpy.Variable(n_states_actions)
+    final_hessian = hessians[0] * w[0]
+    for i in range(1, n_states_actions):
+        final_hessian += hessians[i] * w[i]
 
-    import cvxpy as cvx
-    w = cvx.Variable(5)
-    print(type(w))
+    objective = cvxpy.Minimize(cvxpy.trace(final_hessian))
+    constraints = [final_hessian + threshold * np.eye(n_parameters) << 0,
+                   cvxpy.norm(w) <= 1]
+    problem = cvxpy.Problem(objective, constraints)
 
-    constraints = [cvx.norm(w) <= 1]
-    objective = cvx.Minimize(cvx.trace(w))
-    problem = cvx.Problem(objective, constraints)
-
-    result = problem.solve()
-    print(w.value)
+    result = problem.solve(verbose=True)
+    return w.value, final_hessian.value, result
 
 
+def maximum_eigenvalue_minimizarion(hessians, features, threshold):
+    n_states_actions = hessians.shape[0]
+    n_parameters = hessians.shape[1]
+    w = cvxpy.Variable(n_states_actions)
+    final_hessian = hessians[0] * w[0]
+    for i in range(1, n_states_actions):
+        final_hessian += hessians[i] * w[i]
+
+    objective = cvxpy.Minimize(cvxpy.lambda_max(final_hessian))
+    constraints = [final_hessian + threshold * np.eye(n_parameters) << 0,
+                   cvxpy.norm(w) <= 1]
+    problem = cvxpy.Problem(objective, constraints)
+
+    result = problem.solve(verbose=True)
+    return w.value, final_hessian.value, result
 
 
+#def heuristic_choice(hessians, features, threshold):
 
-def maximum_eigenvalue_minimizarion(hessians):
-    pass
+
 
 
 def maximum_entropy(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space):
@@ -496,17 +515,65 @@ def compute(mdp, n_episodes, prox_policy, opt_policy, plot=False):
     '''
 
 def build_state_features(mdp, binary=True):
-    state_features = np.zeros((mdp.nS, 2))
+    #state_features = np.zeros((mdp.nS, 4))
+    state_features = np.zeros((mdp.nS, 7))
     for i in range(mdp.nS):
         lst = list(mdp.decode(i))
-        state_features[i, :] = [lst[0]*5 + lst[1], lst[2]*5 + lst[3]]
+        #state_features[i, :] = [lst[0]*5 + lst[1], lst[2]*5 + lst[3]]
+        #state_features[i, :] = [lst[0] * 5 + lst[1], lst[2] * 5 + lst[3], lst[2] == 5]
+
+        pos_x, pos_y = lst[0], lst[1]
+        locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
+        if lst[2] == 4:
+            start_x, start_y = 5, 5
+        else:
+            start_x, start_y = locs[lst[2]]
+        arr_x, arr_y = locs[lst[3]]
+
+        if start_x == 5:
+            delta_start_x, delta_start_y = 3, 3
+
+        if start_x == pos_x:
+            delta_start_x = 0
+        else:
+            delta_start_x = 2 if start_x > pos_x else 1
+
+        if start_y == pos_y:
+            delta_start_y = 0
+        else:
+            delta_start_y = 2 if start_y > pos_y else 1
+
+        if start_x == 5:
+
+            if arr_x == pos_x:
+                delta_arr_x = 0
+            else:
+                delta_arr_x = 2 if arr_x > pos_x else 1
+
+            if arr_y == pos_y:
+                delta_arr_y = 0
+            else:
+                delta_arr_y = 2 if arr_y > pos_y else 1
+        else:
+            delta_arr_x, delta_arr_y = 3, 3
+
+        state_features[i, :] = [pos_x*5 + pos_y, lst[2], lst[3], delta_start_x, delta_start_y, delta_arr_x, delta_arr_y]
+
 
     if not binary:
         return state_features
     else:
-        enc = OneHotEncoder(sparse=False)
+        enc = OneHotEncoder(n_values=[25, 4, 4, 3, 3, 3, 4], sparse=False, handle_unknown='ignore')
         enc.fit(state_features)
         state_features_binary = enc.transform(state_features)
+
+
+        for i in range(state_features_binary.shape[0]):
+            for j in range(i+1, state_features_binary.shape[0]):
+                if np.all(state_features_binary[i] == state_features_binary[j]):
+                    print('NCS')
+        #state_features_binary[:, -1] = 1-state_features_binary[:, -1]
+        #state_features_binary = np.hstack([state_features_binary, 1-state_features_binary[:, -1][:,np.newaxis]])
     return state_features_binary
 
 def fit_maximum_likelihood_policy(state_features, optimal_action):
@@ -562,11 +629,11 @@ class Scorer(object):
 if __name__ == '__main__':
 
     plot = False
-    perform_estimation_pvf = False
-    plot_pvf = False
-    perform_estimation_gpvf = False
-    plot_gpvf = False
-    kmin, kmax, kstep = 0, 3001, 300
+    perform_estimation_pvf = True
+    plot_pvf = True
+    perform_estimation_gpvf = True
+    plot_gpvf = True
+    kmin, kmax, kstep = 0, 501, 50
     on_policy = True
     off_policy = False
     methods = []
@@ -584,9 +651,9 @@ if __name__ == '__main__':
     opt_policy = TaxiEnvPolicy()
     pi_opt = opt_policy.PI
 
-    '''
+
     print('Building state features...')
-    state_features = build_state_features(mdp)
+    state_features = build_state_features(mdp, binary=True)
 
     print('Computing maximum likelihood Boltrzman policy...')
     action_weights, pi_prox = fit_maximum_likelihood_policy(state_features, opt_policy.policy.values())
@@ -596,13 +663,6 @@ if __name__ == '__main__':
     print('KL divergence = %s' % d_kl)
 
     policy =  BoltzmannPolicy(state_features, action_weights)
-    '''
-
-
-    from reward_space.policy import TaxiEnvPolicy2Parameter
-    policy = TaxiEnvPolicy2Parameter(0.02)
-    n_parameters = 2
-
 
     print('Collecting samples from optimal approx policy...')
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
@@ -660,7 +720,7 @@ if __name__ == '__main__':
     print('Dimension of the subspace %s/%s' % (la.matrix_rank(np.dot(G.T, D)), n_parameters))
     print('True policy gradient (2-norm) DJ_true = %s' % la.norm(grad_J_true, 2))
     print('Estimated policy gradient (2-norm) DJ_hat = %s' % la.norm(grad_J_hat, 2))
-
+    '''
     #---------------------------------------------------------------------------
     #Q-function and A-function estimation with PVFs
     print('-' * 100)
@@ -778,8 +838,8 @@ if __name__ == '__main__':
         gprf = gprf / la.norm(gprf, axis=0)
 
         print('A-function estimation PRF')
-        A_hat, _, _, _ = la2.lsq(gprf, A_true)
-        print(scorer.score(A_true, A_hat))
+        #A_hat, _, _, _ = la2.lsq(gprf, A_true)
+        #print(scorer.score(A_true, A_hat))
 
 
         if perform_estimation_gpvf:
@@ -796,19 +856,31 @@ if __name__ == '__main__':
                 ax2.plot(ks, errors_gprf[-1], marker='o', label='GPRF ' + method)
                 ax2.legend(loc='upper right')
 
+    '''
+    print('-' * 100)
+
+    print('Computing Q-function approx space...')
+    X = np.dot(G.T, D_hat)
+    phi = la2.nullspace(X)
+
+    print('Computing reward function approx space...')
+    Y = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, phi)
+    psi = la2.range(Y)
+
 
     #---------------------------------------------------------------------------
     #Hessian estimation
-    print('-' * 100)
 
     print('Estimating hessians...')
     H = policy.hessian_log()
 
     r_true = A_true[:, np.newaxis] / la.norm(A_true)
-    gprf = gprf / la.norm(gprf, axis=0)
+    #r_true = R[:, np.newaxis] / la.norm(R)
+    psi = psi / la.norm(psi, axis=0)
     hessian_true = estimate_hessian(dataset, n_episodes, G, H, r_true, \
                                     mdp_wrap.state_space, mdp_wrap.action_space)[0]
-    hessian_hat = estimate_hessian(dataset, n_episodes, G, H, gprf, \
+
+    hessian_hat = estimate_hessian(dataset, n_episodes, G, H, psi, \
                                     mdp_wrap.state_space, mdp_wrap.action_space)
 
     print('Computing traces...')
@@ -818,8 +890,28 @@ if __name__ == '__main__':
     print('Computing max eigenvalue...')
     eigval_true, _ = la.eigh(hessian_true)
     eigmax_true = eigval_true[-1]
+    eigmin_true = eigval_true[0]
     eigval_hat, _ = la.eigh(hessian_hat)
     eigmax_hat = eigval_hat[:, -1]
+    eigmin_hat = eigval_hat[:, 0]
+
+    print('Trace minimization...')
+    print(time.strftime('%x %X %z'))
+    w, hessian_trace, _ = trace_minimization(hessian_hat[:10], psi[:,:10], 0.)
+    print(time.strftime('%x %X %z'))
+    r_hat_trace = np.dot(psi[:, :10], w)
+    r_hat_trace /= la.norm(r_hat_trace)
+    trace_trace = np.trace(hessian_trace)
+    eigmax_trace = la.eigh(hessian_trace)[0][-1]
+
+    print('Max eigval minimization...')
+    print(time.strftime('%x %X %z'))
+    w, hessian_eigval, _ = maximum_eigenvalue_minimizarion(hessian_hat[:3], psi[:, :3], 0.)
+    print(time.strftime('%x %X %z'))
+    r_hat_eigval = np.dot(psi[:, :3], w)
+    r_hat_eigval /= la.norm(r_hat_eigval)
+    trace_eigval = np.trace(hessian_eigval)
+    eigmax_eigval = la.eigh(hessian_eigval)[0][-1]
 
     if plot_hessians:
         fig, ax = plt.subplots()
@@ -828,9 +920,10 @@ if __name__ == '__main__':
         fig.suptitle('Hessians')
         ax.scatter(trace_hat, eigmax_hat, color='b', marker='o')
         ax.scatter(trace_true, eigmax_true, color='r', marker='d', s=100)
-        ax.set_xlim([-1e-20, 1e-20])
-        ax.set_ylim([-1e-20, 1e-20])
+        ax.scatter(trace_trace, eigmax_trace, color='g', marker='d', s=100)
+        ax.scatter(trace_eigval, eigmax_eigval, color='y', marker='d', s=100)
 
+        '''
         fig, ax = plt.subplots()
         ax.set_xlabel('feature')
         ax.set_ylabel('eigval-trace')
@@ -838,12 +931,14 @@ if __name__ == '__main__':
         idx = trace_hat.argsort()
         trace_hat = trace_hat[idx]
         eigmax_hat = eigmax_hat[idx]
+        eigmin_hat = eigmin_hat[idx]
         ax.plot(np.arange(len(trace_hat)), trace_hat, label='Trace')
         ax.plot(np.arange(len(eigmax_hat)), eigmax_hat, label='MaxEigval')
+        ax.plot(np.arange(len(eigmin_hat)), eigmin_hat, label='MinEigval')
         ax.plot(np.arange(len(trace_hat)), [trace_true]*len(trace_hat), label='True Trace')
         ax.plot(np.arange(len(eigmax_hat)),[eigmax_true]*len(trace_hat), label='True MaxEigval')
         ax.legend(loc='upper right')
-
+        '''
     plt.show()
 
 
