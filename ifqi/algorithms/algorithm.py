@@ -96,7 +96,11 @@ class Algorithm(object):
             Q[:, action_idx] = predictions * (1 - absorbing)
 
         # compute the maximal action
-        amax = np.argmax(Q, axis=1)
+        if Q.shape[0] > 1:
+            amax = np.argmax(Q, axis=1)
+        else:
+            q = Q[0]
+            amax = [np.random.choice(np.argwhere(q == np.max(q)).ravel())]
 
         # store Q-value and action for each state
         rQ, rA = np.zeros(n_states), np.zeros((n_states, self.action_dim))
