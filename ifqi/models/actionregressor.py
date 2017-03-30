@@ -70,11 +70,16 @@ class ActionRegressor(object):
             **kwargs: additional parameters to be passed to the fit function of
                       the estimator
         """
+        # Save sample wieght if present
+        sample_weight = kwargs.get('sample_weight', None)
+
         for i in range(len(self._models)):
             action = self._actions[i]
             filter = (np.abs(X[:, -self.action_dim:] - action) <= self.tol)
             idxs = np.all(filter, axis=1)
-
+            # Keep only sample weights assoccaited to the correct action
+            if sample_weight is not None:
+                kwargs['sample_weight'] = sample_weight[idxs]
             self._models[i].fit(X[idxs, :-self.action_dim], y[idxs], **kwargs)
 
     def predict(self, x, **kwargs):
