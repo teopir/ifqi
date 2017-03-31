@@ -100,7 +100,7 @@ class Algorithm(object):
             amax = np.argmax(Q, axis=1)
         else:
             q = Q[0]
-            amax = np.random.choice(np.argwhere(q == np.max(q)).ravel())
+            amax = np.array([np.random.choice(np.argwhere(q == np.max(q)).ravel())]).ravel()
 
         # store Q-value and action for each state
         rQ, rA = np.zeros(n_states), np.zeros((n_states, self.action_dim))
