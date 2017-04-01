@@ -15,7 +15,7 @@ class ActionRegressor(object):
     exploit spatial correlation along action space.
     """
 
-    def __init__(self, model, discrete_actions, tol, **params):
+    def __init__(self, model, discrete_actions, tol):
         """
         Initialization of the class.
 
@@ -26,7 +26,6 @@ class ActionRegressor(object):
                 [0, 1, 2, discrete_actions - 1]. Otherwise the values
                 contained in the list are used.
             tol (float): tolerance used for comparisons
-            **params: additional parameters that are used to init the model
         """
         if isinstance(discrete_actions, (int, float)):
             discrete_actions = np.arange(int(discrete_actions))
@@ -53,7 +52,7 @@ class ActionRegressor(object):
         if is_int:
             self._actions = self._actions.astype('int')
 
-        self._models = self._init_model(model, **params)
+        self._models = self._init_model(model)
         self.action_dim = self._actions.shape[1]
 
         self.tol = tol
@@ -118,7 +117,7 @@ class ActionRegressor(object):
     def has_ensembles(self):
         return isinstance(self._models[0], Ensemble)
 
-    def _init_model(self, model, **params):
+    def _init_model(self, model):
         """
         Initialize a new estimator for each discrete action.
         The output is a list of estimators with length equal to the
@@ -126,12 +125,11 @@ class ActionRegressor(object):
 
         Parameters:
             model (object): an instance of estimator
-            **params: additional parameters to be passed to the constructor
         Returns:
             models (list): list of initialized estimators
         """
         models = list()
         for i in range(self._actions.shape[0]):
             models.append(deepcopy(model))
-
+            
         return models
