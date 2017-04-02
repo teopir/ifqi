@@ -2,6 +2,7 @@ import numpy as np
 from gym.utils import seeding
 from taxi_policy_iteration import compute_policy
 from scipy.stats import multivariate_normal
+import numpy.linalg as la
 
 class Policy(object):
     
@@ -628,13 +629,13 @@ class BoltzmannPolicy(Policy):
         self.hess_log = np.zeros((self.n_states * self.n_actions, self.n_parameters * self.n_actions, self.n_parameters * self.n_actions))
         for state in range(self.n_states):
             row_index = state * self.n_actions + np.arange(self.n_actions)
-            num_sum = np.sum(self.state_action_features[row_index] * \
-                             np.exp(np.dot(self.state_action_features[row_index], self.state_action_parameters)), axis=0)
-            den_sum = np.sum(np.exp(np.dot(self.state_action_features[row_index], \
-                                           self.state_action_parameters)))
-            hess_num_sum = np.dot(self.state_action_features[row_index].T, self.state_action_features[row_index] * \
-                             np.exp(np.dot(self.state_action_features[row_index], self.state_action_parameters)))
-            self.hess_log[row_index] = - hess_num_sum / den_sum
+            expon = np.exp(np.dot(self.state_action_features[row_index], self.state_action_parameters))
+            num_sum = np.dot(self.state_action_features[row_index].T, expon).ravel()
+            den_sum = np.sum(expon)
+
+            hess_num_sum = la.multi_dot([self.state_action_features[row_index].T, np.diag(expon.ravel()),\
+                                         self.state_action_features[row_index]])
+            self.hess_log[row_index] = - (hess_num_sum * den_sum - np.outer(num_sum, num_sum)) / den_sum ** 2
             for action in range(self.n_actions):
                 index = state * self.n_actions + action
                 phi = self.state_action_features[index]

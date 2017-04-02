@@ -11,7 +11,7 @@ from reward_space.utils.discrete_env_sample_estimator import DiscreteEnvSampleEs
 from reward_space.utils.discrete_mdp_wrapper import DiscreteMdpWrapper
 from reward_space.proto_value_functions.proto_value_functions_estimator import  ProtoValueFunctionsEstimator
 import reward_space.utils.linalg2 as la2
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 from sklearn.linear_model import LogisticRegression
 import cvxpy
 import time
@@ -20,149 +20,6 @@ def mdp_norm(f, mdp_wrap):
     d_sa_mu = mdp_wrap.compute_d_sa_mu()
     res = la.multi_dot([f, np.diag(d_sa_mu), f[:, np.newaxis]])
     return np.sqrt(res / sum(d_sa_mu))
-
-def pvf_estimation(estimator, mdp_wrap, perform_estimation=False, plot=False):
-
-    #PVF basis on policy
-    eigval_on, pvf_on = estimator.compute_PVF(mdp_wrap.nS * mdp_wrap.nA, method='on-policy')
-    #PVF basis off policy
-    eigval_off, pvf_off = estimator.compute_PVF(mdp_wrap.nS * mdp_wrap.nA, method='off-policy')
-
-    if not perform_estimation:
-        return (eigval_on, pvf_on), (eigval_off, pvf_off)
-
-    ks = np.arange(0, 501, 50)
-    ks[0] = 1
-
-    #Polynomial basis
-    poly = np.ones(mdp_wrap.nS * mdp_wrap.nA) * np.arange(1, mdp_wrap.nS * \
-        mdp_wrap.nA + 1)[:, np.newaxis] ** np.arange(0,mdp_wrap.nS * mdp_wrap.nA)
-
-    err_PVF_on, err_PVF_off, err_poly = [], [], []
-    Q_true = mdp_wrap.compute_Q_function()
-    norm_Q = mdp_norm(Q_true, mdp_wrap)
-
-    for k in ks:
-        Q_hat, w, rmse, _ = la2.lsq(pvf_on[:, :k], Q_true)
-        err_PVF_on.append(mdp_norm(Q_true - Q_hat, mdp_wrap) / norm_Q)
-        print('PVF on-policy k = %s error = %s' % (k, err_PVF_on[-1]))
-
-        Q_hat, w, rmse, _ = la2.lsq(pvf_off[:, :k], Q_true)
-        err_PVF_off.append(mdp_norm(Q_true - Q_hat, mdp_wrap) / norm_Q)
-        print('PVF off-policy k = %s error = %s' % (k, err_PVF_off[-1]))
-
-        Q_hat, w, rmse, _ = la2.lsq(poly[:, :k], Q_true)
-        err_poly.append(mdp_norm(Q_true - Q_hat, mdp_wrap) / norm_Q)
-        print('poly k = %s error = %s' % (k, err_poly[-1]))
-
-    if plot:
-        fig, ax = plt.subplots()
-        ax.plot(ks, err_PVF_on, c='r', marker='o', label='norm-lapl PVF on-policy')
-        ax.plot(ks, err_PVF_off, c='b', marker='o', label='norm-lapl PVF off-policy')
-        ax.plot(ks, err_poly, c='g', marker='o', label='polynomial basis')
-        ax.legend(loc='upper right')
-        ax.set_xlabel('number of features')
-        ax.set_ylabel('||Q_hat-Q_true||d(s,a) / ||Q_true||d(s,a)')
-        plt.savefig('img/Q-function approx.png')
-        plt.show()
-
-    return (eigval_on, pvf_on), (eigval_off, pvf_off)
-
-def Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, PVF, eigval, mdp_wrap, estimator, PI_tilde):
-
-    d_sa_mu = mdp_wrap.compute_d_sa_mu()
-    Q_true = mdp_wrap.compute_Q_function()
-    V_true = np.repeat(mdp_wrap.compute_V_function()[:mdp_wrap.nS], mdp_wrap.nA)
-    A_true = Q_true - V_true
-
-    norm_Q = mdp_norm(Q_true, mdp_wrap)
-    norm_A = mdp_norm(A_true, mdp_wrap)
-
-    #Find the orthogonal complement
-    Phi_Q = la2.nullspace(np.dot(C.T, np.diag(d_sa_mu_hat)))
-    print('Number of Q-features (rank of Phi_Q) %s' % la.matrix_rank(Phi_Q))
-
-    #Project PVFs onto orthogonal complement
-    PVF_hat, W, _, _ = la2.lsq(Phi_Q, PVF)
-    print(la.norm(PVF_hat, axis=1))
-
-    #New basis function rank
-    rank = eigval / la.norm(PVF_hat, axis=0)
-    ind = rank.argsort()
-    rank = rank[ind]
-    PVF_hat = PVF_hat[:, ind]
-
-    PVF_hat = PVF_hat / la.norm(PVF_hat, axis=0)
-
-    ks = np.arange(0, 501, 50)
-    ks[0] = 1
-
-    err_PVF_hat, err_rand, sdev_err_rand = [], [], []
-    err_PVF_hat_A, err_rand_A, sdev_err_rand_A = [], [], []
-
-    trials = 20
-
-    PRF_hat = np.dot(np.eye(mdp_wrap.nS * mdp_wrap.nA) - PI_tilde, PVF_hat)
-    print(rank)
-    rank = rank / la.norm(PRF_hat, axis=0)
-    print(rank)
-    ind = rank.argsort()
-    PRF_hat = PRF_hat[:, ind]
-
-    for k in ks:
-        #PVF_hat_k = la2.range(PVF_hat[:, :k])
-        PVF_hat_k = PVF[:, :k]
-        Q_hat, w, rmse, _ = la2.lsq(PVF_hat_k, Q_true)
-        #PRF_hat_k = la2.range(PRF_hat[:, :k])
-        PRF_hat_k = PRF_hat[:, :k]
-        A_hat, _, _, _ = la2.lsq(PRF_hat_k, A_true)
-
-        err_PVF_hat_A.append(mdp_norm(A_true-A_hat, mdp_wrap) / norm_A)
-        err_PVF_hat.append(mdp_norm(Q_true-Q_hat, mdp_wrap) / norm_Q)
-
-        print('GPVF ranked k = %s error = %s' % (k, err_PVF_hat[-1]))
-        print('GPRF ranked k = %s error = %s' % (k, err_PVF_hat_A[-1]))
-
-        err_ite_Q, err_ite_A = [], []
-        for i in range(trials):
-            choice = np.random.choice(PVF_hat.shape[1], k, replace=False)
-            Q_hat, w, rmse, _ = la2.lsq(PVF_hat[:,choice], Q_true)
-            V_hat = np.repeat(PI.dot(Q_hat), mdp_wrap.nA)
-            A_hat = Q_hat - V_hat
-
-            err_ite_A.append(mdp_norm(A_true-A_hat, mdp_wrap) / norm_A)
-            err_ite_Q.append(mdp_norm(Q_true-Q_hat, mdp_wrap) / norm_Q)
-
-        err_rand.append(np.mean(err_ite_Q))
-        sdev_err_rand.append(np.std(err_ite_Q))
-
-        err_rand_A.append(np.mean(err_ite_A))
-        sdev_err_rand_A.append(np.std(err_ite_A))
-
-        print('GPVF random k = %s error = %s' % (k, err_rand[-1]))
-        print('GPRF random k = %s error = %s' % (k, err_rand_A[-1]))
-
-    fig, ax = plt.subplots()
-    ax.plot(ks, err_PVF_hat, marker='o', label='GPVF ranked')
-    ax.errorbar(ks, err_rand, marker='d', yerr=sdev_err_rand, label='GPVF random')
-    ax.legend(loc='upper right')
-    ax.set_xlabel('number of features')
-    ax.set_ylabel('||Q_hat-Q_true||d(s,a) / ||Q_true||d(s,a)')
-    fig.suptitle('Q-function approx with PVF')
-    plt.savefig('img/Q-function approx gradient.png')
-
-    fig, ax = plt.subplots()
-    ax.plot(ks, err_PVF_hat_A, marker='o', label='GPRF ranked')
-    ax.errorbar(ks, err_rand_A, marker='d', yerr=sdev_err_rand_A, label='GPRF random')
-    ax.legend(loc='upper right')
-    ax.set_xlabel('number of features')
-    ax.set_ylabel('||A_hat-A_true||d(s,a) / ||A_true||d(s,a)')
-    fig.suptitle('A-function approx with PVF')
-    plt.savefig('img/A-function approx gradient.png')
-    plt.show()
-
-    return Phi_Q, PVF_hat
-
 
 def compute_trajectory_features(dataset, phi, state_space, action_space):
     i = 0
@@ -180,27 +37,6 @@ def compute_trajectory_features(dataset, phi, state_space, action_space):
             j = j + 1
         i += 1
     return phi_tau
-
-
-def true_PVF(P):
-    PI_random = np.repeat(np.eye(500),6, axis=1) / 6.
-    W = np.dot(PI_random, P)
-
-    W = .5 * (W + W.T)
-    W[W.nonzero()] = 1
-
-    d = W.sum(axis=1)
-    D = np.diag(d)
-    D1 = np.diag(np.power(d, -0.5))
-
-    #L = la.multi_dot([D1, D - W, D1])
-    L=D-W
-    print(np.dot(D - W,np.ones((500,1))))
-
-    eigval, eigvec = la.eigh(L)
-
-    for i in range(5):
-        plot_state_function(mdp, eigvec[:,i] , 'PVF-function')
 
 
 def plot_state_action_function(mdp, f, title, _cmap='coolwarm'):
@@ -243,41 +79,6 @@ def plot_state_function(mdp, f, title, _cmap='coolwarm'):
     fig.suptitle(title)
 
 def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space):
-    n_samples = dataset.shape[0]
-    n_features = reward_features.shape[1]
-    n_states_actions = policy_hessian.shape[0]
-    n_params = policy_hessian.shape[1]
-    n_states, n_actions = len(state_space), len(action_space)
-
-    episode_reward_features = np.zeros((n_episodes, n_features))
-    episode_hessian = np.zeros((n_episodes, n_params, n_params))
-
-    i = 0
-    episode = 0
-    while i < n_samples:
-        s = np.argwhere(state_space == dataset[i, 0])
-        a = np.argwhere(action_space == dataset[i, 1])
-        index = s * n_actions + a
-
-        d = dataset[i, 4]
-
-        episode_reward_features[episode, :] += d * reward_features[index,
-                                                   :].squeeze()
-        episode_hessian[episode, :, :] += np.outer(
-            policy_gradient[index, :].squeeze(), \
-            policy_gradient[index, :].squeeze()) + policy_hessian[index, :, :].squeeze()
-
-        if dataset[i, -1] == 1:
-            episode += 1
-
-        i += 1
-
-    return_hessians = 1. / n_episodes * np.tensordot(episode_reward_features.T,
-                                                     episode_hessian, axes=1)
-
-    return return_hessians
-'''
-def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space):
 
     n_samples = dataset.shape[0]
     n_features = reward_features.shape[1]
@@ -287,6 +88,8 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
 
     episode_reward_features = np.zeros((n_episodes, n_features))
     episode_hessian = np.zeros((n_episodes, n_params, n_params))
+
+    baseline = estimate_baseline(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space)
 
     i = 0
     episode = 0
@@ -298,35 +101,61 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
         d = dataset[i, 4]
 
         episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
-        episode_hessian[episode, :, :] += np.outer(policy_gradient[index, :].squeeze(), \
-                    policy_gradient[index, :].squeeze()) + policy_hessian[index, :, :].squeeze()
+        episode_hessian[episode, :, :] += np.outer(
+            policy_gradient[index, :].squeeze(), \
+            policy_gradient[index, :].squeeze()) + \
+            policy_hessian[index, :, :].squeeze()
 
         if dataset[i, -1] == 1:
             episode += 1
 
         i += 1
 
-    return_hessians = 1. / n_episodes * np.tensordot(episode_reward_features.T, episode_hessian, axes=1)
+    episode_reward_features_baseline = episode_reward_features - baseline
+
+    return_hessians = 1. / n_episodes * np.tensordot(episode_reward_features_baseline.T,
+                                                     episode_hessian, axes=1)
+
+    return return_hessians
 
 
-    import scipy.optimize as opt
+def estimate_baseline(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space):
+    n_samples = dataset.shape[0]
+    n_features = reward_features.shape[1]
+    n_states_actions = policy_hessian.shape[0]
+    n_params = policy_hessian.shape[1]
+    n_states, n_actions = len(state_space), len(action_space)
 
-    def loss(x):
-        hessian = np.tensordot(x, return_hessians, axes = 1)
-        eigval, eigvec = la.eigh(hessian)
-        return eigval[-1]
+    episode_reward_features = np.zeros((n_episodes, n_features))
+    episode_hessian = np.zeros((n_episodes, n_params, n_params))
+    numerator = denominator = 0.
 
-    def constraint(x):
-        return la.norm(np.dot(reward_features, x)) - 1
+    i = 0
+    episode = 0
+    while i < n_samples:
+        s = np.argwhere(state_space == dataset[i, 0])
+        a = np.argwhere(action_space == dataset[i, 1])
+        index = s * n_actions + a
 
-    res = opt.minimize(loss, np.ones(n_features),
-                       constraints=({'type': 'eq', 'fun': constraint}),
-                       options={'disp': True},
-                       tol=1e-24)
-    print(res)
+        d = dataset[i, 4]
 
-    return res.x
-'''
+        episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
+        episode_hessian[episode, :, :] += np.outer(
+            policy_gradient[index, :].squeeze(), \
+            policy_gradient[index, :].squeeze()) + policy_hessian[index, :,
+                                                   :].squeeze()
+
+        if dataset[i, -1] == 1:
+            vectorized_hessian = episode_hessian[episode, :, :].ravel()
+            numerator += episode_reward_features[episode, :] * la.norm(vectorized_hessian) ** 2
+            denominator += la.norm(vectorized_hessian) ** 2
+            episode += 1
+
+        i += 1
+
+    baseline = numerator / denominator
+
+    return baseline
 
 def trace_minimization(hessians, features, threshold):
     n_states_actions = hessians.shape[0]
@@ -416,114 +245,23 @@ def maximum_entropy(dataset, n_episodes, policy_gradient, reward_features, state
 
 
 
-def compute(mdp, n_episodes, prox_policy, opt_policy, plot=False):
-
-    print('Collecting samples from optimal approx policy...')
-    dataset = evaluation.collect_episodes(mdp, prox_policy, n_episodes)
-    print('Dataset made of %s samples' % (dataset.shape[0]))
-
-    mdp_wrap = DiscreteMdpWrapper(mdp, episodic=True)
-
-    PI_opt = opt_policy.get_distribution()
-    PI = prox_policy.get_pi()
-    C = prox_policy.gradient_log()
-
-    estimator = DiscreteEnvSampleEstimator(dataset,
-                                mdp_wrap.gamma,
-                                mdp_wrap.state_space,
-                                mdp_wrap.action_space)
-
-    #Optimal deterministic policy
-    mdp_wrap.set_policy(PI_opt)
-    J_opt = mdp_wrap.compute_J()
-
-    #Optimal approx policy
-    mdp_wrap.set_policy(PI)
-    mu = mdp_wrap.non_ep_mu
-    d_sa_mu = mdp_wrap.compute_d_sa_mu()
-    R = mdp_wrap.non_ep_R
-    J_true = mdp_wrap.compute_J()
-    Q_true = mdp_wrap.compute_Q_function()
-
-    PI_tilde = np.repeat(PI, mdp_wrap.nA, axis=0)
-    A_true = (np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(Q_true)
-
-    if plot:
-        plot_state_action_function(mdp, Q_true, 'Q-function')
-        plot_state_action_function(mdp, R , 'R-function')
-        plot_state_action_function(mdp, A_true, 'A-function')
-        plot_state_action_function(mdp, mdp_wrap.compute_d_sa_mu(), 'd(s,a)')
-        plot_state_function(mdp, mdp_wrap.compute_V_function()[:mdp_wrap.nS], 'V-function')
-        plt.show()
-
-    #Sample estimates
-    d_s_mu_hat = estimator.get_d_s_mu()
-    d_sa_mu_hat = np.dot(PI.T, d_s_mu_hat)
-    J_hat = estimator.get_J()
-
-    print('-' * 100)
-    print('Expected reward opt det policy J = %g' % J_opt)
-    print('True expected reward approx opt policy J_true = %g' % J_true)
-    print('Estimated expected reward approx opt policy J_true = %g' % J_hat)
-
-    grad_J_hat = la.multi_dot([C.T, np.diag(d_sa_mu_hat), Q_true])
-    grad_J_true = la.multi_dot([C.T, np.diag(d_sa_mu), Q_true])
-    print('Dimension of the subspace %s' % la.matrix_rank(np.dot(C.T, np.diag(d_sa_mu_hat))))
-    print('True policy gradient (2-norm) %s' % la.norm(grad_J_true, 2))
-    print('Estimated policy gradient (2-norm) %s' % la.norm(grad_J_hat, 2))
-
-    Phi_Q = la2.nullspace(np.dot(C.T, np.diag(d_sa_mu_hat)))
-    Q_hat, w, rmse, _ = la2.lsq(Phi_Q, Q_true)
-    print('Number of Q-features (rank of Phi_Q) %s' % la.matrix_rank(Phi_Q))
-
-    Phi_A = (np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(Phi_Q)
-    Phi_A = la2.range(Phi_A)
-    print('Number of R-features (rank of Phi_R) %s' % la.matrix_rank(Phi_A))
-    A_hat, w, rmse, _ = la2.lsq(Phi_A, A_true)
-
-    if plot:
-        plot_state_action_function(mdp, Q_hat, 'Q-function approx')
-        plot_state_action_function(mdp, A_hat, 'A-function approx')
-        plot_state_action_function(mdp, abs(A_hat - A_true) / abs(A_true+1e-24) * mdp_wrap.compute_d_sa_mu(), 'relative error A vs A_hat')
-        plot_state_action_function(mdp, abs(Q_hat - Q_true) / abs(Q_true+1e-24) * mdp_wrap.compute_d_sa_mu(), 'relative error Q vs Q_hat')
-
-    print('-' * 100)
-    (eigval_on, pvf_on) , (eigval_off, pvf_off) = pvf_estimation(estimator, mdp_wrap, perform_estimation=True, plot=True)
-
-    print('-' * 100)
-    _, phi = Q_estimation(C, d_sa_mu_hat, Q_true, mu, PI, J_true, pvf_on, eigval_on, mdp_wrap, estimator, PI_tilde)
-
-    phi = (np.eye(mdp_wrap.nA * mdp_wrap.nS) - PI_tilde).dot(phi)
-    G = prox_policy.gradient_log()
-    H = prox_policy.hessian_log()
-    '''
-    print(phi.shape)
-
-    w = estimate_hessian(dataset, n_episodes, G, H, phi[:,:200], mdp_wrap.state_space, mdp_wrap.action_space)
-    #w = maximum_entropy(dataset, n_episodes, G, phi[:,:20], mdp_wrap.state_space, mdp_wrap.action_space)
-    R_hat_hessian = np.dot(phi[:,:20], w)
-    print(R_hat_hessian)
-    print(la.norm(R_hat_hessian))
-    A_true = A_true / la.norm(A_true)
-    norm = np.asscalar(la.multi_dot(
-        [(A_true ), np.diag(d_sa_mu),
-         (A_true )[:, np.newaxis]]))
-    error = np.asscalar(la.multi_dot([(A_true - R_hat_hessian), np.diag(d_sa_mu), (A_true - R_hat_hessian)[:, np.newaxis]]))
-    print(A_true)
-    print(la.norm(A_true - R_hat_hessian))
-    print(norm)
-    '''
-
 def build_state_features(mdp, binary=True):
-    #state_features = np.zeros((mdp.nS, 4))
-    state_features = np.zeros((mdp.nS, 7))
+    '''
+    Builds the features of the state based on the current position of the taxi,
+    whether it has already pick up the passenger, the relative position of the
+    destination and source cell.
+
+    :param mdp: the taxi mdp
+    :param binary: whether the feature has to be one hot encoded
+    :return: a (n_states, n_features) matrix containing the features for each
+             state
+    '''
+    state_features = np.zeros((mdp.nS, 5))
+    locs = [(0, 0), (0, 4), (4, 0), (4, 3)] #source and destination location
     for i in range(mdp.nS):
         lst = list(mdp.decode(i))
-        #state_features[i, :] = [lst[0]*5 + lst[1], lst[2]*5 + lst[3]]
-        #state_features[i, :] = [lst[0] * 5 + lst[1], lst[2] * 5 + lst[3], lst[2] == 5]
-
         pos_x, pos_y = lst[0], lst[1]
-        locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
+
         if lst[2] == 4:
             start_x, start_y = 5, 5
         else:
@@ -531,52 +269,65 @@ def build_state_features(mdp, binary=True):
         arr_x, arr_y = locs[lst[3]]
 
         if start_x == 5:
-            delta_start_x, delta_start_y = 3, 3
-
-        if start_x == pos_x:
-            delta_start_x = 0
-        else:
-            delta_start_x = 2 if start_x > pos_x else 1
-
-        if start_y == pos_y:
-            delta_start_y = 0
-        else:
-            delta_start_y = 2 if start_y > pos_y else 1
-
-        if start_x == 5:
-
             if arr_x == pos_x:
-                delta_arr_x = 0
+                delta_x = 0
             else:
-                delta_arr_x = 2 if arr_x > pos_x else 1
+                delta_x = 2 if arr_x > pos_x else 1
 
             if arr_y == pos_y:
-                delta_arr_y = 0
+                delta_y = 0
             else:
-                delta_arr_y = 2 if arr_y > pos_y else 1
+                delta_y = 2 if arr_y > pos_y else 1
         else:
-            delta_arr_x, delta_arr_y = 3, 3
+            if start_x == pos_x:
+                delta_x = 0
+            else:
+                delta_x = 2 if start_x > pos_x else 1
 
-        state_features[i, :] = [pos_x*5 + pos_y, lst[2], lst[3], delta_start_x, delta_start_y, delta_arr_x, delta_arr_y]
+            if start_y == pos_y:
+                delta_y = 0
+            else:
+                delta_y = 2 if start_y > pos_y else 1
 
+        '''
+        A feature is encoded as a 5-tuple:
+        - the (x,y) position of the taxi combined as 5x+y
+        - the index of the starting location
+        - the index of the destination location
+        - whether the current x-position is on the same row, on the left or on the
+          right wrt the source position if the passenger has not been pick up yet
+          or wrt the destination position
+        - whether the current y-position is on the same column, on the left or on the
+          right wrt the source position if the passenger has not been pick up yet
+          or wrt the destination position
+        '''
+
+        state_features[i, :] = [pos_x*5 + pos_y, lst[2], lst[3], delta_x, delta_y]
 
     if not binary:
         return state_features
     else:
-        enc = OneHotEncoder(n_values=[25, 4, 4, 3, 3, 3, 4], sparse=False, handle_unknown='ignore')
+        enc = OneHotEncoder(n_values=[25, 4, 4, 3, 3], sparse=False,
+                            handle_unknown='ignore')
         enc.fit(state_features)
         state_features_binary = enc.transform(state_features)
-
-
-        for i in range(state_features_binary.shape[0]):
-            for j in range(i+1, state_features_binary.shape[0]):
-                if np.all(state_features_binary[i] == state_features_binary[j]):
-                    print('NCS')
-        #state_features_binary[:, -1] = 1-state_features_binary[:, -1]
-        #state_features_binary = np.hstack([state_features_binary, 1-state_features_binary[:, -1][:,np.newaxis]])
-    return state_features_binary
+        return state_features_binary
 
 def fit_maximum_likelihood_policy(state_features, optimal_action):
+    '''
+    Finds the maximum likelihood Boltzmann policy that best approximates a given
+    deterministic policy.
+    :param state_features: a (n_states, n_features) matrix representing the
+                           feature vector for each state
+    :param optimal_action: a (n_states,) vector containg for each state the index
+                           of the optimal action
+    :return: a pair: (action_weights, pi_prox)
+             action_weights is a (n_actions, n_features) matrix representing the
+                parameter estimated for each action
+             pi_prox is a (n_states,n_actions) matrix representing the approximated
+                probability distribution
+    '''
+
     lr = LogisticRegression(penalty='l2',
                             tol=1e-5,
                             C=np.inf,
@@ -595,7 +346,6 @@ def fit_maximum_likelihood_policy(state_features, optimal_action):
 
 
 def estimate(features, target, scorer, ks):
-
     error = []
     target_hat = []
     for k in ks:
@@ -629,6 +379,7 @@ class Scorer(object):
 if __name__ == '__main__':
 
     plot = False
+    plot_gradient = True
     perform_estimation_pvf = True
     plot_pvf = True
     perform_estimation_gpvf = True
@@ -681,7 +432,7 @@ if __name__ == '__main__':
     # Optimal approx policy
     mdp_wrap.set_policy(pi)
     d_sa_mu = mdp_wrap.compute_d_sa_mu()
-    D = np.diag(d_sa_mu) + tol
+    D = np.diag(d_sa_mu )
     R = mdp_wrap.non_ep_R
     J_true = mdp_wrap.compute_J()
     Q_true = mdp_wrap.compute_Q_function()
@@ -720,6 +471,14 @@ if __name__ == '__main__':
     print('Dimension of the subspace %s/%s' % (la.matrix_rank(np.dot(G.T, D)), n_parameters))
     print('True policy gradient (2-norm) DJ_true = %s' % la.norm(grad_J_true, 2))
     print('Estimated policy gradient (2-norm) DJ_hat = %s' % la.norm(grad_J_hat, 2))
+
+    if plot_gradient:
+        fig, ax = plt.subplots()
+        ax.set_xlabel('Singular value')
+        ax.set_ylabel('Index')
+        fig.suptitle('Gradient singular values')
+        s = la.svd(G, compute_uv=False)
+        plt.plot(np.arange(len(s)), s, marker='o', label='Gradient')
     '''
     #---------------------------------------------------------------------------
     #Q-function and A-function estimation with PVFs
@@ -867,17 +626,21 @@ if __name__ == '__main__':
     Y = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, phi)
     psi = la2.range(Y)
 
-
+    scaler = MinMaxScaler(copy=False)
+    psi = scaler.fit_transform(psi)
     #---------------------------------------------------------------------------
     #Hessian estimation
 
     print('Estimating hessians...')
     H = policy.hessian_log()
 
-    r_true = A_true[:, np.newaxis] / la.norm(A_true)
-    #r_true = R[:, np.newaxis] / la.norm(R)
-    psi = psi / la.norm(psi, axis=0)
+    a_true = scaler.fit_transform(A_true[:, np.newaxis])
+    r_true = scaler.fit_transform(R[:, np.newaxis])
+
     hessian_true = estimate_hessian(dataset, n_episodes, G, H, r_true, \
+                                    mdp_wrap.state_space, mdp_wrap.action_space)[0]
+
+    hessian_true_a = estimate_hessian(dataset, n_episodes, G, H, a_true, \
                                     mdp_wrap.state_space, mdp_wrap.action_space)[0]
 
     hessian_hat = estimate_hessian(dataset, n_episodes, G, H, psi, \
@@ -885,16 +648,39 @@ if __name__ == '__main__':
 
     print('Computing traces...')
     trace_true = np.trace(hessian_true)
+    trace_true_a = np.trace(hessian_true_a)
     trace_hat = np.trace(hessian_hat, axis1=1, axis2=2)
+    min_trace_idx = trace_hat.argmin()
+    max_trace_idx = trace_hat.argmax()
+
 
     print('Computing max eigenvalue...')
     eigval_true, _ = la.eigh(hessian_true)
     eigmax_true = eigval_true[-1]
-    eigmin_true = eigval_true[0]
+
+    eigval_true_a, _ = la.eigh(hessian_true_a)
+    eigmax_true_a = eigval_true_a[-1]
+
     eigval_hat, _ = la.eigh(hessian_hat)
     eigmax_hat = eigval_hat[:, -1]
-    eigmin_hat = eigval_hat[:, 0]
 
+    if plot_hessians:
+        fig, ax = plt.subplots()
+        ax.set_xlabel('index')
+        ax.set_ylabel('eigenvalue')
+        fig.suptitle('Hessian Eigenvalues')
+        ax.plot(np.arange(len(eigval_true)), eigval_true, color='r', marker='d',
+                   label='Reward function')
+        ax.plot(np.arange(len(eigval_true)), eigval_true_a, color='g', marker='d',
+                   label='Advantage function')
+        '''
+        ax.plot(np.arange(len(eigval_true)), eigval_hat[min_trace_idx], color='b', marker='o',
+                   label='Feature with smallest trace')
+        ax.plot(np.arange(len(eigval_true)), eigval_hat[max_trace_idx], color='m', marker='o',
+                   label='Feature with largest trace')
+        '''
+        ax.legend(loc='upper right')
+    '''
     print('Trace minimization...')
     print(time.strftime('%x %X %z'))
     w, hessian_trace, _ = trace_minimization(hessian_hat[:10], psi[:,:10], 0.)
@@ -912,16 +698,18 @@ if __name__ == '__main__':
     r_hat_eigval /= la.norm(r_hat_eigval)
     trace_eigval = np.trace(hessian_eigval)
     eigmax_eigval = la.eigh(hessian_eigval)[0][-1]
-
+    '''
     if plot_hessians:
         fig, ax = plt.subplots()
         ax.set_xlabel('trace')
         ax.set_ylabel('max eigval')
         fig.suptitle('Hessians')
-        ax.scatter(trace_hat, eigmax_hat, color='b', marker='o')
-        ax.scatter(trace_true, eigmax_true, color='r', marker='d', s=100)
-        ax.scatter(trace_trace, eigmax_trace, color='g', marker='d', s=100)
-        ax.scatter(trace_eigval, eigmax_eigval, color='y', marker='d', s=100)
+        ax.scatter(trace_hat, eigmax_hat, color='b', marker='o', label='Estimated hessians')
+        ax.scatter(trace_true, eigmax_true, color='r', marker='d', s=100, label='Reward function')
+        ax.scatter(trace_true_a, eigmax_true_a, color='g', marker='d', s=100, label='Advantage function')
+        ax.legend(loc='upper right')
+        #ax.scatter(trace_trace, eigmax_trace, color='g', marker='d', s=100)
+        #ax.scatter(trace_eigval, eigmax_eigval, color='y', marker='d', s=100)
 
         '''
         fig, ax = plt.subplots()
@@ -940,6 +728,81 @@ if __name__ == '__main__':
         ax.legend(loc='upper right')
         '''
     plt.show()
+
+#guardare segno negativo
+def trivial_heuristic(hessians, max_iter=100):
+    n_features, n_parameters = hessians.shape[:2]
+    weights = np.zeros(n_features)
+
+    current_hessian = 0
+    current_eigval = 0 #Better then the semidefinite
+    ite = 0
+    improved = True
+    while ite < max_iter and improved:
+        print('Iteration %s/%s' % (ite, max_iter))
+        best_eigval, best_idx = np.inf, None
+        for i in range(n_features):
+            if weights[i] == 0:
+                eigval, _ = la.eigh(current_hessian * (1 - 1. / (ite + 1)) + hessians[i] * 1. / (ite + 1))
+                print(current_eigval)
+                print(eigval[-1])
+                print('---')
+                if eigval[-1] < current_eigval:
+                    best_eigval = eigval[-1]
+                    best_idx = i
+
+        print('Iteration %s/%s' % (ite, max_iter))
+        if best_eigval < current_eigval:
+            improved = True
+            weights *= (1 - 1. / (ite + 1))
+            weights[best_idx] = 1. / (ite + 1)
+            current_eigval = best_eigval
+        else:
+            improved = False
+
+        ite += 1
+    print(ite)
+    return weights
+
+#guardare segno negativo aggiungere i -hessians
+def less_trivial_heuristic(hessians, max_iter=100, tolerance=1e-10):
+    n_features, n_parameters = hessians.shape[:2]
+    weights = np.zeros(n_features)
+
+    ite = 1
+    improved = True
+
+    eigvals, _ = la.eigh(hessians)
+    idx = np.argmin(eigvals[:, -1])
+    lb = ub = eigvals[idx, -1]
+    weights[idx] = 1.
+
+    while ite < max_iter and improved:
+        print('Iteration %s/%s' % (ite, max_iter))
+        best_delta, best_idx = 0, None
+        for i in range(n_features):
+            if weights[i] == 0:
+                lb_new = (1 - 1. / (ite + 1)) * lb + (1. / (ite + 1)) * eigvals[i, 0]
+                ub_new = (1 - 1. / (ite + 1)) * ub + (1. / (ite + 1)) * eigvals[i, -1]
+                delta = (ub + lb) / 2 - (ub_new - lb_new) / 2
+                if delta < best_delta and abs(delta) > tolerance and ub_new < 0.:
+                    best_delta = delta
+                    best_idx = i
+
+        if best_delta < 0:
+            print(best_delta)
+            improved = True
+            weights *= (1 - 1. / (ite + 1))
+            weights[best_idx] = 1. / (ite + 1)
+        else:
+            improved = False
+
+        ite += 1
+
+    print(ite)
+    return weights
+
+
 
 
 
