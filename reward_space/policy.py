@@ -97,8 +97,11 @@ class GaussianPolicy1D(SimplePolicy):
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         
-    def gradient_log_pdf(self, state, action):
+    def gradient_log(self, state, action):
         return np.array(np.array(state/np.power(self.sigma,2)*(action - np.dot(self.K,state))).ravel(), ndmin=1)
+
+    def hessian_log(self, state, action):
+        return np.array(- state ** 2 / self.sigma ** 2, ndmin=2)
         
         
 class GaussianPolicy(SimplePolicy):
@@ -625,21 +628,45 @@ class BoltzmannPolicy(Policy):
         self.pi2[row_index, col_index] = self.pi
 
     def _build_grad_hess(self):
-        self.grad_log = np.zeros((self.n_states * self.n_actions, self.n_parameters * self.n_actions))
-        self.hess_log = np.zeros((self.n_states * self.n_actions, self.n_parameters * self.n_actions, self.n_parameters * self.n_actions))
+        self.grad_log = np.zeros((self.n_states * self.n_actions,
+                                  self.n_parameters * self.n_actions))
+        self.hess_log = np.zeros((self.n_states * self.n_actions,
+                                  self.n_parameters * self.n_actions,
+                                  self.n_parameters * self.n_actions))
+        #Compute the gradient for all (s,a) pairs
         for state in range(self.n_states):
-            row_index = state * self.n_actions + np.arange(self.n_actions)
-            expon = np.exp(np.dot(self.state_action_features[row_index], self.state_action_parameters))
-            num_sum = np.dot(self.state_action_features[row_index].T, expon).ravel()
-            den_sum = np.sum(expon)
 
-            hess_num_sum = la.multi_dot([self.state_action_features[row_index].T, np.diag(expon.ravel()),\
-                                         self.state_action_features[row_index]])
-            self.hess_log[row_index] = - (hess_num_sum * den_sum - np.outer(num_sum, num_sum)) / den_sum ** 2
+            num = den = 0
             for action in range(self.n_actions):
                 index = state * self.n_actions + action
-                phi = self.state_action_features[index]
-                self.grad_log[index] = phi - num_sum / den_sum
+                exponential = np.exp(np.dot(self.state_action_features[index],\
+                                            self.state_action_parameters))
+                num += self.state_action_features[index] * exponential
+                den += exponential
+
+            for action in range(self.n_actions):
+                index = state * self.n_actions + action
+                self.grad_log[index] = self.state_action_features[index] - num / den
+
+        #Compute the hessian for all (s,a) pairs
+        for state in range(self.n_states):
+
+            num1 = num2 = den1 = 0
+            for action in range(self.n_actions):
+                index = state * self.n_actions + action
+                exponential = np.exp(np.dot(self.state_action_features[index], \
+                                            self.state_action_parameters))
+                num1 += np.outer(self.state_action_features[index],\
+                                 self.state_action_features[index]) * exponential
+                num2 += self.state_action_features[index] * exponential
+                den1 += exponential
+
+            num = num1 * den1 - np.outer(num2, num2)
+            den = den1 ** 2
+
+            for action in range(self.n_actions):
+                index = state * self.n_actions + action
+                self.hess_log[index] = - num / den
 
     def pdf(self, state, action):
         num = np.exp(np.dot(self.features[state], self.parameters[action].T))

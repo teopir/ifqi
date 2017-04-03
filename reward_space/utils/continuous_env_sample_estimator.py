@@ -30,8 +30,6 @@ class ContinuousEnvSampleEstimator(SampleEstimator):
         n_episodes = 0
 
         d_sa_mu = np.zeros(self.n_samples)
-        d_sasa = np.zeros((self.n_samples,self.n_samples))
-        d_sasa_mu = np.zeros((self.n_samples,self.n_samples))
 
         i = 0
         while i < self.n_samples:
@@ -42,22 +40,8 @@ class ContinuousEnvSampleEstimator(SampleEstimator):
             if i == 0 or self.dataset[i - 1, -1] == 1:
                 n_episodes += 1
 
-            while j < self.n_samples and self.dataset[j, -1] == 0:
-                d_sasa[i,j] += discounts[j] / discounts[i]
-                d_sasa_mu[i,j] += discounts[j]
-                j += 1
-
-            if j < self.n_samples:
-                d_sasa[i,j] += discounts[j] / discounts[i]
-                d_sasa_mu[i,j] += discounts[j]
-
             i += 1
 
         d_sa_mu /= n_episodes
-        d_sasa_mu /= n_episodes
-
         self.d_sa_mu = d_sa_mu
-        self.d_sasa = d_sasa
-        self.d_sasa_mu = d_sasa_mu
-
         self.J = 1.0 / n_episodes * np.sum(self.dataset[:, 2] * self.dataset[:, 4])

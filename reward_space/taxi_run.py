@@ -82,14 +82,13 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
 
     n_samples = dataset.shape[0]
     n_features = reward_features.shape[1]
-    n_states_actions = policy_hessian.shape[0]
     n_params = policy_hessian.shape[1]
     n_states, n_actions = len(state_space), len(action_space)
 
     episode_reward_features = np.zeros((n_episodes, n_features))
     episode_hessian = np.zeros((n_episodes, n_params, n_params))
 
-    baseline = estimate_baseline(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space)
+    baseline = estimate_hessian_baseline(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space)
 
     i = 0
     episode = 0
@@ -118,11 +117,79 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
 
     return return_hessians
 
+def estimate_gradient(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space):
 
-def estimate_baseline(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space):
     n_samples = dataset.shape[0]
     n_features = reward_features.shape[1]
-    n_states_actions = policy_hessian.shape[0]
+    n_params = policy_gradient.shape[1]
+    n_states, n_actions = len(state_space), len(action_space)
+
+    episode_reward_features = np.zeros((n_episodes, n_features))
+    episode_gradient = np.zeros((n_episodes, n_params))
+
+    baseline = estimate_gradient_baseline(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space)
+
+    i = 0
+    episode = 0
+    while i < n_samples:
+        s = np.argwhere(state_space == dataset[i, 0])
+        a = np.argwhere(action_space == dataset[i, 1])
+        index = s * n_actions + a
+
+        d = dataset[i, 4]
+
+        episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
+        episode_gradient[episode, :] +=  policy_gradient[index, :].squeeze()
+
+        if dataset[i, -1] == 1:
+            episode += 1
+
+        i += 1
+
+    episode_reward_features_baseline = episode_reward_features - baseline
+
+    return_gradient = 1. / n_episodes * np.dot(episode_reward_features_baseline.T,
+                                                     episode_gradient)
+
+    return return_gradient
+
+def estimate_gradient_baseline(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space):
+    n_samples = dataset.shape[0]
+    n_features = reward_features.shape[1]
+    n_params = policy_gradient.shape[1]
+    n_states, n_actions = len(state_space), len(action_space)
+
+    episode_reward_features = np.zeros((n_episodes, n_features))
+    episode_gradient = np.zeros((n_episodes, n_params))
+    numerator = denominator = 0.
+
+    i = 0
+    episode = 0
+    while i < n_samples:
+        s = np.argwhere(state_space == dataset[i, 0])
+        a = np.argwhere(action_space == dataset[i, 1])
+        index = s * n_actions + a
+
+        d = dataset[i, 4]
+
+        episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
+        episode_gradient[episode, :] += policy_gradient[index, :].squeeze()
+
+        if dataset[i, -1] == 1:
+            vectorized_gradient = episode_gradient[episode, :].ravel()
+            numerator += episode_reward_features[episode, :] * la.norm(vectorized_gradient) ** 2
+            denominator += la.norm(vectorized_gradient) ** 2
+            episode += 1
+
+        i += 1
+
+    baseline = numerator / denominator
+
+    return baseline
+
+def estimate_hessian_baseline(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space):
+    n_samples = dataset.shape[0]
+    n_features = reward_features.shape[1]
     n_params = policy_hessian.shape[1]
     n_states, n_actions = len(state_space), len(action_space)
 
@@ -167,7 +234,7 @@ def trace_minimization(hessians, features, threshold):
 
     objective = cvxpy.Minimize(cvxpy.trace(final_hessian))
     constraints = [final_hessian + threshold * np.eye(n_parameters) << 0,
-                   cvxpy.norm(w) <= 1]
+                   cvxpy.sum_entries(w) == 1]
     problem = cvxpy.Problem(objective, constraints)
 
     result = problem.solve(verbose=True)
@@ -189,12 +256,6 @@ def maximum_eigenvalue_minimizarion(hessians, features, threshold):
 
     result = problem.solve(verbose=True)
     return w.value, final_hessian.value, result
-
-
-#def heuristic_choice(hessians, features, threshold):
-
-
-
 
 def maximum_entropy(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space):
 
@@ -474,11 +535,14 @@ if __name__ == '__main__':
 
     if plot_gradient:
         fig, ax = plt.subplots()
-        ax.set_xlabel('Singular value')
-        ax.set_ylabel('Index')
+        ax.set_xlabel('Index')
+        ax.set_ylabel('Singular value')
         fig.suptitle('Gradient singular values')
-        s = la.svd(G, compute_uv=False)
-        plt.plot(np.arange(len(s)), s, marker='o', label='Gradient')
+        s = la.svd(G.T, compute_uv=False)
+        D_idx = D.copy()
+        D_idx[D_idx > 0] = 1
+        s = la.svd(np.dot(G.T, D), compute_uv=False)
+        plt.plot(np.arange(len(s)), s, marker='o', label='Gradient * d(s,a)')
     '''
     #---------------------------------------------------------------------------
     #Q-function and A-function estimation with PVFs
@@ -616,15 +680,17 @@ if __name__ == '__main__':
                 ax2.legend(loc='upper right')
 
     '''
+
     print('-' * 100)
 
     print('Computing Q-function approx space...')
     X = np.dot(G.T, D_hat)
     phi = la2.nullspace(X)
 
-    print('Computing reward function approx space...')
-    Y = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, phi)
-    psi = la2.range(Y)
+    psi = phi
+    #print('Computing reward function approx space...')
+    #Y = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, phi)
+    #psi = la2.range(Y)
 
     scaler = MinMaxScaler(copy=False)
     psi = scaler.fit_transform(psi)
@@ -653,7 +719,6 @@ if __name__ == '__main__':
     min_trace_idx = trace_hat.argmin()
     max_trace_idx = trace_hat.argmax()
 
-
     print('Computing max eigenvalue...')
     eigval_true, _ = la.eigh(hessian_true)
     eigmax_true = eigval_true[-1]
@@ -673,13 +738,16 @@ if __name__ == '__main__':
                    label='Reward function')
         ax.plot(np.arange(len(eigval_true)), eigval_true_a, color='g', marker='d',
                    label='Advantage function')
-        '''
         ax.plot(np.arange(len(eigval_true)), eigval_hat[min_trace_idx], color='b', marker='o',
                    label='Feature with smallest trace')
         ax.plot(np.arange(len(eigval_true)), eigval_hat[max_trace_idx], color='m', marker='o',
                    label='Feature with largest trace')
         '''
+        r = np.hstack([np.arange(len(eigval_true))[:, np.newaxis] + 1, eigval_true[:, np.newaxis], eigval_true_a[:, np.newaxis], eigval_hat[min_trace_idx][:, np.newaxis], eigval_hat[max_trace_idx][:, np.newaxis]])
+        np.savetxt('eigen.csv', r, delimiter=',', header='x,reward function,advantage function,Feature with smallest trace,Feature with largest trace')
+
         ax.legend(loc='upper right')
+        '''
     '''
     print('Trace minimization...')
     print(time.strftime('%x %X %z'))
@@ -698,7 +766,7 @@ if __name__ == '__main__':
     r_hat_eigval /= la.norm(r_hat_eigval)
     trace_eigval = np.trace(hessian_eigval)
     eigmax_eigval = la.eigh(hessian_eigval)[0][-1]
-    '''
+
     if plot_hessians:
         fig, ax = plt.subplots()
         ax.set_xlabel('trace')
@@ -711,7 +779,7 @@ if __name__ == '__main__':
         #ax.scatter(trace_trace, eigmax_trace, color='g', marker='d', s=100)
         #ax.scatter(trace_eigval, eigmax_eigval, color='y', marker='d', s=100)
 
-        '''
+
         fig, ax = plt.subplots()
         ax.set_xlabel('feature')
         ax.set_ylabel('eigval-trace')
@@ -726,7 +794,7 @@ if __name__ == '__main__':
         ax.plot(np.arange(len(trace_hat)), [trace_true]*len(trace_hat), label='True Trace')
         ax.plot(np.arange(len(eigmax_hat)),[eigmax_true]*len(trace_hat), label='True MaxEigval')
         ax.legend(loc='upper right')
-        '''
+
     plt.show()
 
 #guardare segno negativo
@@ -801,9 +869,4 @@ def less_trivial_heuristic(hessians, max_iter=100, tolerance=1e-10):
 
     print(ite)
     return weights
-
-
-
-
-
-
+'''
