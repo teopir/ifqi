@@ -96,6 +96,9 @@ class GaussianPolicy1D(SimplePolicy):
     
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
+
+    def pdf(self, state, action):
+        return np.array(1. / np.sqrt(2 * np.pi * self.sigma ** 2) * np.exp(- 1. / 2 * (action - self.K * state) ** 2 / self.sigma ** 2), ndmin=1)
         
     def gradient_log(self, state, action):
         return np.array(np.array(state/np.power(self.sigma,2)*(action - np.dot(self.K,state))).ravel(), ndmin=1)

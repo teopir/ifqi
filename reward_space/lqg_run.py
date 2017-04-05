@@ -10,8 +10,9 @@ from utils.continuous_env_sample_estimator import ContinuousEnvSampleEstimator
 import utils.linalg2 as la2
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 from sklearn.preprocessing import MinMaxScaler
-
+#import cvxpy
 
 def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, reward_features):
 
@@ -49,12 +50,44 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
 
     return return_hessians
 
+def trace_minimization(hessians, features, threshold):
+    n_states_actions = hessians.shape[0]
+    n_parameters = hessians.shape[1]
+    w = cvxpy.Variable(n_states_actions)
+    final_hessian = hessians[0] * w[0]
+    for i in range(1, n_states_actions):
+        final_hessian += hessians[i] * w[i]
+
+    objective = cvxpy.Minimize(cvxpy.trace(final_hessian))
+    constraints = [final_hessian + threshold * np.eye(n_parameters) << 0,
+                   cvxpy.sum_entries(w) == 1]
+    problem = cvxpy.Problem(objective, constraints)
+
+    result = problem.solve(verbose=True)
+    return w.value, final_hessian.value, result
+
+
+def plot_state_action_function(f, title, _cmap='coolwarm'):
+    states, actions = np.meshgrid(np.arange(-10,10,0.1), np.arange(-8,8,0.1))
+    z = f(states, actions)
+    print(states)
+
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot_surface(states, actions, z, rstride=1, cstride=1,
+                    cmap=plt.get_cmap(_cmap),
+                    linewidth=0.3, antialiased=True)
+    ax.set_title(title)
 
 if __name__ == '__main__':
     mdp = LQG1D()
     #Policy parameters
     K = mdp.computeOptimalK()
     sigma = 0.01
+
+    plot_state_action_function(lambda s,a: -s**2 -a**2, 'R')
+
 
     policy = GaussianPolicy1D(K,sigma)
 
@@ -67,6 +100,7 @@ if __name__ == '__main__':
     d_sa_mu_hat = estimator.get_d_sa_mu()
     D_hat = np.diag(d_sa_mu_hat)
 
+    states_actions = dataset[:, :2]
     states = dataset[:, 0]
     actions = dataset[:, 1]
     rewards = dataset[:, 2]
@@ -80,6 +114,24 @@ if __name__ == '__main__':
     print('Computing Q-function approx space...')
     X = np.dot(G.T, D_hat)
     phi = la2.nullspace(X)
+
+    from sklearn.neighbors import KNeighborsRegressor
+
+    sigma = 1.
+    def gaussian_kernel(x):
+        return 1. / np.sqrt(2 * np.pi * sigma ** 2) * np.exp(- 1. / 2 * x ** 2 / sigma ** 2)
+
+    knn = KNeighborsRegressor(n_neighbors=5, weights=gaussian_kernel)
+    knn.fit(states_actions, phi)
+
+    pi_sa = map(lambda s,a: policy.pdf(s,a), states, actions)
+
+    Q_true = np.array(
+        map(lambda s, a: mdp.computeQFunction(s, a, K, np.power(sigma, 2)),
+            states, actions))
+
+
+
     psi = phi
 
     scaler = MinMaxScaler(copy=False)
@@ -89,8 +141,8 @@ if __name__ == '__main__':
     h = estimate_hessian(dataset, n_episodes, G, H, psi)
     plt.scatter(np.arange(len(h)), h)
 
-    h = estimate_hessian(dataset, n_episodes, G, H, r)
-    plt.scatter(np.arange(len(h)), h, color='r')
+    hr = estimate_hessian(dataset, n_episodes, G, H, r)
+    plt.scatter(np.arange(len(hr)), hr, color='r')
 
     '''
     states_actions = dataset[:,:2]

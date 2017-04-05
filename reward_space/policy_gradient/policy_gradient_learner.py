@@ -1,5 +1,5 @@
 import numpy.linalg as la
-from reward_space.policy_gradient.gradient_estimator import ReinforceGradientEstimator
+from reward_space.policy_gradient.gradient_estimator2 import ReinforceGradientEstimator
 
 class PolicyGradientLearner(object):
 

@@ -1,57 +1,228 @@
 import numpy as np
 import numpy.linalg as la
-from ifqi.evaluation import evaluation
-
 
 class GradientEstimator(object):
-    def __init_(self,
-                mdp,
-                policy,
-                tol=1e-3,
-                max_iter=100):
-        self.mdp = mdp
-        self.policy = policy
-        self.tol = tol
-        self.max_iter = max_iter
+    def __init_(self, dataset):
+        self.dataset = dataset
+        self.n_samples = dataset.shape[0]
+        self.n_episodes = dataset[:, -1].sum()
 
-    def estimate(theta):
+    def estimate_return(self):
+        return 1. / self.n_episodes * np.dot(self.dataset[:, 2],
+                                             self.dataset[:, 4])
+
+    def estimate_gradient(self,
+                          reward_features,
+                          policy_gradient,
+                          use_baseline=False,
+                          state_space=None,
+                          action_space=None):
         pass
 
+    def estimate_hessian(self,
+                         reward_features,
+                         policy_gradient,
+                         policy_hessian,
+                         use_baseline=False,
+                         state_space=None,
+                         action_space=None):
+        pass
 
-class ReinforceGradientEstimator(GradientEstimator):
+class MaximumLikelihoodEstimator(GradientEstimator):
 
-    def estimate(self,theta):
-        print('\tReinforce: starting estimation...')
+    def estimate_gradient(self,
+                          reward_features,
+                          policy_gradient,
+                          use_baseline=False,
+                          state_space=None,
+                          action_space=None):
 
-        theta = np.array(theta, ndmin=1)
-        dim = len(theta)
-        self.policy.set_parameter(theta)
+        n_features = reward_features.shape[1]
+        n_params = policy_gradient.shape[1]
+        if state_space is not None and action_space is not None:
+            n_states, n_actions = len(state_space), len(action_space)
 
-        ite = 0
-        gradient_increment = np.inf
-        gradient_estimate = np.inf
+        episode_reward_features = np.zeros((self.n_episodes, n_features))
+        episode_gradient = np.zeros((self.n_episodes, n_params))
 
-        print('\tIte %s gradient_increment %s' % (ite, gradient_increment))
+        if use_baseline:
+            baseline = self._estimate_gradient_baseline(reward_features,
+                                                        policy_gradient,
+                                                        state_space,
+                                                        action_space)
+        else:
+            baseline = 0.
 
-        traj_return = []
-        traj_log_grad = []
+        i = 0
+        episode = 0
+        while i < self.n_samples:
+            if state_space is not None and action_space is not None:
+                s = np.argwhere(state_space == self.dataset[i, 0])
+                a = np.argwhere(action_space == self.dataset[i, 1])
+                index = s * n_actions + a
+            else:
+                index = i
 
-        while ite < self.max_iter and gradient_increment > self.tol:
-            ite += 1
+            d = self.dataset[i, 4]
 
-            traj = evaluation.collect_episodes(self.mdp, self.policy, 1)
-            traj_return.append(np.sum(traj[:, 2] * traj[:, 4]))
-            traj_log_grad.append(self.policy.log_grad(traj[:, 0], traj[:, 1]))
+            episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
+            episode_gradient[episode, :] += policy_gradient[index, :].squeeze()
 
-            baseline = np.sum(traj_log_grad ** 2 * traj_return) / np.sum(
-                traj_log_grad ** 2)
-            old_gradient_estimate = gradient_estimate
-            gradient_estimate = 1. / ite * np.sum(
-                traj_log_grad * (traj_return - baseline))
+            if self.dataset[i, -1] == 1:
+                episode += 1
 
-            gradient_increment = la.norm(
-                gradient_estimate - old_gradient_estimate)
+            i += 1
 
-            print('\tIte %s gradient_increment %s' % (ite, gradient_increment))
+        episode_reward_features_baseline = episode_reward_features - baseline
 
-        return gradient_estimate, gradient_increment, ite
+        return_gradient = 1. / self.n_episodes * np.dot(
+                                            episode_reward_features_baseline.T,
+                                            episode_gradient)
+
+        return return_gradient
+
+    def _estimate_gradient_baseline(self,
+                                    reward_features,
+                                    policy_gradient,
+                                    state_space=None,
+                                    action_space=None):
+
+        n_features = reward_features.shape[1]
+        n_params = policy_gradient.shape[1]
+        if state_space is not None and action_space is not None:
+            n_states, n_actions = len(state_space), len(action_space)
+
+        episode_reward_features = np.zeros((self.n_episodes, n_features))
+        episode_gradient = np.zeros((self.n_episodes, n_params))
+        numerator = denominator = 0.
+
+        i = 0
+        episode = 0
+        while i < self.n_samples:
+            if state_space is not None and action_space is not None:
+                s = np.argwhere(state_space == self.dataset[i, 0])
+                a = np.argwhere(action_space == self.dataset[i, 1])
+                index = s * n_actions + a
+            else:
+                index = i
+
+            d = self.dataset[i, 4]
+
+            episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
+            episode_gradient[episode, :] += policy_gradient[index, :].squeeze()
+
+            if self.dataset[i, -1] == 1:
+                vectorized_gradient = episode_gradient[episode, :].ravel()
+                numerator += episode_reward_features[episode, :] * la.norm(
+                    vectorized_gradient) ** 2
+                denominator += la.norm(vectorized_gradient) ** 2
+                episode += 1
+
+            i += 1
+
+        baseline = numerator / denominator
+
+        return baseline
+
+    def estimate_hessian(self,
+                         reward_features,
+                         policy_gradient,
+                         policy_hessian,
+                         use_baseline=False,
+                         state_space=None,
+                         action_space=None):
+
+        n_features = reward_features.shape[1]
+        n_params = policy_hessian.shape[1]
+        if state_space is not None and action_space is not None:
+            n_states, n_actions = len(state_space), len(action_space)
+
+        episode_reward_features = np.zeros((self.n_episodes, n_features))
+        episode_hessian = np.zeros((self.n_episodes, n_params, n_params))
+
+        if use_baseline:
+            baseline = self._estimate_hessian_baseline(reward_features,
+                                                       policy_gradient,
+                                                       policy_hessian,
+                                                       state_space,
+                                                       action_space)
+        else:
+            baseline = 0.
+
+        i = 0
+        episode = 0
+        while i < self.n_samples:
+            if state_space is not None and action_space is not None:
+                s = np.argwhere(state_space == self.dataset[i, 0])
+                a = np.argwhere(action_space == self.dataset[i, 1])
+                index = s * n_actions + a
+            else:
+                index = i
+
+            d = self.dataset[i, 4]
+
+            episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
+            episode_hessian[episode, :, :] += np.outer(
+                policy_gradient[index, :].squeeze(), \
+                policy_gradient[index, :].squeeze()) + \
+                policy_hessian[index, :, :].squeeze()
+
+            if self.dataset[i, -1] == 1:
+                episode += 1
+
+            i += 1
+
+        episode_reward_features_baseline = episode_reward_features - baseline
+
+        return_hessians = 1. / self.n_episodes * np.tensordot(
+            episode_reward_features_baseline.T,
+            episode_hessian, axes=1)
+
+        return return_hessians
+
+    def _estimate_hessian_baseline(self,
+                                   reward_features,
+                                   policy_gradient,
+                                   policy_hessian,
+                                   state_space=None,
+                                   action_space=None):
+
+        n_features = reward_features.shape[1]
+        n_params = policy_gradient.shape[1]
+        if state_space is not None and action_space is not None:
+            n_states, n_actions = len(state_space), len(action_space)
+
+        episode_reward_features = np.zeros((self.n_episodes, n_features))
+        episode_hessian = np.zeros((self.n_episodes, n_params, n_params))
+        numerator = denominator = 0.
+
+        i = 0
+        episode = 0
+        while i < self.n_samples:
+            if state_space is not None and action_space is not None:
+                s = np.argwhere(state_space == self.dataset[i, 0])
+                a = np.argwhere(action_space == self.dataset[i, 1])
+                index = s * n_actions + a
+            else:
+                index = i
+
+            d = self.dataset[i, 4]
+
+            episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
+            episode_hessian[episode, :, :] += np.outer(
+                policy_gradient[index, :].squeeze(), \
+                policy_gradient[index, :].squeeze()) + \
+                policy_hessian[index, :, :].squeeze()
+
+            if self.dataset[i, -1] == 1:
+                vectorized_hessian = episode_hessian[episode, :, :].ravel()
+                numerator += episode_reward_features[episode, :] * la.norm(
+                    vectorized_hessian) ** 2
+                denominator += la.norm(vectorized_hessian) ** 2
+                episode += 1
+
+            i += 1
+
+        baseline = numerator / denominator
+
+        return baseline
