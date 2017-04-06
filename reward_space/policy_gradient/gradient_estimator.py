@@ -2,7 +2,7 @@ import numpy as np
 import numpy.linalg as la
 
 class GradientEstimator(object):
-    def __init_(self, dataset):
+    def __init__(self, dataset):
         self.dataset = dataset
         self.n_samples = dataset.shape[0]
         self.n_episodes = dataset[:, -1].sum()
@@ -29,6 +29,11 @@ class GradientEstimator(object):
         pass
 
 class MaximumLikelihoodEstimator(GradientEstimator):
+
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self.n_samples = dataset.shape[0]
+        self.n_episodes = int(dataset[:, -1].sum())
 
     def estimate_gradient(self,
                           reward_features,

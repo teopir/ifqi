@@ -88,7 +88,7 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
     episode_reward_features = np.zeros((n_episodes, n_features))
     episode_hessian = np.zeros((n_episodes, n_params, n_params))
 
-    baseline = estimate_hessian_baseline(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space)
+    #baseline = estimate_hessian_baseline(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space)
 
     i = 0
     episode = 0
@@ -110,7 +110,7 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
 
         i += 1
 
-    episode_reward_features_baseline = episode_reward_features - baseline
+    episode_reward_features_baseline = episode_reward_features #- baseline
 
     return_hessians = 1. / n_episodes * np.tensordot(episode_reward_features_baseline.T,
                                                      episode_hessian, axes=1)
@@ -127,7 +127,7 @@ def estimate_gradient(dataset, n_episodes, policy_gradient, reward_features, sta
     episode_reward_features = np.zeros((n_episodes, n_features))
     episode_gradient = np.zeros((n_episodes, n_params))
 
-    baseline = estimate_gradient_baseline(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space)
+    #baseline = estimate_gradient_baseline(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space)
 
     i = 0
     episode = 0
@@ -146,7 +146,7 @@ def estimate_gradient(dataset, n_episodes, policy_gradient, reward_features, sta
 
         i += 1
 
-    episode_reward_features_baseline = episode_reward_features - baseline
+    episode_reward_features_baseline = episode_reward_features #- baseline
 
     return_gradient = 1. / n_episodes * np.dot(episode_reward_features_baseline.T,
                                                      episode_gradient)
@@ -687,35 +687,37 @@ if __name__ == '__main__':
     X = np.dot(G.T, D_hat)
     phi = la2.nullspace(X)
 
-    psi = phi
+    psi = phi * la.norm(R)
     #print('Computing reward function approx space...')
     #Y = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, phi)
-    #psi = la2.range(Y)
+    #psi = la2.range(Y) *10000
 
-    scaler = MinMaxScaler(copy=False)
-    psi = scaler.fit_transform(psi)
     #---------------------------------------------------------------------------
     #Hessian estimation
 
     print('Estimating hessians...')
     H = policy.hessian_log()
 
-    a_true = scaler.fit_transform(A_true[:, np.newaxis])
-    r_true = scaler.fit_transform(R[:, np.newaxis])
+    a_true = A_true / la.norm(A_true) * la.norm(R)
+    r_true = R
 
-    hessian_true = estimate_hessian(dataset, n_episodes, G, H, r_true, \
+    hessian_true = estimate_hessian(dataset, n_episodes, G, H, r_true[:, np.newaxis], \
                                     mdp_wrap.state_space, mdp_wrap.action_space)[0]
 
-    hessian_true_a = estimate_hessian(dataset, n_episodes, G, H, a_true, \
+    hessian_true_a = estimate_hessian(dataset, n_episodes, G, H, a_true[:, np.newaxis], \
                                     mdp_wrap.state_space, mdp_wrap.action_space)[0]
 
     hessian_hat = estimate_hessian(dataset, n_episodes, G, H, psi, \
                                     mdp_wrap.state_space, mdp_wrap.action_space)
 
+
+
+
     print('Computing traces...')
     trace_true = np.trace(hessian_true)
     trace_true_a = np.trace(hessian_true_a)
     trace_hat = np.trace(hessian_hat, axis1=1, axis2=2)
+
     min_trace_idx = trace_hat.argmin()
     max_trace_idx = trace_hat.argmax()
 
@@ -729,26 +731,56 @@ if __name__ == '__main__':
     eigval_hat, _ = la.eigh(hessian_hat)
     eigmax_hat = eigval_hat[:, -1]
 
+    from hessian_optimization.hessian_optimization import HeuristicOptimizerNegativeDefinite
+    ho = HeuristicOptimizerNegativeDefinite(hessian_hat[eigmax_hat < 1e-10])
+    w = ho.fit()
+    best_hessian = np.tensordot(w, hessian_hat[eigmax_hat < 1e-10], axes=1)
+
+    trace_best = np.trace(best_hessian)
+    eigval_best, _ = la.eigh(best_hessian)
+    eigmax_best = eigval_best[-1]
+
     if plot_hessians:
         fig, ax = plt.subplots()
         ax.set_xlabel('index')
         ax.set_ylabel('eigenvalue')
         fig.suptitle('Hessian Eigenvalues')
-        ax.plot(np.arange(len(eigval_true)), eigval_true, color='r', marker='d',
+        ax.plot(np.arange(len(eigval_true)), eigval_true, color='r', marker='+',
                    label='Reward function')
-        ax.plot(np.arange(len(eigval_true)), eigval_true_a, color='g', marker='d',
+        ax.plot(np.arange(len(eigval_true)), eigval_true_a, color='g', marker='+',
                    label='Advantage function')
-        ax.plot(np.arange(len(eigval_true)), eigval_hat[min_trace_idx], color='b', marker='o',
+        ax.plot(np.arange(len(eigval_true)), eigval_hat[min_trace_idx], color='b', marker='+',
                    label='Feature with smallest trace')
-        ax.plot(np.arange(len(eigval_true)), eigval_hat[max_trace_idx], color='m', marker='o',
+        ax.plot(np.arange(len(eigval_true)), eigval_hat[max_trace_idx], color='m', marker='+',
                    label='Feature with largest trace')
-        '''
-        r = np.hstack([np.arange(len(eigval_true))[:, np.newaxis] + 1, eigval_true[:, np.newaxis], eigval_true_a[:, np.newaxis], eigval_hat[min_trace_idx][:, np.newaxis], eigval_hat[max_trace_idx][:, np.newaxis]])
-        np.savetxt('eigen.csv', r, delimiter=',', header='x,reward function,advantage function,Feature with smallest trace,Feature with largest trace')
+        ax.plot(np.arange(len(eigval_true)), eigval_best, color='y', marker='+',
+                label='Best')
 
         ax.legend(loc='upper right')
-        '''
+        plt.yscale('symlog', linthreshy=1e-8)
+
+    if plot_hessians:
+        fig, ax = plt.subplots()
+        ax.set_xlabel('trace')
+        ax.set_ylabel('max eigval')
+        fig.suptitle('Hessians')
+        ax.scatter(trace_hat, eigmax_hat, color='b', marker='+',
+                   label='Estimated hessians')
+        ax.scatter(trace_true, eigmax_true, color='r', marker='o', label='Reward function')
+        ax.scatter(trace_true_a, eigmax_true_a, color='g', marker='o', label='Advantage function')
+        ax.scatter(trace_best, eigmax_best, color='y', marker='o',
+                   label='Best')
+        ax.legend(loc='upper right')
+        # ax.scatter(trace_trace, eigmax_trace, color='g', marker='d', s=100)
+        # ax.scatter(trace_eigval, eigmax_eigval, color='y', marker='d', s=100)
+
     '''
+    r = np.hstack([np.arange(len(eigval_true))[:, np.newaxis] + 1, eigval_true[:, np.newaxis], eigval_true_a[:, np.newaxis], eigval_hat[min_trace_idx][:, np.newaxis], eigval_hat[max_trace_idx][:, np.newaxis]])
+    np.savetxt('eigen.csv', r, delimiter=',', header='x,reward function,advantage function,Feature with smallest trace,Feature with largest trace')
+
+
+
+
     print('Trace minimization...')
     print(time.strftime('%x %X %z'))
     w, hessian_trace, _ = trace_minimization(hessian_hat[:10], psi[:,:10], 0.)
@@ -796,77 +828,4 @@ if __name__ == '__main__':
         ax.legend(loc='upper right')
 
     plt.show()
-
-#guardare segno negativo
-def trivial_heuristic(hessians, max_iter=100):
-    n_features, n_parameters = hessians.shape[:2]
-    weights = np.zeros(n_features)
-
-    current_hessian = 0
-    current_eigval = 0 #Better then the semidefinite
-    ite = 0
-    improved = True
-    while ite < max_iter and improved:
-        print('Iteration %s/%s' % (ite, max_iter))
-        best_eigval, best_idx = np.inf, None
-        for i in range(n_features):
-            if weights[i] == 0:
-                eigval, _ = la.eigh(current_hessian * (1 - 1. / (ite + 1)) + hessians[i] * 1. / (ite + 1))
-                print(current_eigval)
-                print(eigval[-1])
-                print('---')
-                if eigval[-1] < current_eigval:
-                    best_eigval = eigval[-1]
-                    best_idx = i
-
-        print('Iteration %s/%s' % (ite, max_iter))
-        if best_eigval < current_eigval:
-            improved = True
-            weights *= (1 - 1. / (ite + 1))
-            weights[best_idx] = 1. / (ite + 1)
-            current_eigval = best_eigval
-        else:
-            improved = False
-
-        ite += 1
-    print(ite)
-    return weights
-
-#guardare segno negativo aggiungere i -hessians
-def less_trivial_heuristic(hessians, max_iter=100, tolerance=1e-10):
-    n_features, n_parameters = hessians.shape[:2]
-    weights = np.zeros(n_features)
-
-    ite = 1
-    improved = True
-
-    eigvals, _ = la.eigh(hessians)
-    idx = np.argmin(eigvals[:, -1])
-    lb = ub = eigvals[idx, -1]
-    weights[idx] = 1.
-
-    while ite < max_iter and improved:
-        print('Iteration %s/%s' % (ite, max_iter))
-        best_delta, best_idx = 0, None
-        for i in range(n_features):
-            if weights[i] == 0:
-                lb_new = (1 - 1. / (ite + 1)) * lb + (1. / (ite + 1)) * eigvals[i, 0]
-                ub_new = (1 - 1. / (ite + 1)) * ub + (1. / (ite + 1)) * eigvals[i, -1]
-                delta = (ub + lb) / 2 - (ub_new - lb_new) / 2
-                if delta < best_delta and abs(delta) > tolerance and ub_new < 0.:
-                    best_delta = delta
-                    best_idx = i
-
-        if best_delta < 0:
-            print(best_delta)
-            improved = True
-            weights *= (1 - 1. / (ite + 1))
-            weights[best_idx] = 1. / (ite + 1)
-        else:
-            improved = False
-
-        ite += 1
-
-    print(ite)
-    return weights
 '''

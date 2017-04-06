@@ -620,6 +620,15 @@ class BoltzmannPolicy(Policy):
 
         self.seed()
 
+    def set_parameter(self, new_parameter):
+        self.state_action_parameters = new_parameter
+        self.parameters = new_parameter.reshape((self.n_actions, self.n_parameters))
+
+        self._build_density()
+        self._build_grad_hess()
+
+        self.seed()
+
     def _build_density(self):
         numerators = np.exp(np.dot(self.features, self.parameters.T))
         denominators = np.sum(numerators, axis=1)[:, np.newaxis]

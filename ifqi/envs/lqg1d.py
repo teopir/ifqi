@@ -63,13 +63,14 @@ class LQG1D(Environment):
         self.seed()
         self.reset()
 
+    def get_cost(self, x, u):
+        return np.dot(x, np.dot(self.Q, x)) + np.dot(u, np.dot(self.R, u))
+
     def step(self, action, render=False):
         u = np.clip(action, -self.max_action, self.max_action)
         noise = self.np_random.randn() * self.sigma_noise
         xn = np.dot(self.A, self.state) + np.dot(self.B, u) + noise
-        cost = np.dot(self.state,
-                      np.dot(self.Q, self.state)) + \
-            np.dot(u, np.dot(self.R, u))
+        cost = self.get_cost(self.state, u)
 
         self.state = np.array(xn.ravel())
         if self.discrete_reward:
