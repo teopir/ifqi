@@ -182,6 +182,7 @@ def collect_episode(mdp, policy=None):
             - action
             - reward
             - next state
+            - discount
             - a flag indicating whether the reached state is absorbing
             - a flag indicating whether the episode is finished (absorbing state
               is reached or the time horizon is met)

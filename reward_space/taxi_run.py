@@ -457,6 +457,7 @@ if __name__ == '__main__':
 
     tol = 1e-24
     mdp = TaxiEnv()
+    mdp.horizon = 200
     n_episodes = 1000
 
     print('Computing optimal policy...')
@@ -475,6 +476,14 @@ if __name__ == '__main__':
     print('KL divergence = %s' % d_kl)
 
     policy =  BoltzmannPolicy(state_features, action_weights)
+
+
+    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
+
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.1, verbose=1)
+    theta = learner.optimize(policy.state_action_parameters + np.random.randn(n_parameters, 1) * 10)
+    policy.set_parameter(theta)
+
 
     print('Collecting samples from optimal approx policy...')
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
@@ -773,6 +782,37 @@ if __name__ == '__main__':
         ax.legend(loc='upper right')
         # ax.scatter(trace_trace, eigmax_trace, color='g', marker='d', s=100)
         # ax.scatter(trace_eigval, eigmax_eigval, color='y', marker='d', s=100)
+
+    ind = trace_hat[eigmax_hat < 1e-10].argsort()
+    hessian_hat = hessian_hat[eigmax_hat < 1e-10][ind]
+    psi = psi[:, eigmax_hat < 1e-10][:, ind]
+    trace_hat = trace_hat[eigmax_hat < 1e-10][ind]
+
+
+    n_features = np.arange(0, hessian_hat.shape[0], 50)
+    n_features[0] = 1
+    traces = []
+    for i in n_features:
+        used_hessians = hessian_hat[:i]
+        optimizer = HeuristicOptimizerNegativeDefinite(used_hessians)
+        w = optimizer.fit(skip_check=True)
+        trace = np.trace(np.tensordot(w, used_hessians, axes=1))
+        traces.append(trace)
+
+    fig, ax = plt.subplots()
+    ax.set_xlabel('number of features (sorted by trace)')
+    ax.set_ylabel('trace')
+    ax.plot(n_features, traces, marker='o', label='Features')
+    ax.plot([1, n_features[-1]], [trace_true] * 2, color='r', linewidth=2.0,
+            label='Reward function')
+    ax.plot([1, n_features[-1]], [trace_hat[0]] * 2, color='g',
+            linewidth=2.0, label='Best individual feature')
+    ax.plot([1, n_features[-1]], [trace_hat[-1]] * 2, color='m',
+            linewidth=2.0, label='Worst individual feature')
+    ax.legend(loc='upper right')
+
+    plot_state_action_function(mdp, np.dot(psi[:,:n_features[-1]], w), 'Best combination')
+    plot_state_action_function(mdp, R, 'Reward')
 
     '''
     r = np.hstack([np.arange(len(eigval_true))[:, np.newaxis] + 1, eigval_true[:, np.newaxis], eigval_true_a[:, np.newaxis], eigval_hat[min_trace_idx][:, np.newaxis], eigval_hat[max_trace_idx][:, np.newaxis]])

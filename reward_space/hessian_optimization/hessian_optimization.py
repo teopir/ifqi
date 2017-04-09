@@ -94,12 +94,14 @@ class HeuristicOptimizerAll(HessianOptimizer):
 
 class HeuristicOptimizerNegativeDefinite(HessianOptimizer):
 
-    def fit(self):
+    def fit(self, skip_check=False):
         traces = np.trace(self.hessians, axis1=1, axis2=2)
-        eigenvalues = la.eigh(self.hessians)[0]
-        max_eigenvalues = eigenvalues[:, -1]
-        if max_eigenvalues.max() > 1e-10:
-            raise ValueError('Hessians must be negative semidefinite!')
+
+        if not skip_check:
+            eigenvalues = la.eigh(self.hessians)[0]
+            max_eigenvalues = eigenvalues[:, -1]
+            if max_eigenvalues.max() > 1e-10:
+                raise ValueError('Hessians must be negative semidefinite!')
 
         den = np.sqrt(np.sum(traces ** 2))
         w = - traces / den

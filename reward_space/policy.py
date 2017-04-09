@@ -87,6 +87,12 @@ class GaussianPolicy1D(SimplePolicy):
         self.sigma = sigma
         self.seed()
 
+    def get_dim(self):
+        return 1
+
+    def set_parameter(self, K):
+        self.K = K
+
     def draw_action(self, state, done):
         state = np.array(state, ndmin=1)
         action = np.dot(self.K, state) + self.np_random.randn() * self.sigma
@@ -99,9 +105,13 @@ class GaussianPolicy1D(SimplePolicy):
 
     def pdf(self, state, action):
         return np.array(1. / np.sqrt(2 * np.pi * self.sigma ** 2) * np.exp(- 1. / 2 * (action - self.K * state) ** 2 / self.sigma ** 2), ndmin=1)
-        
-    def gradient_log(self, state, action):
-        return np.array(np.array(state/np.power(self.sigma,2)*(action - np.dot(self.K,state))).ravel(), ndmin=1)
+
+
+    def gradient_log(self, state, action, type_='state-action'):
+        if type_ == 'state-action':
+            return np.array(np.array(state/np.power(self.sigma,2)*(action - np.dot(self.K,state))).ravel(), ndmin=1)
+        elif type_ == 'list':
+            return map(lambda s,a: self.gradient_log(s, a), state, action)
 
     def hessian_log(self, state, action):
         return np.array(- state ** 2 / self.sigma ** 2, ndmin=2)
@@ -695,9 +705,11 @@ class BoltzmannPolicy(Policy):
         else:
             raise NotImplementedError
 
-    def gradient_log(self, type_='state-action'):
+    def gradient_log(self, states=None, actions=None, type_='state-action'):
         if type_ == 'state-action':
             return self.grad_log
+        elif type_ == 'list':
+            return np.array(map(lambda s,a: self.grad_log[int(s) * self.n_actions + int(a)], states, actions))
         else:
             raise NotImplementedError
 
@@ -713,6 +725,9 @@ class BoltzmannPolicy(Policy):
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
+
+    def get_dim(self):
+        return self.state_action_parameters.shape[0]
 
 
 

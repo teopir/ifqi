@@ -6,6 +6,7 @@ from policy import GaussianPolicy1D
 from utils.continuous_env_sample_estimator import ContinuousEnvSampleEstimator
 import utils.linalg2 as la2
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy.linalg as la
 from policy_gradient.gradient_estimator import MaximumLikelihoodEstimator
 from sklearn.neighbors import KNeighborsRegressor
@@ -36,10 +37,16 @@ if __name__ == '__main__':
 
     #Policy parameters
     K = mdp.computeOptimalK()
-    sigma = 0.01
+    sigma = np.sqrt(0.1)
 
     policy = GaussianPolicy1D(K,sigma)
+    '''
+    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
 
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.001, verbose=1)
+    theta = learner.optimize(-1)
+    policy.set_parameter(theta)
+    '''
     if plot:
         reward_function = lambda states, actions: np.array(map(lambda s, a: -mdp.get_cost(s,a), states, actions))
         Q_function = lambda states, actions: np.array(map(lambda s, a: mdp.computeQFunction(s, a, K, np.power(sigma, 2)), states, actions))
@@ -123,20 +130,62 @@ if __name__ == '__main__':
     ax.legend(loc='upper right')
     plt.yscale('symlog')
 
-    sigma = 1.
+    sigma = 2.
     def gaussian_kernel(x):
         return 1. / np.sqrt(2 * np.pi * sigma ** 2) * np.exp(- 1. / 2 * x ** 2 / sigma ** 2)
 
     knn = KNeighborsRegressor(n_neighbors=5, weights=gaussian_kernel)
     knn.fit(states_actions, phi)
 
+    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
     knn.fit(states_actions, np.dot(phi[:, :2000], w))
     plot_state_action_function(lambda states, actions: knn.predict(
         np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])),
                                'Best combination')
 
-    knn.fit(states_actions, rewards)
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.15, verbose=1)
+    theta, history1 = learner.optimize(-1., reward=lambda traj: knn.predict(
+        traj[:, :2]), return_history=True)
+    policy.set_parameter(theta)
+
+    knn = KNeighborsRegressor(n_neighbors=1, weights=gaussian_kernel)
+    knn.fit(states_actions, phi)
+
+    knn.fit(states_actions, rewards / la.norm(rewards))
     plot_state_action_function(lambda states, actions: knn.predict(
         np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])),
                                'Reward function')
+
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.15, verbose=1)
+    theta, history2 = learner.optimize(-1., reward=lambda traj: knn.predict(
+        traj[:, :2]), return_history=True)
+    policy.set_parameter(theta)
+
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.15 / la.norm(dataset[:, 2]), verbose=1)
+    theta, history3 = learner.optimize(-1., return_history=True)
+    policy.set_parameter(theta)
+
+    fig, ax = plt.subplots()
+    ax.set_xlabel('itearations')
+    ax.set_ylabel('parameter')
+    fig.suptitle('REINFORCE')
+    ax.plot(np.arange(len(history1)), [np.asscalar(K)] * len(history1), linewidth=2.0, label='Optimal parameter')
+    ax.plot(np.arange(len(history1)), np.array(history1).ravel(), marker='+', label='Best')
+    ax.plot(np.arange(len(history1)), np.array(history2).ravel(), marker='+', label='Reward as basis function')
+    ax.plot(np.arange(len(history1)), np.array(history3).ravel(), marker='+', label='Reward')
+    ax.legend(loc='lower right')
+
+
+
+    fig, ax = plt.subplots()
+    ax.set_xlabel('trace')
+    ax.set_ylabel('max eigval')
+    fig.suptitle('Hessians')
+    ax.scatter(hessian_hat.ravel(), hessian_hat.ravel(), color='b', marker='+',
+               label='Estimated hessians')
+    ax.scatter(hessian_reward.ravel(), hessian_reward.ravel(), color='r', marker='o', label='Reward function')
+    ax.scatter(traces[-1], traces[-1], color='y', marker='o',
+               label='Best')
+    ax.legend(loc='upper left')
+
 
