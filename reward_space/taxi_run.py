@@ -13,7 +13,7 @@ from reward_space.proto_value_functions.proto_value_functions_estimator import  
 import reward_space.utils.linalg2 as la2
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 from sklearn.linear_model import LogisticRegression
-import cvxpy
+#import cvxpy
 import time
 
 def mdp_norm(f, mdp_wrap):
@@ -740,7 +740,7 @@ if __name__ == '__main__':
     eigval_hat, _ = la.eigh(hessian_hat)
     eigmax_hat = eigval_hat[:, -1]
 
-    from hessian_optimization.hessian_optimization import HeuristicOptimizerNegativeDefinite
+    from inverse_reinforcement_learning.hessian_optimization import HeuristicOptimizerNegativeDefinite
     ho = HeuristicOptimizerNegativeDefinite(hessian_hat[eigmax_hat < 1e-10])
     w = ho.fit()
     best_hessian = np.tensordot(w, hessian_hat[eigmax_hat < 1e-10], axes=1)

@@ -3,6 +3,36 @@ import numpy.linalg as la
 
 class ProtoValueFunctionsEstimator(object):
 
+    '''
+    Abstract class for proto value functions estimator
+    '''
+
+    def fit(self, dataset):
+        pass
+
+    def transform(self, k):
+        pass
+
+    def get_operator(self):
+        return self.L
+
+    def get_operator_type(self):
+        return self.operator
+
+    def get_adjacency_matrix(self):
+        return self.W
+
+
+class DiscreteProtoValueFunctionsEstimator(ProtoValueFunctionsEstimator):
+
+    '''
+    This class implements an estimator for the proto value functions in the
+    discrete domain. The available graph operators are:
+    - random walk
+    - combinatorial laplacian
+    - normalized laplacian
+    '''
+
     eps = 1e-24
 
     def __init__(self,
@@ -117,3 +147,20 @@ class ProtoValueFunctionsEstimator(object):
 
     def get_adjacency_matrix(self):
         return self.W
+
+class ContinuousProtoValueFunctions(ProtoValueFunctionsEstimator):
+
+    def __init__(self,
+                 operator='norm-laplacian',
+                 method='on-policy',
+                 type_='state-action'):
+        self.operator = operator
+        self.method = method
+        self.type_ = type_
+
+    def fit(self, dataset):
+        pass
+
+    def transform(self, k):
+        pass
+

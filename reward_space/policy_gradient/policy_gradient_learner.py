@@ -14,7 +14,7 @@ class PolicyGradientLearner(object):
                  mdp,
                  policy,
                  lrate=0.01,
-                 lrate_decay=0,
+                 lrate_decay=None,
                  estimator='reinforce',
                  max_iter_eval=100,
                  tol_eval=1e-5,
@@ -85,13 +85,14 @@ class PolicyGradientLearner(object):
 
         gradient = self.estimator.estimate(reward=reward)
         gradient_norm = la.norm(gradient)
+        lrate = self.lrate
 
         if self.verbose >= 1:
             print('Ite %s: gradient norm %s' % (ite, gradient_norm))
 
         while gradient_norm > self.tol_opt and ite < self.max_iter_opt:
             print(theta)
-            theta += self.lrate * gradient  #Gradient ascent update
+            theta += lrate * gradient  #Gradient ascent update
 
             if return_history:
                 history.append(np.copy(theta))
@@ -102,6 +103,16 @@ class PolicyGradientLearner(object):
             gradient = self.estimator.estimate(reward=reward)
             gradient_norm = la.norm(gradient)
             ite += 1
+
+            if self.lrate_decay is not None:
+                decay = self.lrate_decay['decay']
+                method = self.lrate_decay['method']
+                if method == 'exponential':
+                    lrate *= np.exp(- ite * decay)
+                elif method == 'inverse':
+                    lrate = self.lrate / (1. + decay * ite)
+                else:
+                    raise NotImplementedError()
 
             if self.verbose >= 1:
                 print('Ite %s: gradient norm %s' % (ite, gradient_norm))
