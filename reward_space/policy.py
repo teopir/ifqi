@@ -631,8 +631,8 @@ class BoltzmannPolicy(Policy):
         self.seed()
 
     def set_parameter(self, new_parameter):
-        self.state_action_parameters = new_parameter
-        self.parameters = new_parameter.reshape((self.n_actions, self.n_parameters))
+        self.state_action_parameters = np.copy(new_parameter)
+        self.parameters = self.state_action_parameters.reshape((self.n_actions, self.n_parameters))
 
         self._build_density()
         self._build_grad_hess()

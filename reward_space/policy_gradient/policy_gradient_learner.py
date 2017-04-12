@@ -91,7 +91,7 @@ class PolicyGradientLearner(object):
             print('Ite %s: gradient norm %s' % (ite, gradient_norm))
 
         while gradient_norm > self.tol_opt and ite < self.max_iter_opt:
-            print(theta)
+            #print(theta)
             theta += lrate * gradient  #Gradient ascent update
 
             if return_history:

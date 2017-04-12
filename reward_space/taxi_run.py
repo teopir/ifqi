@@ -457,8 +457,9 @@ if __name__ == '__main__':
 
     tol = 1e-24
     mdp = TaxiEnv()
-    mdp.horizon = 200
+    mdp.horizon = 100
     n_episodes = 1000
+    mdp.gamma = 0.9
 
     print('Computing optimal policy...')
     opt_policy = TaxiEnvPolicy()
@@ -476,14 +477,7 @@ if __name__ == '__main__':
     print('KL divergence = %s' % d_kl)
 
     policy =  BoltzmannPolicy(state_features, action_weights)
-
-
-    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
-
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.1, verbose=1)
-    theta = learner.optimize(policy.state_action_parameters + np.random.randn(n_parameters, 1) * 10)
-    policy.set_parameter(theta)
-
+    theta_opt = np.copy(policy.state_action_parameters)
 
     print('Collecting samples from optimal approx policy...')
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
@@ -688,8 +682,8 @@ if __name__ == '__main__':
                 ax2.plot(ks, errors_gprf[-1], marker='o', label='GPRF ' + method)
                 ax2.legend(loc='upper right')
 
-    '''
 
+    '''
     print('-' * 100)
 
     print('Computing Q-function approx space...')
@@ -799,6 +793,7 @@ if __name__ == '__main__':
         trace = np.trace(np.tensordot(w, used_hessians, axes=1))
         traces.append(trace)
 
+
     fig, ax = plt.subplots()
     ax.set_xlabel('number of features (sorted by trace)')
     ax.set_ylabel('trace')
@@ -814,11 +809,18 @@ if __name__ == '__main__':
     plot_state_action_function(mdp, np.dot(psi[:,:n_features[-1]], w), 'Best combination')
     plot_state_action_function(mdp, R, 'Reward')
 
+    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
+    best = np.dot(psi[:,:n_features[-1]], w)
+    learner = PolicyGradientLearner(mdp, policy, lrate=1., verbose=1, max_iter_opt=25, tol_opt=0., tol_eval=0.)
+    theta0 = policy.state_action_parameters
+    #theta0 = policy.state_action_parameters + 10. * np.random.randn(n_parameters, 1)
+    #theta0 = np.zeros((n_parameters, 1))
+    theta = learner.optimize(theta0, reward=lambda traj: best[map(int,(traj[:, 0]*6+traj[:, 1]).ravel())])
+    policy.set_parameter(theta)
+
     '''
     r = np.hstack([np.arange(len(eigval_true))[:, np.newaxis] + 1, eigval_true[:, np.newaxis], eigval_true_a[:, np.newaxis], eigval_hat[min_trace_idx][:, np.newaxis], eigval_hat[max_trace_idx][:, np.newaxis]])
     np.savetxt('eigen.csv', r, delimiter=',', header='x,reward function,advantage function,Feature with smallest trace,Feature with largest trace')
-
-
 
 
     print('Trace minimization...')
@@ -868,4 +870,5 @@ if __name__ == '__main__':
         ax.legend(loc='upper right')
 
     plt.show()
-'''
+
+    '''

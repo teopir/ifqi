@@ -14,6 +14,8 @@ from inverse_reinforcement_learning.hessian_optimization import HeuristicOptimiz
 import bottleneck as bn
 from policy_gradient.policy_gradient_learner import PolicyGradientLearner
 from sklearn.preprocessing import MinMaxScaler
+from utils.k_neighbors_regressor_2 import KNeighborsRegressor2
+from proto_value_functions.proto_value_functions_estimator import ContinuousProtoValueFunctions
 
 
 def plot_state_action_function(f, title, states=None, actions=None, _cmap='coolwarm'):
@@ -31,10 +33,46 @@ def plot_state_action_function(f, title, states=None, actions=None, _cmap='coolw
                     linewidth=0.3, antialiased=True)
     ax.set_title(title)
 
+def get_knn_function_for_plot(knn, rescale=False):
+    if rescale:
+        return lambda states, actions: knn.predict \
+         (np.hstack([states[:, np.newaxis], actions[:, np.newaxis]]), rescale=False)
+    else:
+        return lambda states, actions: knn.predict \
+            (np.hstack([states[:, np.newaxis], actions[:, np.newaxis]]))
+
+def get_knn_function_for_prediction(knn, rescale=False):
+    if rescale:
+        return lambda traj: knn.predict(traj[:, :2], rescale=False)
+    else:
+        return lambda traj: knn.predict(traj[:, :2])
+
+def train(learner, states_actions, gaussian_kernel, k, penalty, feature, knn_penalty=None, plot=False):
+    knn = KNeighborsRegressor(n_neighbors=k, weights=gaussian_kernel)
+    knn.fit(states_actions, feature.ravel())
+
+    if plot:
+        if penalty:
+            function = lambda states, actions: .5 * \
+                        get_knn_function_for_plot(knn)(states, actions) + \
+                        .5 * 1./0.4 * get_knn_function_for_plot(knn_penalty, True)(states, actions)
+        else:
+            function = get_knn_function_for_plot(knn)
+        plot_state_action_function(function, '%sknn %s' % (k, '- penalty' if penalty else ''))
+
+    if penalty:
+        function = lambda traj: .5 * get_knn_function_for_prediction(knn)(traj) + \
+                            .5 * 1. / 0.4 * get_knn_function_for_prediction(knn_penalty, True)(traj)
+    else:
+        function = get_knn_function_for_prediction(knn)
+
+    theta, history = learner.optimize(-0.2, reward=function, return_history=True)
+    return history
 
 if __name__ == '__main__':
 
     plot = False
+    plot_train = True
     fast_heuristic = True
 
     mdp = LQG1D()
@@ -54,7 +92,7 @@ if __name__ == '__main__':
         plot_state_action_function(Q_function, 'Q-function')
 
     #Collect samples
-    n_episodes = 50
+    n_episodes = 20
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
 
     estimator = ContinuousEnvSampleEstimator(dataset, mdp.gamma)
@@ -84,7 +122,6 @@ if __name__ == '__main__':
     print('Computing gradients and hessians...')
     gradient_hat = ml_estimator.estimate_gradient(psi, G, use_baseline=True)
     hessian_hat = ml_estimator.estimate_hessian(psi, G, H, use_baseline=True)
-
     hessian_reward = ml_estimator.estimate_hessian(r_norm, G, H, use_baseline=True).ravel()
     hessian_q = ml_estimator.estimate_hessian(q_function_norm, G, H, use_baseline=True).ravel()
 
@@ -108,8 +145,8 @@ if __name__ == '__main__':
     the same since the dimension of parameter space is 1
     '''
 
-    print('Heuristic with increasing number of features ranked by trace')
     if not fast_heuristic:
+        print('Heuristic with increasing number of features ranked by trace')
         ind = hessian_hat.ravel().argsort()
         hessian_hat = hessian_hat[ind]
         psi = psi[:, ind]
@@ -129,15 +166,19 @@ if __name__ == '__main__':
         ax.set_xlabel('number of features (sorted by trace)')
         ax.set_ylabel('trace = max eigval')
         ax.plot(n_features, traces, marker='o', label='Features')
-        ax.plot([1, n_features[-1]], [hessian_reward] * 2, color='r', linewidth=2.0, label='Reward function')
-        ax.plot([1, n_features[-1]], [hessian_hat.min()] * 2, color='g', linewidth=2.0, label='Best individual feature')
-        ax.plot([1, n_features[-1]], [hessian_hat.max()] * 2, color='m', linewidth=2.0, label='Worst individual feature')
+        ax.plot([1, n_features[-1]], [hessian_reward] * 2, color='r', \
+                linewidth=2.0, label='Reward function')
+        ax.plot([1, n_features[-1]], [hessian_hat.min()] * 2, color='g', \
+                linewidth=2.0, label='Best individual feature')
+        ax.plot([1, n_features[-1]], [hessian_hat.max()] * 2, color='m', \
+                linewidth=2.0, label='Worst individual feature')
         ax.legend(loc='upper right')
         plt.yscale('symlog')
     else:
         optimizer = HeuristicOptimizerNegativeDefinite(hessian_hat)
         w = optimizer.fit()
         best = np.dot(psi, w)[:, np.newaxis]
+        print('Best basis function %s' % np.tensordot(w, hessian_hat, axes=1).ravel())
 
     '''
     Reward functions are compared on the basis of the training time
@@ -156,17 +197,78 @@ if __name__ == '__main__':
     def gaussian_kernel(x):
         return 1. / np.sqrt(2 * np.pi * sigma ** 2) * np.exp(- 1. / 2 * x ** 2 / sigma ** 2)
 
-    def predict_d_mu_sa(states_actions, s, a, k=5):
-        dist = np.sqrt(((states_actions - np.array([[s,a]])) ** 2).sum(axis=1)).ravel()
-        topk = bn.argpartition(dist, k)
-        return np.asscalar(gaussian_kernel(dist[topk]).mean())
+    d_sa_knn = KNeighborsRegressor2(n_neighbors=5, weights=gaussian_kernel)
+    d_sa_knn.fit(states_actions, np.ones(len(states_actions)))
+    plot_state_action_function(get_knn_function_for_plot(d_sa_knn, True), 'd(s,a)')
 
-    plot_state_action_function(lambda states, actions: np.array(map(lambda s,a: \
-                    predict_d_mu_sa(states_actions, s, a, 5), states, actions)), 'd(s,a)')
+    print('-' * 100)
+    print('Training with REINFORCE')
 
     learner = PolicyGradientLearner(mdp, policy, lrate=0.01, verbose=1)
 
     #Basis functions with and without penalization
+
+    if plot_train:
+        fig, ax = plt.subplots()
+        ax.set_xlabel('itearations')
+        ax.set_ylabel('parameter')
+        fig.suptitle('REINFORCE')
+
+    k_list = [1, 2, 5, 10]
+    penalty_list = [True, False]
+    histories = []
+    labels = []
+    for k in k_list:
+        for penalty in penalty_list:
+            label = 'Trace minimizer - %sknn%s' % (k, ' - penalty' if penalty else '')
+            print(label)
+            history = train(learner, states_actions, gaussian_kernel, k, penalty, best, d_sa_knn)
+            histories.append(history)
+            labels.append(label)
+            if plot_train:
+                ax.plot(np.arange(len(history)), np.array(history).ravel(),
+                        marker='+', label=label)
+
+
+    # history_reward =
+    #hystory_q_function =
+    #hystory_a_function =
+
+    print('-' * 100)
+    print('Estimating maximum entropy reward...')
+    from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import MaximumEntropyIRL
+    me = MaximumEntropyIRL(dataset)
+    w = me.fit(G, phi)
+    best_me = np.dot(phi, w)[:, np.newaxis]
+    best_me = scaler.fit_transform(best_me)
+    hystory_max_entropy = train(learner, states_actions, gaussian_kernel, 2, False, best_me, plot=True)
+    if plot_train:
+        ax.plot(np.arange(len(hystory_max_entropy)), np.array(hystory_max_entropy).ravel(),
+                marker='+', label='Max entropy')
+
+    print('-' * 100)
+    print('Estimating proto value functions...')
+    cpvf = ContinuousProtoValueFunctions(k_neighbors=5, kernel=gaussian_kernel)
+    cpvf.fit(dataset)
+    k_list = [1, 2, 5, 10, 20, 50, 100]
+    hystories_pvf = []
+    for k in k_list:
+        _, phi_pvf = cpvf.transform(k)
+        phi_pvf = phi_pvf.sum(axis=1)
+        phi_pvf = scaler.fit_transform(phi_pvf)
+        hystory = train(learner, states_actions, gaussian_kernel, 5,
+                                    False, phi_pvf, plot=True)
+        hystories_pvf.append(hystory)
+        label = 'PVF - %sk' % k
+        if plot_train:
+            ax.plot(np.arange(len(history)), np.array(history).ravel(),
+                    marker='+', label=label)
+
+
+    if plot_train:
+        ax.legend(loc='lower right')
+
+    '''
     histories = []
     #1knn
     knn = KNeighborsRegressor(n_neighbors=1, weights=gaussian_kernel)
@@ -266,7 +368,7 @@ if __name__ == '__main__':
     theta, history1 = learner.optimize(-1.,
         reward=lambda traj: (traj[:, 2] -min(rewards)) / (max(rewards) - min(rewards)), return_history=True)
     histories.append(np.array(history1).ravel())
-
+    '''
 
     '''
     learner = PolicyGradientLearner(mdp, policy, lrate=0.2, lrate_decay={'method' : 'inverse', 'decay' : .1}, verbose=1)

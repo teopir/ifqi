@@ -1,11 +1,14 @@
 import numpy as np
 import numpy.linalg as la
+from sklearn.neighbors import NearestNeighbors
 
 class ProtoValueFunctionsEstimator(object):
 
     '''
     Abstract class for proto value functions estimator
     '''
+
+    eps = 1e-24
 
     def fit(self, dataset):
         pass
@@ -32,8 +35,6 @@ class DiscreteProtoValueFunctionsEstimator(ProtoValueFunctionsEstimator):
     - combinatorial laplacian
     - normalized laplacian
     '''
-
-    eps = 1e-24
 
     def __init__(self,
                  state_space,
@@ -153,14 +154,56 @@ class ContinuousProtoValueFunctions(ProtoValueFunctionsEstimator):
     def __init__(self,
                  operator='norm-laplacian',
                  method='on-policy',
-                 type_='state-action'):
+                 type_='state-action',
+                 k_neighbors=5,
+                 kernel=None):
         self.operator = operator
         self.method = method
         self.type_ = type_
+        self.k_neighbors= k_neighbors
+        self.kernel = kernel
 
     def fit(self, dataset):
-        pass
 
-    def transform(self, k):
-        pass
+        self.knn = NearestNeighbors(n_neighbors=self.k_neighbors)
+        self.knn.fit(dataset[:, :2])
+        distance_matrix = self.knn.kneighbors_graph(dataset[:, :2], mode='distance')
+        similarity_matrix = distance_matrix.copy()
+        similarity_matrix.data = self.kernel(similarity_matrix.data)
+        W = similarity_matrix.toarray()
+        W = .5 * (W + W.T)
+        self.W = W
+
+        d = W.sum(axis=1)
+        D = np.diag(d)
+        D1 = np.diag(np.power(d + self.eps, -0.5))
+
+        # Compute the operator
+        if self.operator == 'norm-laplacian':
+            self.L = np.eye(W.shape[0]) - la.multi_dot([D1, W, D1])
+        elif self.operator == 'comb-laplacian':
+            self.L = D - W
+        elif self.operator == 'random-walk':
+            self.L = la.solve(np.diag(d + self.eps), W)
+        else:
+            raise NotImplementedError
+
+        # Diagonalize the operator
+        if np.allclose(self.L.T, self.L):
+            eigval, eigvec = la.eigh(self.L)
+        else:
+            eigval, eigvec = la.eig(self.L)
+            eigval, eigvec = abs(eigval), abs(eigvec)
+            ind = eigval.argsort()[::-1]
+            eigval, eigvec = eigval[ind], eigvec[ind]
+
+        self.eigval = eigval
+        self.eigvec = eigvec
+
+
+    def transform(self, k=None):
+        if k is None:
+            return self.eigval, self.eigvec
+        else:
+            return self.eigval[:k], self.eigvec[:, :k]
 

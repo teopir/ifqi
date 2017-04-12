@@ -49,15 +49,9 @@ class MaximumEntropyIRL(object):
             log_episode_prob = np.log(episode_prob)
             return -np.sum(log_episode_prob)
 
-        def constraint(x):
-            return la.norm(x) - 1
-
         w0 = np.ones(reward_features.shape[1])
         w0 /= la.norm(w0)
-        res = opt.minimize(loss, w0,
-                           constraints=({'type': 'eq', 'fun': constraint}),
-                           options={'disp': True},
-                           tol=1e-24)
+        res = opt.minimize(loss, w0, options={'disp': True})
         return res.x
 
 
