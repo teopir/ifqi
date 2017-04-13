@@ -304,9 +304,86 @@ def maximum_entropy(dataset, n_episodes, policy_gradient, reward_features, state
     return res.x
 
 
-
-
 def build_state_features(mdp, binary=True):
+    '''
+    Builds the features of the state based on the current position of the taxi,
+    whether it has already pick up the passenger, the relative position of the
+    destination and source cell.
+
+    :param mdp: the taxi mdp
+    :param binary: whether the feature has to be one hot encoded
+    :return: a (n_states, n_features) matrix containing the features for each
+             state
+    '''
+    state_features = np.zeros((mdp.nS, 6))
+    locs = [(0, 0), (0, 4), (4, 0), (4, 3)] #source and destination location
+    for i in range(mdp.nS):
+        lst = list(mdp.decode(i))
+        pos_x, pos_y = lst[0], lst[1]
+
+        if lst[2] == 4:
+            start_x, start_y = 5, 5
+        else:
+            start_x, start_y = locs[lst[2]]
+        arr_x, arr_y = locs[lst[3]]
+
+        if start_x == 5:
+            if arr_x == pos_x:
+                delta_x = 2
+            else:
+                delta_x = 1 if arr_x > pos_x else 0
+
+            if arr_y == pos_y:
+                delta_y = 2
+            else:
+                delta_y = 1 if arr_y > pos_y else 0
+        else:
+            if start_x == pos_x:
+                delta_x = 2
+            else:
+                delta_x = 1 if start_x > pos_x else 0
+
+            if start_y == pos_y:
+                delta_y = 2
+            else:
+                delta_y = 1 if start_y > pos_y else 0
+
+        if delta_y == 2 and delta_x == 2:
+            if start_x == 5:
+                is_pos = 0
+            else:
+                is_pos = 1
+        else:
+            is_pos = 2
+
+
+        '''
+        A feature is encoded as a 5-tuple:
+        - the (x,y) position of the taxi combined as 5x+y
+        - the index of the starting location
+        - the index of the destination location
+        - whether the current x-position is on the same row, on the left or on the
+          right wrt the source position if the passenger has not been pick up yet
+          or wrt the destination position
+        - whether the current y-position is on the same column, on the left or on the
+          right wrt the source position if the passenger has not been pick up yet
+          or wrt the destination position
+        '''
+
+        state_features[i, :] = [pos_x*5 + pos_y, lst[2], lst[3], delta_x, delta_y, is_pos]
+
+    if not binary:
+        return state_features
+    else:
+        enc = OneHotEncoder(n_values=[25, 4, 4, 2, 2, 3], sparse=False,
+                            handle_unknown='ignore')
+        enc.fit(state_features)
+        state_features_binary = enc.transform(state_features)
+        state_features_binary = state_features_binary[:, :state_features_binary.shape[1]-1]
+        return state_features_binary
+
+
+def build_state_features2(mdp, binary=True):
     '''
     Builds the features of the state based on the current position of the taxi,
     whether it has already pick up the passenger, the relative position of the
@@ -478,16 +555,17 @@ if __name__ == '__main__':
     policy =  BoltzmannPolicy(state_features, action_weights)
     theta_opt = np.copy(policy.state_action_parameters)
 
-
+    '''
     from policy_gradient.policy_gradient_learner import PolicyGradientLearner
-    learner = PolicyGradientLearner(mdp, policy, lrate=1., verbose=1, max_iter_opt=25, tol_opt=0., tol_eval=0.)
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.05, verbose=1, max_iter_opt=100, tol_opt=0., tol_eval=0.)
     #theta0 = policy.state_action_parameters
     #theta0 = policy.state_action_parameters + 10. * np.random.randn(n_parameters, 1)
     #theta0 = np.zeros((n_parameters, 1))
-    theta0 = np.concatenate([np.zeros(5 * 39),  np.ones(1 * 39)])[:, np.newaxis]
+    theta0 = np.concatenate([np.zeros(4 * 39), np.zeros(38),  40*np.ones(1), np.zeros(37),  10*np.ones(1), np.zeros(1)])[:, np.newaxis]
+    policy.set_parameter(theta0)
     theta = learner.optimize(theta0)
     policy.set_parameter(theta)
-
+    '''
 
     print('Collecting samples from optimal approx policy...')
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
@@ -694,7 +772,7 @@ if __name__ == '__main__':
 
 
     '''
-    '''
+
     print('-' * 100)
 
     print('Computing Q-function approx space...')
@@ -820,7 +898,23 @@ if __name__ == '__main__':
     plot_state_action_function(mdp, np.dot(psi[:,:n_features[-1]], w), 'Best combination')
     plot_state_action_function(mdp, R, 'Reward')
 
-    '''
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler(copy=False)
+    r_norm = scaler.fit_transform(R)
+    a_norm = scaler.fit_transform(A_true)
+    q_norm = scaler.fit_transform(Q_true)
+    best = np.dot(psi[:, :n_features[-1]], w)
+    best_norm = scaler.fit_transform(best)
+
+    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.01, verbose=1, max_iter_opt=100)
+    #theta0 = policy.state_action_parameters
+    #theta0 = policy.state_action_parameters + 10. * np.random.randn(n_parameters, 1)
+    #theta0 = np.zeros((n_parameters, 1))
+    theta0 = np.concatenate([np.zeros(4 * 39), np.zeros(38),  40*np.ones(1), np.zeros(37),  10*np.ones(1), np.zeros(1)])[:, np.newaxis]
+    policy.set_parameter(theta0)
+    theta = learner.optimize(theta0, reward=lambda traj: best_norm[map(int,(traj[:,0]*6 + traj[:,1]).tolist())])
+    policy.set_parameter(theta)
 
     '''
     r = np.hstack([np.arange(len(eigval_true))[:, np.newaxis] + 1, eigval_true[:, np.newaxis], eigval_true_a[:, np.newaxis], eigval_hat[min_trace_idx][:, np.newaxis], eigval_hat[max_trace_idx][:, np.newaxis]])
