@@ -459,7 +459,6 @@ if __name__ == '__main__':
     mdp = TaxiEnv()
     mdp.horizon = 100
     n_episodes = 1000
-    mdp.gamma = 0.9
 
     print('Computing optimal policy...')
     opt_policy = TaxiEnvPolicy()
@@ -478,6 +477,17 @@ if __name__ == '__main__':
 
     policy =  BoltzmannPolicy(state_features, action_weights)
     theta_opt = np.copy(policy.state_action_parameters)
+
+
+    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
+    learner = PolicyGradientLearner(mdp, policy, lrate=1., verbose=1, max_iter_opt=25, tol_opt=0., tol_eval=0.)
+    #theta0 = policy.state_action_parameters
+    #theta0 = policy.state_action_parameters + 10. * np.random.randn(n_parameters, 1)
+    #theta0 = np.zeros((n_parameters, 1))
+    theta0 = np.concatenate([np.zeros(5 * 39),  np.ones(1 * 39)])[:, np.newaxis]
+    theta = learner.optimize(theta0)
+    policy.set_parameter(theta)
+
 
     print('Collecting samples from optimal approx policy...')
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
@@ -684,6 +694,7 @@ if __name__ == '__main__':
 
 
     '''
+    '''
     print('-' * 100)
 
     print('Computing Q-function approx space...')
@@ -809,14 +820,7 @@ if __name__ == '__main__':
     plot_state_action_function(mdp, np.dot(psi[:,:n_features[-1]], w), 'Best combination')
     plot_state_action_function(mdp, R, 'Reward')
 
-    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
-    best = np.dot(psi[:,:n_features[-1]], w)
-    learner = PolicyGradientLearner(mdp, policy, lrate=1., verbose=1, max_iter_opt=25, tol_opt=0., tol_eval=0.)
-    theta0 = policy.state_action_parameters
-    #theta0 = policy.state_action_parameters + 10. * np.random.randn(n_parameters, 1)
-    #theta0 = np.zeros((n_parameters, 1))
-    theta = learner.optimize(theta0, reward=lambda traj: best[map(int,(traj[:, 0]*6+traj[:, 1]).ravel())])
-    policy.set_parameter(theta)
+    '''
 
     '''
     r = np.hstack([np.arange(len(eigval_true))[:, np.newaxis] + 1, eigval_true[:, np.newaxis], eigval_true_a[:, np.newaxis], eigval_hat[min_trace_idx][:, np.newaxis], eigval_hat[max_trace_idx][:, np.newaxis]])

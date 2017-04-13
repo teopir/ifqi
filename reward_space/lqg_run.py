@@ -16,6 +16,7 @@ from policy_gradient.policy_gradient_learner import PolicyGradientLearner
 from sklearn.preprocessing import MinMaxScaler
 from utils.k_neighbors_regressor_2 import KNeighborsRegressor2
 from proto_value_functions.proto_value_functions_estimator import ContinuousProtoValueFunctions
+import copy
 
 
 def plot_state_action_function(f, title, states=None, actions=None, _cmap='coolwarm'):
@@ -55,7 +56,7 @@ def train(learner, states_actions, gaussian_kernel, k, penalty, feature, knn_pen
         if penalty:
             function = lambda states, actions: .5 * \
                         get_knn_function_for_plot(knn)(states, actions) + \
-                        .5 * 1./0.4 * get_knn_function_for_plot(knn_penalty, True)(states, actions)
+                        .5 * 1. / 0.4 * get_knn_function_for_plot(knn_penalty, True)(states, actions)
         else:
             function = get_knn_function_for_plot(knn)
         plot_state_action_function(function, '%sknn %s' % (k, '- penalty' if penalty else ''))
@@ -69,11 +70,49 @@ def train(learner, states_actions, gaussian_kernel, k, penalty, feature, knn_pen
     theta, history = learner.optimize(-0.2, reward=function, return_history=True)
     return history
 
+
+def plot_curve(mdp, policy, reward=None, edgecolor='#3F7F4C', facecolor='#7EFF99'):
+    policy = copy.deepcopy(policy)
+    k_list = np.arange(-1.5, -.1, 0.01)
+    episodes = 50
+    means = []
+    stds = []
+    for k in k_list:
+        policy.set_parameter(k)
+        returns = []
+        for i in range(episodes):
+            dataset = evaluation.collect_episodes(mdp, policy, 1)
+            if reward is None:
+                returns.append(np.dot(dataset[:, 2], dataset[:, 4]))
+            else:
+                returns.append(np.dot(reward(dataset), dataset[:, 4]))
+        means.append(np.mean(returns))
+        stds.append(np.std(returns))
+
+    means = np.array(means)
+    stds = np.array(stds)
+    means -= max(means)
+
+
+    ax.set_xlabel('k')
+    ax.set_ylabel('J(k)')
+
+    ax.plot(k_list, means, 'k', color=edgecolor, marker='+')
+    ax.fill_between(k_list, means - stds, means + stds,
+                    alpha=1, edgecolor=edgecolor, facecolor=facecolor,
+                    linewidth=0)
+
+
 if __name__ == '__main__':
 
     plot = False
     plot_train = True
     fast_heuristic = True
+
+    #k_list = [1, 2, 5, 10, 20, 50]
+    #penalty_list = [True, False]
+    k_list = []
+    penalty_list = []
 
     mdp = LQG1D()
 
@@ -83,16 +122,16 @@ if __name__ == '__main__':
 
     policy = GaussianPolicy1D(K, sigma)
 
+    reward_function = lambda states, actions: np.array(map(lambda s, a: \
+                                -mdp.get_cost(s,a), states, actions))
+    Q_function = lambda states, actions: np.array(map(lambda s, a: \
+                 mdp.computeQFunction(s, a, K, sigma ** 2), states, actions))
     if plot:
-        reward_function = lambda states, actions: np.array(map(lambda s, a:\
-                                    -mdp.get_cost(s,a), states, actions))
-        Q_function = lambda states, actions: np.array(map(lambda s, a: \
-                mdp.computeQFunction(s, a, K, sigma ** 2), states, actions))
         plot_state_action_function(reward_function, 'Reward')
         plot_state_action_function(Q_function, 'Q-function')
 
     #Collect samples
-    n_episodes = 20
+    n_episodes = 50
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
 
     estimator = ContinuousEnvSampleEstimator(dataset, mdp.gamma)
@@ -193,36 +232,34 @@ if __name__ == '__main__':
     print('-' * 100)
     print('Estimating d(s,a)...')
 
-    sigma = 4.
+    sigma_kernel = 4.
     def gaussian_kernel(x):
-        return 1. / np.sqrt(2 * np.pi * sigma ** 2) * np.exp(- 1. / 2 * x ** 2 / sigma ** 2)
+        return 1. / np.sqrt(2 * np.pi * sigma_kernel ** 2) * np.exp(- 1. / 2 * x ** sigma_kernel / sigma ** 2)
 
     d_sa_knn = KNeighborsRegressor2(n_neighbors=5, weights=gaussian_kernel)
     d_sa_knn.fit(states_actions, np.ones(len(states_actions)))
     plot_state_action_function(get_knn_function_for_plot(d_sa_knn, True), 'd(s,a)')
 
     print('-' * 100)
-    print('Training with REINFORCE')
+    print('Training with REINFORCE using the estimated best feature')
 
     learner = PolicyGradientLearner(mdp, policy, lrate=0.01, verbose=1)
 
     #Basis functions with and without penalization
-
     if plot_train:
         fig, ax = plt.subplots()
         ax.set_xlabel('itearations')
         ax.set_ylabel('parameter')
         fig.suptitle('REINFORCE')
 
-    k_list = [1, 2, 5, 10]
-    penalty_list = [True, False]
+
     histories = []
     labels = []
     for k in k_list:
         for penalty in penalty_list:
             label = 'Trace minimizer - %sknn%s' % (k, ' - penalty' if penalty else '')
             print(label)
-            history = train(learner, states_actions, gaussian_kernel, k, penalty, best, d_sa_knn)
+            history = train(learner, states_actions, gaussian_kernel, k, penalty, best, d_sa_knn, False)
             histories.append(history)
             labels.append(label)
             if plot_train:
@@ -230,10 +267,45 @@ if __name__ == '__main__':
                         marker='+', label=label)
 
 
-    # history_reward =
-    #hystory_q_function =
-    #hystory_a_function =
+    print('-' * 100)
+    print('Training with REINFORCE using true reward and true q function')
+    #True reward and q function
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.03, verbose=1)
+    policy.set_parameter(K)
+    _states = np.arange(-10, 10, 1)
+    _actions = np.arange(-8, 8, 1)
+    _states, _actions = np.meshgrid(_states, _actions)
+    z = reward_function(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
+    z = scaler.fit_transform(z)
+    _states_actions = np.hstack([_states.ravel()[:, np.newaxis], _actions.ravel()[:, np.newaxis]])
 
+    history_reward = train(learner, _states_actions,
+                           gaussian_kernel, 1, False, z, None, True)
+
+    z = Q_function(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
+    z = scaler.fit_transform(z)
+
+    history_q_function = train(learner, _states_actions,
+                           gaussian_kernel, 1, False, z, None, True)
+
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.03, verbose=1, lrate_decay={'method' :'inverse', 'decay': 1.})
+    history = train(learner, states_actions, gaussian_kernel, 2, True, best,
+                    d_sa_knn, False)
+
+    fig, ax = plt.subplots()
+    ax.set_xlabel('itearations')
+    ax.set_ylabel('parameter')
+    fig.suptitle('REINFORCE')
+    ax.plot(np.arange(len(history_reward)), np.array(history_reward).ravel(),
+            marker='+', label='Reward function')
+    ax.plot(np.arange(len(history_q_function)), np.array(history_q_function).ravel(),
+            marker='+', label='Q function')
+    ax.plot(np.arange(len(history)), np.array(history).ravel(),
+            marker='+', label='2knn - penalty')
+
+    ax.legend(loc='upper right')
+
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.01, verbose=1, tol_opt=0.)
     print('-' * 100)
     print('Estimating maximum entropy reward...')
     from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import MaximumEntropyIRL
@@ -241,7 +313,7 @@ if __name__ == '__main__':
     w = me.fit(G, phi)
     best_me = np.dot(phi, w)[:, np.newaxis]
     best_me = scaler.fit_transform(best_me)
-    hystory_max_entropy = train(learner, states_actions, gaussian_kernel, 2, False, best_me, plot=True)
+    hystory_max_entropy = train(learner, states_actions, gaussian_kernel, 10, False, best_me, plot=True)
     if plot_train:
         ax.plot(np.arange(len(hystory_max_entropy)), np.array(hystory_max_entropy).ravel(),
                 marker='+', label='Max entropy')
@@ -256,170 +328,18 @@ if __name__ == '__main__':
         _, phi_pvf = cpvf.transform(k)
         phi_pvf = phi_pvf.sum(axis=1)
         phi_pvf = scaler.fit_transform(phi_pvf)
-        hystory = train(learner, states_actions, gaussian_kernel, 5,
-                                    False, phi_pvf, plot=True)
-        hystories_pvf.append(hystory)
+        history = train(learner, states_actions, gaussian_kernel, 5,
+                                    False, phi_pvf, plot=False)
+        hystories_pvf.append(history)
         label = 'PVF - %sk' % k
         if plot_train:
             ax.plot(np.arange(len(history)), np.array(history).ravel(),
                     marker='+', label=label)
 
-
     if plot_train:
         ax.legend(loc='lower right')
 
     '''
-    histories = []
-    #1knn
-    knn = KNeighborsRegressor(n_neighbors=1, weights=gaussian_kernel)
-    knn.fit(states_actions, best.ravel())
-    plot_state_action_function(lambda states, actions: knn.predict(
-        np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])) *0.5 + \
-        1./0.16 * np.array(map(lambda s,a: predict_d_mu_sa(states_actions, s,a), states, actions)),
-        'Trace mimimizer 1knn - penalty')
-
-    theta, history1 = learner.optimize(-0.2,
-        reward=lambda traj: knn.predict(traj[:, :2]) * 0.5 + \
-        1./0.16 * np.array(map(lambda x: predict_d_mu_sa(states_actions, x[0],x[1], 5), traj[:, :2].tolist())),
-        return_history=True)
-
-    histories.append(np.array(history1).ravel())
-
-    plot_state_action_function(lambda states, actions: knn.predict(
-        np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])),
-        'Trace mimimizer 1knn - no penalty')
-
-    theta, history1 = learner.optimize(-1.,
-        reward=lambda traj: knn.predict(traj[:, :2]), return_history=True)
-    histories.append(np.array(history1).ravel())
-
-
-    # 2knn
-    knn = KNeighborsRegressor(n_neighbors=2, weights=gaussian_kernel)
-    knn.fit(states_actions, best.ravel())
-    plot_state_action_function(lambda states, actions: knn.predict(
-        np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])) * 0.5 + \
-        1. / 0.16 * np.array(map(lambda s, a: predict_d_mu_sa(states_actions, s, a), states, actions)),
-        'Trace mimimizer 2knn - penalty')
-
-    theta, history1 = learner.optimize(-0.2,
-        reward=lambda traj: knn.predict(traj[:, :2]) * 0.5 + \
-        1. / 0.16 * np.array(map(lambda x: predict_d_mu_sa(states_actions, x[0], x[1], 5), traj[:, :2].tolist())),
-        return_history=True)
-    histories.append(np.array(history1).ravel())
-
-    plot_state_action_function(lambda states, actions: knn.predict(
-        np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])),
-                               'Trace mimimizer 2knn - no penalty')
-
-    theta, history1 = learner.optimize(-0.2,
-        reward=lambda traj: knn.predict(traj[:, :2]), return_history=True)
-    histories.append(np.array(history1).ravel())
-
-    #5knn
-    knn = KNeighborsRegressor(n_neighbors=5, weights=gaussian_kernel)
-    knn.fit(states_actions, best.ravel())
-    plot_state_action_function(lambda states, actions: knn.predict(
-        np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])) * 0.5 + \
-        1. / 0.16 * np.array(map(lambda s, a: predict_d_mu_sa(states_actions, s, a), states, actions)),
-        'Trace mimimizer 5knn - penalty')
-
-    theta, history1 = learner.optimize(-0.2,
-        reward=lambda traj: knn.predict(traj[:, :2]) * 0.5 + \
-        1. / 0.16 * np.array(map(lambda x: predict_d_mu_sa(states_actions, x[0], x[1], 5), traj[:, :2].tolist())),
-        return_history=True)
-    histories.append(np.array(history1).ravel())
-
-    plot_state_action_function(lambda states, actions: knn.predict(
-        np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])),
-                               'Trace mimimizer 5knn - no penalty')
-
-    theta, history1 = learner.optimize(-0.2,
-        reward=lambda traj: knn.predict(traj[:, :2]), return_history=True)
-    histories.append(np.array(history1).ravel())
-
-    #10knn
-    knn = KNeighborsRegressor(n_neighbors=10, weights=gaussian_kernel)
-    knn.fit(states_actions, best.ravel())
-    plot_state_action_function(lambda states, actions: knn.predict(
-        np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])) * 0.5 + \
-        1. / 0.16 * np.array(map(lambda s, a: predict_d_mu_sa(states_actions, s, a), states, actions)),
-        'Trace mimimizer 10knn - penalty')
-
-    theta, history1 = learner.optimize(-0.2,
-        reward=lambda traj: knn.predict(traj[:, :2]) * 0.5 + \
-        1. / 0.16 * np.array(map(lambda x: predict_d_mu_sa(states_actions, x[0], x[1], 5), traj[:, :2].tolist())),
-        return_history=True)
-    histories.append(np.array(history1).ravel())
-
-    plot_state_action_function(lambda states, actions: knn.predict(
-        np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])),
-                               'Trace mimimizer 10knn - no penalty')
-
-    theta, history1 = learner.optimize(-1.,
-        reward=lambda traj: knn.predict(traj[:, :2]), return_history=True)
-    histories.append(np.array(history1).ravel())
-
-    #True reward
-    knn = KNeighborsRegressor(n_neighbors=1, weights=gaussian_kernel)
-    knn.fit(states_actions, r_norm.ravel())
-    theta, history2 = learner.optimize(-0.2, reward=lambda traj: knn.predict(
-        traj[:, :2]), return_history=True)
-    theta, history1 = learner.optimize(-1.,
-        reward=lambda traj: (traj[:, 2] -min(rewards)) / (max(rewards) - min(rewards)), return_history=True)
-    histories.append(np.array(history1).ravel())
-    '''
-
-    '''
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.2, lrate_decay={'method' : 'inverse', 'decay' : .1}, verbose=1)
-    theta, history1 = learner.optimize(-0.2, reward=lambda traj: knn.predict(
-        traj[:, :2]), return_history=True)
-    policy.set_parameter(theta)
-
-    knn = KNeighborsRegressor(n_neighbors=10, weights=gaussian_kernel)
-    knn.fit(states_actions, phi)
-
-    knn.fit(states_actions, np.dot(phi, w))
-    plot_state_action_function(lambda states, actions: knn.predict(
-        np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])),
-                               'Trace mimimizer 10knn - no penality')
-
-
-    #learner = PolicyGradientLearner(mdp, policy, lrate=0.15, verbose=1)
-    theta, history4 = learner.optimize(-0.2, reward=lambda traj: knn.predict(
-        traj[:, :2]), return_history=True)
-    policy.set_parameter(theta)
-
-    knn = KNeighborsRegressor(n_neighbors=1, weights=gaussian_kernel)
-    knn.fit(states_actions, phi)
-    knn.fit(states_actions, rewards / la.norm(rewards))
-    plot_state_action_function(lambda states, actions: knn.predict(
-        np.hstack([states[:, np.newaxis], actions[:, np.newaxis]])),
-                               'Reward function')
-
-    #learner = PolicyGradientLearner(mdp, policy, lrate=0.15, verbose=1)
-    theta, history2 = learner.optimize(-0.2, reward=lambda traj: knn.predict(
-        traj[:, :2]), return_history=True)
-    policy.set_parameter(theta)
-
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.2 / la.norm(dataset[:, 2]),  lrate_decay={'method' : 'inverse', 'decay' : .1}, verbose=1)
-    theta, history3 = learner.optimize(-0.2, return_history=True)
-    policy.set_parameter(theta)
-
-    fig, ax = plt.subplots()
-    ax.set_xlabel('itearations')
-    ax.set_ylabel('parameter')
-    fig.suptitle('REINFORCE')
-    ax.plot(np.arange(len(history1)), [np.asscalar(K)] * len(history1), linewidth=2.0, label='Optimal parameter')
-    ax.plot(np.arange(len(history1)), np.array(history1).ravel(), marker='+', label='Trace minimizer 1knn - no penality')
-    ax.plot(np.arange(len(history2)), np.array(history2).ravel(), marker='+', label='Reward as basis function - no penality')
-    ax.plot(np.arange(len(history3)), np.array(history3).ravel(), marker='+', label='Reward')
-    ax.plot(np.arange(len(history4)), np.array(history4).ravel(), marker='+',
-            label='Trace minimizer 10knn - no penality')
-    ax.legend(loc='lower right')
-
-
-
     fig, ax = plt.subplots()
     ax.set_xlabel('trace')
     ax.set_ylabel('max eigval')
