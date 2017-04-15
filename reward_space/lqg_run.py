@@ -17,6 +17,7 @@ from sklearn.preprocessing import MinMaxScaler
 from utils.k_neighbors_regressor_2 import KNeighborsRegressor2
 from proto_value_functions.proto_value_functions_estimator import ContinuousProtoValueFunctions
 import copy
+from sklearn.neighbors import NearestNeighbors
 
 
 def plot_state_action_function(f, title, states=None, actions=None, _cmap='coolwarm'):
@@ -126,6 +127,8 @@ if __name__ == '__main__':
                                 -mdp.get_cost(s,a), states, actions))
     Q_function = lambda states, actions: np.array(map(lambda s, a: \
                  mdp.computeQFunction(s, a, K, sigma ** 2), states, actions))
+    V_function = lambda states: np.array(map(lambda s: \
+                 mdp.computeVFunction(s, K, sigma ** 2), states))
     if plot:
         plot_state_action_function(reward_function, 'Reward')
         plot_state_action_function(Q_function, 'Q-function')
@@ -133,6 +136,7 @@ if __name__ == '__main__':
     #Collect samples
     n_episodes = 50
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
+    n_samples = dataset.shape[0]
 
     estimator = ContinuousEnvSampleEstimator(dataset, mdp.gamma)
     ml_estimator = MaximumLikelihoodEstimator(dataset)
@@ -144,6 +148,7 @@ if __name__ == '__main__':
     actions = dataset[:, 1]
     rewards = dataset[:, 2]
     q_function = np.array(map(lambda s, a: mdp.computeQFunction(s, a, K, sigma ** 2), states, actions))
+    v_function = np.array(map(lambda s: mdp.computeVFunction(s, K, sigma ** 2), states))
 
     G = np.array(map(lambda s,a: policy.gradient_log(s,a), states, actions))
     H = np.array(map(lambda s,a: policy.hessian_log(s,a), states, actions))
@@ -154,7 +159,27 @@ if __name__ == '__main__':
     X = np.dot(G.T, D_hat)
     phi = la2.nullspace(X)
 
-    psi = phi
+    sigma_kernel = 4.
+    def gaussian_kernel(x):
+        return 1. / np.sqrt(2 * np.pi * sigma_kernel ** 2) * np.exp(- 1. / 2 * x ** sigma_kernel / sigma ** 2)
+
+
+    knn_states = NearestNeighbors(n_neighbors=5)
+    knn_states.fit(states[:, np.newaxis])
+    pi_tilde = np.zeros((n_samples, n_samples))
+    for i in range(n_samples):
+        pi_tilde[i, i] = policy.pdf(states[i], actions[i])
+        _, idx = knn_states.kneighbors(states[i])
+        idx = idx.ravel()
+        for j in idx:
+            pi_tilde[i, j] = policy.pdf(states[j], actions[j])
+
+    pi_tilde /= pi_tilde.sum(axis=1)
+
+    Y = np.dot(np.eye(n_samples) - pi_tilde, phi)
+    psi = la2.range(Y)
+
+
     r_norm = rewards[:, np.newaxis] / la.norm(rewards)
     q_function_norm = q_function[:, np.newaxis] / la.norm(q_function)
 
@@ -232,10 +257,6 @@ if __name__ == '__main__':
     print('-' * 100)
     print('Estimating d(s,a)...')
 
-    sigma_kernel = 4.
-    def gaussian_kernel(x):
-        return 1. / np.sqrt(2 * np.pi * sigma_kernel ** 2) * np.exp(- 1. / 2 * x ** sigma_kernel / sigma ** 2)
-
     d_sa_knn = KNeighborsRegressor2(n_neighbors=5, weights=gaussian_kernel)
     d_sa_knn.fit(states_actions, np.ones(len(states_actions)))
     plot_state_action_function(get_knn_function_for_plot(d_sa_knn, True), 'd(s,a)')
@@ -270,7 +291,8 @@ if __name__ == '__main__':
     print('-' * 100)
     print('Training with REINFORCE using true reward and true q function')
     #True reward and q function
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.03, verbose=1)
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.04, verbose=1, lrate_decay={'method' :'inverse', 'decay': .3})
+    # learner = PolicyGradientLearner(mdp, policy, lrate=0.03, verbose=1)
     policy.set_parameter(K)
     _states = np.arange(-10, 10, 1)
     _actions = np.arange(-8, 8, 1)
@@ -288,7 +310,7 @@ if __name__ == '__main__':
     history_q_function = train(learner, _states_actions,
                            gaussian_kernel, 1, False, z, None, True)
 
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.03, verbose=1, lrate_decay={'method' :'inverse', 'decay': 1.})
+    #learner = PolicyGradientLearner(mdp, policy, lrate=0.03, verbose=1, lrate_decay={'method' :'inverse', 'decay': 1.})
     history = train(learner, states_actions, gaussian_kernel, 2, True, best,
                     d_sa_knn, False)
 
@@ -305,19 +327,20 @@ if __name__ == '__main__':
 
     ax.legend(loc='upper right')
 
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.01, verbose=1, tol_opt=0.)
+    #learner = PolicyGradientLearner(mdp, policy, lrate=0.01, verbose=1, tol_opt=0.)
     print('-' * 100)
     print('Estimating maximum entropy reward...')
     from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import MaximumEntropyIRL
     me = MaximumEntropyIRL(dataset)
-    w = me.fit(G, phi)
-    best_me = np.dot(phi, w)[:, np.newaxis]
+    w = me.fit(G, psi)
+    best_me = np.dot(psi, w)[:, np.newaxis]
     best_me = scaler.fit_transform(best_me)
     hystory_max_entropy = train(learner, states_actions, gaussian_kernel, 10, False, best_me, plot=True)
     if plot_train:
         ax.plot(np.arange(len(hystory_max_entropy)), np.array(hystory_max_entropy).ravel(),
                 marker='+', label='Max entropy')
 
+    '''
     print('-' * 100)
     print('Estimating proto value functions...')
     cpvf = ContinuousProtoValueFunctions(k_neighbors=5, kernel=gaussian_kernel)
@@ -338,7 +361,7 @@ if __name__ == '__main__':
 
     if plot_train:
         ax.legend(loc='lower right')
-
+    '''
     '''
     fig, ax = plt.subplots()
     ax.set_xlabel('trace')

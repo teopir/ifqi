@@ -272,6 +272,50 @@ class LQG1D(Environment):
         Qfun = np.asscalar(Qfun) / n_random_xn
         return Qfun
 
+    def computeVFunction(self, x, K, Sigma, n_random_xn=100):
+        """
+        This function computes the Q-value of a pair (x,u) given the linear
+        controller Kx + epsilon where epsilon \sim N(0, Sigma).
+        Args:
+            x (int, array): the state
+            u (int, array): the action
+            K (matrix): the controller matrix
+            Sigma (matrix): covariance matrix of the zero-mean noise added to
+            the controller action
+            n_random_xn: the number of samples to draw in order to average over
+            the next state
+
+        Returns:
+            Qfun (float): The Q-value in the given pair (x,u) under the given
+            controller
+
+        """
+        if isinstance(x, (int, long, float, complex)):
+            x = np.array([x])
+        if isinstance(K, (int, long, float, complex)):
+            K = np.array([K]).reshape(1, 1)
+        if isinstance(Sigma, (int, long, float, complex)):
+            Sigma = np.array([Sigma]).reshape(1, 1)
+
+        P = self._computeP2(K)
+        Vfun = 0
+        for i in range(n_random_xn):
+            u = np.random.randn() * Sigma + K * x
+            noise = np.random.randn() * self.sigma_noise
+            action_noise = np.random.multivariate_normal(
+                np.zeros(Sigma.shape[0]), Sigma, 1)
+            nextstate = np.dot(self.A, x) + np.dot(self.B,
+                                                   u + action_noise) + noise
+            Vfun -= np.dot(x.T, np.dot(self.Q, x)) + \
+                    np.dot(u.T, np.dot(self.R, u)) + \
+                    self.gamma * np.dot(nextstate.T, np.dot(P, nextstate)) + \
+                    (self.gamma / (1 - self.gamma)) * \
+                    np.trace(np.dot(Sigma,
+                                    self.R + self.gamma *
+                                    np.dot(self.B.T, np.dot(P, self.B))))
+        Qfun = np.asscalar(Vfun) / n_random_xn
+        return Qfun
+
         # TODO check following code
 
         # def computeM(self, K):

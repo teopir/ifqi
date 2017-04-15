@@ -729,11 +729,27 @@ class BoltzmannPolicy(Policy):
     def get_dim(self):
         return self.state_action_parameters.shape[0]
 
+class TabularPolicy(Policy):
 
+    def __init__(self, probability_table):
+        self.pi = probability_table
 
+        self.n_states, self.n_actions = probability_table.shape
+        self.n_state_actions = self.n_actions * self.n_states
+        self.pi2 = np.zeros((self.n_states, self.n_state_actions))
 
+        rows = np.repeat(np.arange(self.n_states), self.n_actions)
+        cols = np.arange(self.n_state_actions)
+        self.pi2[rows, cols] = self.pi.ravel()
 
+    def draw_action(self, state, done):
+        action = self.np_random.choice(self.n_actions, p=self.pi[np.asscalar(state)])
+        return action
 
+    def get_distribution(self):
+        return self.pi2
 
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
 
 

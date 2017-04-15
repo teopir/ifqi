@@ -1,4 +1,4 @@
-#import cvxpy
+import cvxpy
 import numpy as np
 import numpy.linalg as la
 import scipy.optimize as opt
@@ -18,7 +18,7 @@ class HessianOptimizer(object):
             if normalizer == 'weighs_sum_to_one':
                 norm_constraint = [cvxpy.sum_entries(w) == 1]
             elif normalizer == 'norm_weights_one':
-                norm_constraint = [cvxpy.norm(w) == 1]
+                norm_constraint = [cvxpy.norm(w) <= 1]
             elif normalizer == 'feature_max_one':
                 norm_constraint = [cvxpy.max_entries(np.dot(self.features, w)) == 1,
                                    cvxpy.min_entries(np.dot(self.features, w)) == 0]
