@@ -79,17 +79,17 @@ class PolicyGradientLearner(object):
         ite = 0
         theta = np.array(theta0, ndmin=2)
 
-        if return_history:
-            history = [np.copy(theta)]
-
-
         self.policy.set_parameter(theta)
         self.estimator.set_policy(self.policy)
 
         if self.verbose >= 1:
             print('Policy gradient: starting optimization...')
 
-        gradient = self.estimator.estimate(reward=reward)
+        gradient, avg_return = self.estimator.estimate(reward=reward)
+
+        if return_history:
+            history = [[np.copy(theta), avg_return, gradient]]
+
         gradient_norm = la.norm(gradient)
         lrate = self.lrate
 
@@ -100,13 +100,13 @@ class PolicyGradientLearner(object):
             #print(theta)
             theta += lrate * gradient  #Gradient ascent update
 
-            if return_history:
-                history.append(np.copy(theta))
-
             self.policy.set_parameter(theta)
             self.estimator.set_policy(self.policy)
 
-            gradient = self.estimator.estimate(reward=reward)
+            gradient, avg_return  = self.estimator.estimate(reward=reward)
+            if return_history:
+                history.append([np.copy(theta), avg_return, gradient])
+
             gradient_norm = la.norm(gradient)
             ite += 1
 
@@ -196,6 +196,7 @@ class ReinforceGradientEstimator(GradientEstimator):
 
         # (n_episodes, 1) vector of the trajectory returns
         traj_return = np.ndarray((0, 1))
+        traj_return_true = np.ndarray((0, 1))
 
         # (n_episodes, dim) matrix of the tragectory log policy gradient
         traj_log_grad = np.ndarray((0, self.dim))
@@ -207,11 +208,13 @@ class ReinforceGradientEstimator(GradientEstimator):
             traj = evaluation.collect_episode(self.mdp, self.policy)
 
             # Compute the trajectory return
+            t_return_true = np.sum(traj[:, 2] * traj[:, 4])
+            traj_return_true = np.concatenate([traj_return_true, [[t_return_true]]])
             if reward is None:
-                t_return = np.sum(traj[:, 2] * traj[:, 4])
+                traj_return = np.concatenate([traj_return, [[t_return_true]]])
             else:
                 t_return = np.sum(reward(traj) * traj[:, 4])
-            traj_return = np.concatenate([traj_return, [[t_return]]])
+                traj_return = np.concatenate([traj_return, [[t_return]]])
 
             # Compute the trajectory log policy gradient
             t_log_gradient = np.sum(
@@ -239,7 +242,8 @@ class ReinforceGradientEstimator(GradientEstimator):
             if self.verbose:
                 print('\tIteration %s return %s gradient_norm %s gradient_increment %s' % (ite, t_return, la.norm(gradient_estimate), gradient_increment))
 
-        return gradient_estimate
+        print(np.mean(traj_return_true))
+        return gradient_estimate, np.mean(traj_return_true)
 
 class GMDPGradientEstimator(GradientEstimator):
 

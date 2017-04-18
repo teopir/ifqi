@@ -16,6 +16,29 @@ from sklearn.linear_model import LogisticRegression
 from reward_space.policy_gradient.gradient_estimator import MaximumLikelihoodEstimator
 #import cvxpy
 import time
+from utils.utils import kullback_leibler_divergence
+
+def history_to_file(history, policy, pi_opt, J_opt, theta_opt):
+    my_list = []
+    for i in range(len(history)):
+        theta, J, gradient = history[i]
+
+        policy.set_parameter(theta)
+        d_kl = kullback_leibler_divergence(pi_opt, policy.pi)
+
+        mdp_wrap.set_policy(policy.pi2)
+        J_true = mdp_wrap.compute_J()
+        delta_J = J_opt - J
+        delta_J_true = J_opt - J_true
+
+        d_par = la.norm(theta - theta_opt)
+
+        grad_norm = la.norm(gradient)
+
+        my_list.append([d_kl, delta_J, delta_J_true, d_par, grad_norm])
+
+
+
 
 def mdp_norm(f, mdp_wrap):
     d_sa_mu = mdp_wrap.compute_d_sa_mu()
@@ -128,7 +151,7 @@ def estimate_gradient(dataset, n_episodes, policy_gradient, reward_features, sta
     episode_reward_features = np.zeros((n_episodes, n_features))
     episode_gradient = np.zeros((n_episodes, n_params))
 
-    #baseline = estimate_gradient_baseline(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space)
+    baseline = estimate_gradient_baseline(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space)
 
     i = 0
     episode = 0
@@ -147,7 +170,7 @@ def estimate_gradient(dataset, n_episodes, policy_gradient, reward_features, sta
 
         i += 1
 
-    episode_reward_features_baseline = episode_reward_features #- baseline
+    episode_reward_features_baseline = episode_reward_features - baseline
 
     return_gradient = 1. / n_episodes * np.dot(episode_reward_features_baseline.T,
                                                      episode_gradient)
@@ -468,7 +491,7 @@ def fit_maximum_likelihood_policy(state_features, optimal_action):
     '''
 
     lr = LogisticRegression(penalty='l2',
-                            tol=1e-5,
+                            tol=1e-16,
                             C=np.inf,
                             solver='newton-cg',
                             fit_intercept=False,
@@ -588,7 +611,7 @@ if __name__ == '__main__':
     # Optimal approx policy
     mdp_wrap.set_policy(pi)
     d_sa_mu = mdp_wrap.compute_d_sa_mu()
-    D = np.diag(d_sa_mu )
+    D = np.diag(d_sa_mu)
     R = mdp_wrap.non_ep_R
     J_true = mdp_wrap.compute_J()
     Q_true = mdp_wrap.compute_Q_function()
@@ -783,19 +806,12 @@ if __name__ == '__main__':
     X = np.dot(G.T, D_hat)
     phi = la2.nullspace(X)
 
-
-    psi = phi
-    '''
     print('Computing reward function approx space...')
     Y = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, phi)
     psi = la2.range(Y)
+
     del X
     del Y
-
-    del phi
-    '''
-    del phi
-    del X
     #---------------------------------------------------------------------------
     #Hessian estimation
 
@@ -846,9 +862,9 @@ if __name__ == '__main__':
 
 
     from inverse_reinforcement_learning.hessian_optimization import HeuristicOptimizerNegativeDefinite
-    ho = HeuristicOptimizerNegativeDefinite(hessian_hat[eigmax_hat < 1e-12])
+    ho = HeuristicOptimizerNegativeDefinite(hessian_hat)
     w = ho.fit()
-    best_hessian = np.tensordot(w, hessian_hat[eigmax_hat < 1e-12], axes=1)
+    best_hessian = np.tensordot(w, hessian_hat, axes=1)
 
     trace_best = np.trace(best_hessian)
     eigval_best, _ = la.eigh(best_hessian)
@@ -876,40 +892,88 @@ if __name__ == '__main__':
         ax.legend(loc='upper right')
         plt.yscale('symlog', linthreshy=1e-12)
 
-    psi = psi[:, eigmax_hat < 1e-12]
-    best = np.dot(psi, w)
-    a_norm = A_true *30 / (max(A_true) - min(A_true))
-    best = best * 30 / (max(best) - min(best))
-    #best[d_sa_mu <= 1e-40] = min(best)
-    print(best)
-    print(a_norm)
 
+    best = np.dot(psi, w)
+    min_value = min(best)
+    best_action_per_state = d_sa_mu_hat.reshape(mdp_wrap.nS, mdp_wrap.nA).argmax(axis=1)
+
+    best2 = min_value * np.ones(3000)
+    best2[np.arange(500)*6 + best_action_per_state] = best[np.arange(500)*6 + best_action_per_state]
+
+    r_norm = R / (max(R) - min(R))
+    a_norm = A_true / (max(A_true) - min(A_true))
+    best_norm = best2 / (max(best2) - min(best2))
+    '''
     from policy_gradient.policy_gradient_learner import PolicyGradientLearner
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.01, verbose=1,
-                                    max_iter_opt=100, tol_opt=-1., tol_eval=-1.,
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.05, verbose=1,
+                                    max_iter_opt=100, tol_opt=0., tol_eval=0.,
                                     estimator='reinforce')
     theta0 = np.zeros((n_parameters, 1))
 
+    best_norm = best_norm.ravel()
     policy.set_parameter(theta0)
-    theta = learner.optimize(theta0, reward=lambda traj: a_norm[map(int,traj[:,0]*6 + traj[:,1])])
+    theta = learner.optimize(theta0, reward=lambda traj: a_norm[ map(int, traj[:, 0] * 6 + traj[:, 1])])
     policy.set_parameter(theta)
     print('Collecting samples from optimal approx policy...')
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
     n_samples = dataset.shape[0]
     print('Dataset made of %s samples' % n_samples)
-
-    learner.lrate = 1.
-    mdp.gamma = 0.
-    policy.set_parameter(theta0)
-    theta = learner.optimize(theta0, reward=lambda traj: best[ map(int, traj[:, 0] * 6 + traj[:, 1])])
-    policy.set_parameter(theta)
-    print('Collecting samples from optimal approx policy...')
-    dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
-    n_samples = dataset.shape[0]
-    print('Dataset made of %s samples' % n_samples)
-
 
     '''
+    from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import MaximumEntropyIRL
+    me = MaximumEntropyIRL(dataset)
+    w = me.fit(G, psi, mdp_wrap.state_space, mdp_wrap.action_space)
+    best_me = np.dot(psi, w)
+
+    best_me_norm = best_me / (max(best_me) - min(best_me))
+    best_me_norm = best_me_norm.ravel()
+
+    min_value = min(best_me_norm)
+    best2 = min_value * np.ones(3000)
+    best2[np.arange(500)*6 + best_action_per_state] = best_me_norm[np.arange(500)*6 + best_action_per_state]
+
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.05, verbose=1,
+                                    max_iter_opt=100, tol_opt=0., tol_eval=0.,
+                                    estimator='reinforce')
+    theta0 = np.zeros((n_parameters, 1))
+
+    best_norm = best_norm.ravel()
+    policy.set_parameter(theta0)
+    theta = learner.optimize(theta0, reward=lambda traj: best2[ map(int, traj[:, 0] * 6 + traj[:, 1])])
+    policy.set_parameter(theta)
+    print('Collecting samples from optimal approx policy...')
+    dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
+    n_samples = dataset.shape[0]
+    print('Dataset made of %s samples' % n_samples)
+
+    #---------------------------------------------------------------------------
+    #Proto-value functions
+    from reward_space.proto_value_functions.proto_value_functions_estimator import DiscreteProtoValueFunctionsEstimator
+    pvf_model = DiscreteProtoValueFunctionsEstimator(mdp_wrap.state_space,
+                                               mdp_wrap.action_space)
+
+    pvf_model.fit(dataset)
+    _, pvf = pvf_model.transform(50)
+    k_list = [1, 2, 5, 10, 20, 50]
+    for k in k_list:
+        bf = pvf[:, :k].sum(axis=1)
+        bf_norm = bf / (max(bf) - min(bf))
+
+        learner = PolicyGradientLearner(mdp, policy, lrate=0.05, verbose=1,
+                                        max_iter_opt=10, tol_opt=0., tol_eval=0.,
+                                        estimator='reinforce')
+        theta0 = np.zeros((n_parameters, 1))
+
+        best_norm = best_norm.ravel()
+        policy.set_parameter(theta0)
+        theta = learner.optimize(theta0, reward=lambda traj: bf_norm[ map(int, traj[:, 0] * 6 + traj[:, 1])])
+        policy.set_parameter(theta)
+        print('Collecting samples from optimal approx policy...')
+        dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
+        n_samples = dataset.shape[0]
+        print('Dataset made of %s samples' % n_samples)
+
+
     if plot_hessians:
         fig, ax = plt.subplots()
         ax.set_xlabel('trace')

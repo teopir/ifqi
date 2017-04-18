@@ -18,6 +18,8 @@ from utils.k_neighbors_regressor_2 import KNeighborsRegressor2
 from proto_value_functions.proto_value_functions_estimator import ContinuousProtoValueFunctions
 import copy
 from sklearn.neighbors import NearestNeighbors
+from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import \
+    MaximumEntropyIRL
 
 
 def plot_state_action_function(f, title, states=None, actions=None, _cmap='coolwarm'):
@@ -107,13 +109,12 @@ def plot_curve(mdp, policy, reward=None, edgecolor='#3F7F4C', facecolor='#7EFF99
 if __name__ == '__main__':
 
     plot = False
-    plot_train = True
+    plot_train = False
     fast_heuristic = True
 
-    #k_list = [1, 2, 5, 10, 20, 50]
-    #penalty_list = [True, False]
-    k_list = []
-    penalty_list = []
+    #number of neighbors
+    k_list = [1, 2, 5, 10, 20, 50]
+    penalty_list = [True, False]
 
     mdp = LQG1D()
 
@@ -149,6 +150,7 @@ if __name__ == '__main__':
     rewards = dataset[:, 2]
     q_function = np.array(map(lambda s, a: mdp.computeQFunction(s, a, K, sigma ** 2), states, actions))
     v_function = np.array(map(lambda s: mdp.computeVFunction(s, K, sigma ** 2), states))
+    a_function = q_function - v_function
 
     G = np.array(map(lambda s,a: policy.gradient_log(s,a), states, actions))
     H = np.array(map(lambda s,a: policy.hessian_log(s,a), states, actions))
@@ -159,12 +161,15 @@ if __name__ == '__main__':
     X = np.dot(G.T, D_hat)
     phi = la2.nullspace(X)
 
+    print('-' * 100)
+    print('Computing A-function approx space...')
+
     sigma_kernel = 4.
     def gaussian_kernel(x):
         return 1. / np.sqrt(2 * np.pi * sigma_kernel ** 2) * np.exp(- 1. / 2 * x ** sigma_kernel / sigma ** 2)
 
 
-    knn_states = NearestNeighbors(n_neighbors=5)
+    knn_states = NearestNeighbors(n_neighbors=10)
     knn_states.fit(states[:, np.newaxis])
     pi_tilde = np.zeros((n_samples, n_samples))
     for i in range(n_samples):
@@ -180,14 +185,14 @@ if __name__ == '__main__':
     psi = la2.range(Y)
 
 
-    r_norm = rewards[:, np.newaxis] / la.norm(rewards)
-    q_function_norm = q_function[:, np.newaxis] / la.norm(q_function)
+    r_norm = rewards / la.norm(rewards)
+    a_function_norm = a_function / la.norm(a_function)
 
     print('Computing gradients and hessians...')
     gradient_hat = ml_estimator.estimate_gradient(psi, G, use_baseline=True)
     hessian_hat = ml_estimator.estimate_hessian(psi, G, H, use_baseline=True)
-    hessian_reward = ml_estimator.estimate_hessian(r_norm, G, H, use_baseline=True).ravel()
-    hessian_q = ml_estimator.estimate_hessian(q_function_norm, G, H, use_baseline=True).ravel()
+    hessian_reward = ml_estimator.estimate_hessian(r_norm[:, np.newaxis], G, H, use_baseline=True).ravel()
+    hessian_a = ml_estimator.estimate_hessian(a_function_norm[:, np.newaxis], G, H, use_baseline=True).ravel()
 
     '''
     Since the dimension of the parameter space is 1 if the trace and max eig are
@@ -200,7 +205,7 @@ if __name__ == '__main__':
     hessian_hat[mask] *= -1
 
     print('Reward hessian %s' % hessian_reward)
-    print('Q-function hessian %s' % hessian_reward)
+    print('A-function hessian %s' % hessian_a)
     print('Minimum hessian %s' % hessian_hat.max())
     print('Maximum hessian %s' % hessian_hat.min())
 
@@ -241,17 +246,48 @@ if __name__ == '__main__':
     else:
         optimizer = HeuristicOptimizerNegativeDefinite(hessian_hat)
         w = optimizer.fit()
-        best = np.dot(psi, w)[:, np.newaxis]
-        print('Best basis function %s' % np.tensordot(w, hessian_hat, axes=1).ravel())
+        best = np.dot(psi, w)
+        hessian_best = np.tensordot(w, hessian_hat, axes=1).ravel()
+        print('Best basis function %s' % hessian_best)
 
     '''
-    Reward functions are compared on the basis of the training time
+    Maximum entropy irl
+    '''
+
+    print('-' * 100)
+    print('Estimating maximum entropy reward...')
+    me = MaximumEntropyIRL(dataset)
+    w = me.fit(G, psi)
+    best_me = np.dot(psi, w)
+    hessian_best_me = ml_estimator.estimate_hessian(best_me[:, np.newaxis], G, H,
+                                              use_baseline=True).ravel()
+    print('Maximum entropy %s' % hessian_best_me)
+
+    '''
+    Proto value functions
+    '''
+    print('Estimating proto value functions...')
+    cpvf = ContinuousProtoValueFunctions(k_neighbors=10, kernel=gaussian_kernel)
+    cpvf.fit(dataset)
+    k_list = [1, 2, 5, 10, 20, 50, 100]
+    hessians_pvf = []
+    for k in k_list:
+        _, phi_pvf = cpvf.transform(k)
+        phi_pvf = phi_pvf.sum(axis=1).ravel()
+        pvf_norm = phi_pvf / la.norm(phi_pvf)
+        hessian = ml_estimator.estimate_hessian(pvf_norm[:, np.newaxis], G, H,
+                                              use_baseline=True).ravel()
+        gradient = ml_estimator.estimate_gradient(pvf_norm[:, np.newaxis], G,
+                                              use_baseline=True).ravel()
+        hessians_pvf.append((gradient, hessian))
+
+
     '''
 
     #Rescale rewards into [0,1]
     scaler = MinMaxScaler(copy=False)
     r_norm = scaler.fit_transform(r_norm)
-    q_function_norm = scaler.fit_transform(q_function_norm)
+    a_function_norm = scaler.fit_transform(a_function_norm)
     best = scaler.fit_transform(best)
 
     print('-' * 100)
@@ -264,7 +300,7 @@ if __name__ == '__main__':
     print('-' * 100)
     print('Training with REINFORCE using the estimated best feature')
 
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.01, verbose=1)
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.03, verbose=1,  lrate_decay={'method' :'inverse', 'decay': .3})
 
     #Basis functions with and without penalization
     if plot_train:
@@ -339,7 +375,7 @@ if __name__ == '__main__':
     if plot_train:
         ax.plot(np.arange(len(hystory_max_entropy)), np.array(hystory_max_entropy).ravel(),
                 marker='+', label='Max entropy')
-
+    '''
     '''
     print('-' * 100)
     print('Estimating proto value functions...')

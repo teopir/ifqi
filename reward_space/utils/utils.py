@@ -3,6 +3,9 @@ from numpy.polynomial.chebyshev import chebvander, chebval
 from numpy.polynomial.legendre import legval
 import numpy.linalg as la
 
+def kullback_leibler_divergence(pi1, pi2, tol=1e-24):
+    return np.sum(pi1 * np.log(pi1 / (pi2 + tol) + tol))
+
 def exponentiated_gradient_decent(df, x0, lrate=0.1, max_iter=100, tol=1e-6):
     ite = 0
     x = x0

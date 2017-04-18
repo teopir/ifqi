@@ -39,7 +39,7 @@ class MaximumEntropyIRL(object):
 
     def fit(self, policy_gradient, reward_features, state_space=None, action_space=None):
         episode_reward_features = self._compute_episode_rewards(policy_gradient, \
-                        reward_features, state_space=None, action_space=None)
+                        reward_features, state_space, action_space)
 
         def loss(x):
             episode_reward = np.dot(episode_reward_features, x)
