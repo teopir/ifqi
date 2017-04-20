@@ -860,11 +860,12 @@ if __name__ == '__main__':
     eigval_hat, _ = la.eigh(hessian_hat)
     eigmax_hat = eigval_hat[:, -1]
 
+    semidef_idx = eigmax_hat < 1e-13
 
     from inverse_reinforcement_learning.hessian_optimization import HeuristicOptimizerNegativeDefinite
-    ho = HeuristicOptimizerNegativeDefinite(hessian_hat)
+    ho = HeuristicOptimizerNegativeDefinite(hessian_hat[semidef_idx])
     w = ho.fit()
-    best_hessian = np.tensordot(w, hessian_hat, axes=1)
+    best_hessian = np.tensordot(w, hessian_hat[semidef_idx], axes=1)
 
     trace_best = np.trace(best_hessian)
     eigval_best, _ = la.eigh(best_hessian)
@@ -888,12 +889,18 @@ if __name__ == '__main__':
                    label='Feature with largest trace')
         ax.plot(np.arange(len(eigval_true)), eigval_best, color='y', marker='+',
                 label='Best')
+        ax.plot(np.arange(len(eigval_me)), eigval_me, color='k', marker='+',
+                label='Maximum entropy')
+        ax.plot(np.arange(len(eigval_25)), eigval_25, color='b', marker='o',
+                label='PVF 25')
+        ax.plot(np.arange(len(eigval_50)), eigval_50, color='r', marker='o',
+                label='PVF 50')
 
         ax.legend(loc='upper right')
         plt.yscale('symlog', linthreshy=1e-12)
 
 
-    best = np.dot(psi, w)
+    best = np.dot(psi[:,semidef_idx], w)
     min_value = min(best)
     best_action_per_state = d_sa_mu_hat.reshape(mdp_wrap.nS, mdp_wrap.nA).argmax(axis=1)
 
@@ -918,8 +925,8 @@ if __name__ == '__main__':
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
     n_samples = dataset.shape[0]
     print('Dataset made of %s samples' % n_samples)
-
     '''
+
     from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import MaximumEntropyIRL
     me = MaximumEntropyIRL(dataset)
     w = me.fit(G, psi, mdp_wrap.state_space, mdp_wrap.action_space)
@@ -931,6 +938,14 @@ if __name__ == '__main__':
     min_value = min(best_me_norm)
     best2 = min_value * np.ones(3000)
     best2[np.arange(500)*6 + best_action_per_state] = best_me_norm[np.arange(500)*6 + best_action_per_state]
+    best_me = best2
+
+    hessian_me = estimate_hessian(dataset, n_episodes,G, H, best_me[:, np.newaxis] / la.norm(best_me), \
+                                mdp_wrap.state_space, mdp_wrap.action_space)[0]
+
+    trace_me = np.trace(hessian_me)
+    eigval_me, _ = la.eigh(hessian_me)
+    eigmax_me = eigval_me.max()
 
     learner = PolicyGradientLearner(mdp, policy, lrate=0.05, verbose=1,
                                     max_iter_opt=100, tol_opt=0., tol_eval=0.,
@@ -953,12 +968,59 @@ if __name__ == '__main__':
                                                mdp_wrap.action_space)
 
     pvf_model.fit(dataset)
-    _, pvf = pvf_model.transform(50)
-    k_list = [1, 2, 5, 10, 20, 50]
-    for k in k_list:
-        bf = pvf[:, :k].sum(axis=1)
-        bf_norm = bf / (max(bf) - min(bf))
+    _, pvf25 = pvf_model.transform(25)
+    pvf25 = pvf25.sum(axis=1)
+    pvf25 /= la.norm(pvf25)
+    _, pvf50 = pvf_model.transform(50)
+    pvf50 = pvf50.sum(axis=1)
+    pvf50 /= la.norm(pvf50)
 
+    hessian_pvf25 = estimate_hessian(dataset, n_episodes,G, H, pvf25[:, np.newaxis], \
+                                mdp_wrap.state_space, mdp_wrap.action_space)[0]
+
+    hessian_pvf50 = estimate_hessian(dataset, n_episodes,G, H, pvf50[:, np.newaxis], \
+                                mdp_wrap.state_space, mdp_wrap.action_space)[0]
+
+    trace25 = np.trace(hessian_pvf25)
+    trace50 = np.trace(hessian_pvf50)
+
+    eigval_25, _ = la.eigh(hessian_pvf25)
+    eigval_50, _ = la.eigh(hessian_pvf50)
+
+    best_me_norm = best_me / (max(best_me) - min(best_me))
+    pvf25_norm = pvf25 / (max(pvf25) - min(pvf25))
+    pvf50_norm = pvf25 / (max(pvf50) - min(pvf50))
+
+    #---------------------------------------------------------------------------
+    #Leanring
+    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.2, verbose=1,
+                                    max_iter_opt=200, tol_opt=-1, tol_eval=0.,
+                                    estimator='reinforce')
+    theta0 = np.zeros((n_parameters, 1))
+
+    theta, history_r = learner.optimize(theta0, reward=lambda traj: r_norm[ map(int, traj[:, 0] * 6 + traj[:, 1])], return_history=True)
+
+    theta, history_a = learner.optimize(theta0, reward=lambda traj: a_norm[ map(int, traj[:, 0] * 6 + traj[:, 1])], return_history=True)
+
+    theta, history_b = learner.optimize(theta0, reward=lambda traj: best_norm[
+        map(int, traj[:, 0] * 6 + traj[:, 1])], return_history=True)
+
+    theta, history_me = learner.optimize(theta0, reward=lambda traj: best_me_norm[
+        map(int, traj[:, 0] * 6 + traj[:, 1])], return_history=True)
+
+    theta, history_pvf25 = learner.optimize(theta0, reward=lambda traj: pvf25_norm[
+        map(int, traj[:, 0] * 6 + traj[:, 1])], return_history=True)
+
+    theta, history_pvf50 = learner.optimize(theta0, reward=lambda traj: pvf50_norm[
+        map(int, traj[:, 0] * 6 + traj[:, 1])], return_history=True)
+
+    print('Collecting samples from optimal approx policy...')
+    dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
+    n_samples = dataset.shape[0]
+    print('Dataset made of %s samples' % n_samples)
+
+    '''
         learner = PolicyGradientLearner(mdp, policy, lrate=0.05, verbose=1,
                                         max_iter_opt=10, tol_opt=0., tol_eval=0.,
                                         estimator='reinforce')
@@ -972,8 +1034,8 @@ if __name__ == '__main__':
         dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
         n_samples = dataset.shape[0]
         print('Dataset made of %s samples' % n_samples)
-
-
+    '''
+    '''
     if plot_hessians:
         fig, ax = plt.subplots()
         ax.set_xlabel('trace')
