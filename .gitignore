@@ -4,5 +4,6 @@
 ifqi.egg-info/*
 build/
 dist/
-reward_space/img
+scripts/img
+scripts/data
 .idea/

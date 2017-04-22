@@ -30,6 +30,7 @@ class ContinuousEnvSampleEstimator(SampleEstimator):
         n_episodes = 0
 
         d_sa_mu = np.zeros(self.n_samples)
+        cound_sa = np.ones(self.n_samples) / self.n_samples
 
         i = 0
         while i < self.n_samples:
@@ -43,5 +44,6 @@ class ContinuousEnvSampleEstimator(SampleEstimator):
             i += 1
 
         d_sa_mu /= n_episodes
+        self.count_sa = cound_sa
         self.d_sa_mu = d_sa_mu
         self.J = 1.0 / n_episodes * np.sum(self.dataset[:, 2] * self.dataset[:, 4])

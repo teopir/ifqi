@@ -41,6 +41,8 @@ class MaximumLikelihoodEstimator(GradientEstimator):
                           use_baseline=False,
                           state_space=None,
                           action_space=None):
+        if np.ndim(reward_features) == 1:
+            reward_features = reward_features[:, np.newaxis]
 
         n_features = reward_features.shape[1]
         n_params = policy_gradient.shape[1]
@@ -92,6 +94,9 @@ class MaximumLikelihoodEstimator(GradientEstimator):
                                     state_space=None,
                                     action_space=None):
 
+        if np.ndim(reward_features) == 1:
+            reward_features = reward_features[:, np.newaxis]
+
         n_features = reward_features.shape[1]
         n_params = policy_gradient.shape[1]
         if state_space is not None and action_space is not None:
@@ -136,6 +141,9 @@ class MaximumLikelihoodEstimator(GradientEstimator):
                          use_baseline=False,
                          state_space=None,
                          action_space=None):
+
+        if np.ndim(reward_features) == 1:
+            reward_features = reward_features[:, np.newaxis]
 
         n_features = reward_features.shape[1]
         n_params = policy_hessian.shape[1]
@@ -191,6 +199,9 @@ class MaximumLikelihoodEstimator(GradientEstimator):
                                    policy_hessian,
                                    state_space=None,
                                    action_space=None):
+
+        if np.ndim(reward_features) == 1:
+            reward_features = reward_features[:, np.newaxis]
 
         n_features = reward_features.shape[1]
         n_params = policy_gradient.shape[1]

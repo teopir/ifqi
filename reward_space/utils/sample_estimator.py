@@ -29,6 +29,9 @@ class SampleEstimator(object):
     def get_d_sasa_mu(self):
         return self.d_sasa_mu
 
+    def get_count_sa(self):
+        return self.count_sa
+
     def get_J(self):
         return self.J
 

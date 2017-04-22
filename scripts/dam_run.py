@@ -1,10 +1,10 @@
 from ifqi.envs.dam import Dam
 from policy import GaussianPolicy1D, SimplePolicy
 from ifqi.evaluation import evaluation
-from utils.continuous_env_sample_estimator import ContinuousEnvSampleEstimator
-from utils.utils import chebvalNd, MinMaxScaler, remove_projections, compute_feature_matrix, find_basis
+from reward_space.utils.continuous_env_sample_estimator import ContinuousEnvSampleEstimator
+from reward_space.utils.utils import chebvalNd, MinMaxScaler, remove_projections, compute_feature_matrix, find_basis
 import numpy as np
-import utils.linalg2 as la2
+import reward_space.utils.linalg2 as la2
 import numpy.linalg as la
 
 class GradientFeatureConstructor(object):

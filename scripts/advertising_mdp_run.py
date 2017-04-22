@@ -4,7 +4,7 @@ import numpy as np
 import ifqi.envs as envs
 from policy import AdvertisingPolicy, AdvertisingSigmoidPolicy, AdvertisingGaussianPolicy
 from ifqi.envs.advertisingMDP import AdvertisingMDP
-from utils import add_discount
+from reward_space.utils import add_discount
 from operator import itemgetter
 from itertools import groupby
 from rank_nullspace import nullspace

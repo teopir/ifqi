@@ -16,7 +16,7 @@ from sklearn.linear_model import LogisticRegression
 from reward_space.policy_gradient.gradient_estimator import MaximumLikelihoodEstimator
 #import cvxpy
 import time
-from utils.utils import kullback_leibler_divergence
+from reward_space.utils.utils import kullback_leibler_divergence
 
 def history_to_file(history, policy, pi_opt, J_opt, theta_opt):
     my_list = []
@@ -578,22 +578,6 @@ if __name__ == '__main__':
     policy =  BoltzmannPolicy(state_features, action_weights)
     theta_opt = np.copy(policy.state_action_parameters)
 
-    '''
-    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
-    #learner = PolicyGradientLearner(mdp, policy, lrate=0.02, verbose=1, max_iter_opt=100, tol_opt=0., tol_eval=0., estimator='reinforce')
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.07, verbose=1,
-                                    max_iter_opt=200, tol_opt=-1., tol_eval=-1.,
-                                    estimator='reinforce')
-    #theta0 = policy.state_action_parameters
-    #theta0 = policy.state_action_parameters + 10. * np.random.randn(n_parameters, 1)
-    theta0 = np.zeros((n_parameters, 1))
-    #theta0 = np.concatenate([np.zeros(4 * 39), np.zeros(38),  40*np.ones(1), np.zeros(37),  10*np.ones(1), np.zeros(1)])[:, np.newaxis]
-    policy.set_parameter(theta0)
-    theta = learner.optimize(theta0, reward=lambda traj: A[map(int,traj[:,0]*6 + traj[:,1])])
-    policy.set_parameter(theta)
-    '''
-
-
     print('Collecting samples from optimal approx policy...')
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
     n_samples = dataset.shape[0]
@@ -657,148 +641,7 @@ if __name__ == '__main__':
         ax.set_ylabel('Singular value')
         fig.suptitle('Gradient singular values')
         s = la.svd(G.T, compute_uv=False)
-        D_idx = D.copy()
-        D_idx[D_idx > 0] = 1
-        s = la.svd(np.dot(G.T, D), compute_uv=False)
         plt.plot(np.arange(len(s)), s, marker='o', label='Gradient * d(s,a)')
-    '''
-    #---------------------------------------------------------------------------
-    #Q-function and A-function estimation with PVFs
-    print('-' * 100)
-
-    print('Q-function and A-function estimation with pvf')
-    ks = np.arange(kmin, kmax, kstep)
-    ks[0] = 1
-
-    errors_pvf = []
-    Q_hat_pvf = []
-    pvfs = []
-    eigvals_pvf = []
-    errors_prf = []
-
-    scorer = Scorer(d_sa_mu / sum(d_sa_mu))
-
-    if perform_estimation_pvf and plot_pvf:
-        fig, ax = plt.subplots()
-        ax.set_xlabel('number of features')
-        ax.set_ylabel(scorer.__str__())
-        fig.suptitle('Q-function approx with PVF')
-
-        fig2, ax2 = plt.subplots()
-        ax2.set_xlabel('number of features')
-        ax2.set_ylabel(scorer.__str__())
-        fig2.suptitle('A-function approx with PVF')
-
-    for method in methods:
-        print('Fitting ProtoValue Functions %s ...' % method)
-        pvf_estimator = ProtoValueFunctionsEstimator(mdp_wrap.state_space,
-                                                     mdp_wrap.action_space,
-                                                     'norm-laplacian',
-                                                     method)
-        pvf_estimator.fit(dataset)
-        eigval, pvf = pvf_estimator.transform(kmax)
-        eigvals_pvf.append(eigval)
-        pvfs.append(pvf)
-
-        print('Q-function estimation PVF')
-        Q_hat, _, _, _ = la2.lsq(pvf, Q_true)
-        print(scorer.score(Q_true, Q_hat))
-
-        #Compure and rank prf
-        prf = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, pvf)
-        eigval_prf = eigval / la.norm(prf, axis=0)
-        rank = eigval_prf.argsort()
-        prf = prf[:, rank]
-        prf = prf / la.norm(prf, axis=0)
-
-        print('A-function estimation PRF')
-        A_hat, _, _, _ = la2.lsq(prf, A_true)
-        print(scorer.score(A_true, A_hat))
-
-        if perform_estimation_pvf:
-            q_hat, error_q = estimate(pvf, Q_true, scorer, ks)
-            a_hat, error_a = estimate(prf, A_true, scorer, ks)
-            Q_hat_pvf.append(q_hat)
-            errors_pvf.append(error_q)
-            errors_prf.append(error_a)
-
-            if plot_pvf:
-                ax.plot(ks, errors_pvf[-1], marker='o', label='PVF ' + method)
-                ax.legend(loc='upper right')
-
-                ax2.plot(ks, errors_prf[-1], marker='o', label='PRF ' + method)
-                ax2.legend(loc='upper right')
-
-    #---------------------------------------------------------------------------
-    #Q-function and A-function estimation with GPVFs
-    print('-' * 100)
-
-    print('Q-function and A-function estimation with gpvf')
-
-    errors_gpvf = []
-    Q_hat_gpvf = []
-    gpvfs = []
-    errors_gprf = []
-    eigvals_gpvf = []
-
-    if perform_estimation_gpvf and plot_gpvf and not plot_pvf:
-        fig, ax = plt.subplots()
-        ax.set_xlabel('number of features')
-        ax.set_ylabel(scorer.__str__())
-        fig.suptitle('Q-function approx with GPVF')
-
-        fig2, ax2 = plt.subplots()
-        ax2.set_xlabel('number of features')
-        ax2.set_ylabel(scorer.__str__())
-        fig2.suptitle('A-function approx with GPVF')
-
-    for i in range(len(methods)):
-        print('Fitting ProtoReward Functions %s ...' % methods[i])
-        G_basis = la2.range(G)
-        projection_matrix = np.eye(mdp_wrap.nA * mdp_wrap.nS) - la.multi_dot([G_basis, la.inv(la.multi_dot([G_basis.T, D, G_basis])), G_basis.T, D])
-        gpvf = np.dot(projection_matrix, pvfs[i])
-
-        #Re rank the gpvfs
-        eigval = eigvals_pvf[i] / la.norm(gpvf, axis=0)
-        rank = eigval.argsort()
-        eigval = eigval[rank]
-        gpvf = gpvf[:, rank]
-        gpvf = gpvf / la.norm(gpvf, axis=0)
-        gpvfs.append(gpvf)
-        eigvals_gpvf.append(eigval)
-
-        print('Q-function estimation GPVF')
-        Q_hat, _, _, _ = la2.lsq(gpvf, Q_true)
-        print(scorer.score(Q_true, Q_hat))
-
-        # Compute and rank prf
-        gprf = np.dot(np.eye(mdp_wrap.nA * mdp_wrap.nS) - pi_tilde, gpvf)
-        eigval_gprf = eigval / la.norm(gprf, axis=0)
-        rank = eigval_gprf.argsort()
-        gprf = gprf[:, rank]
-        gprf = gprf / la.norm(gprf, axis=0)
-
-        print('A-function estimation PRF')
-        #A_hat, _, _, _ = la2.lsq(gprf, A_true)
-        #print(scorer.score(A_true, A_hat))
-
-
-        if perform_estimation_gpvf:
-            q_hat, error_q = estimate(gpvf, Q_true, scorer, ks)
-            a_hat, error_a = estimate(gprf, A_true, scorer, ks)
-            Q_hat_gpvf.append(q_hat)
-            errors_gpvf.append(error_q)
-            errors_gprf.append(error_a)
-
-            if plot_gpvf:
-                ax.plot(ks, errors_gpvf[-1], marker='o', label='GPVF ' + method)
-                ax.legend(loc='upper right')
-
-                ax2.plot(ks, errors_gprf[-1], marker='o', label='GPRF ' + method)
-                ax2.legend(loc='upper right')
-
-
-    '''
 
     print('-' * 100)
 
@@ -818,10 +661,21 @@ if __name__ == '__main__':
     print('Estimating hessians...')
     H = policy.hessian_log()
 
+    ml_estimator = MaximumLikelihoodEstimator(dataset)
+    hessian_hat = ml_estimator.estimate_hessian(G, H, psi, \
+                            True, mdp_wrap.state_space, mdp_wrap.action_space)
+
+    eigval_hat, _ = la.eigh(hessian_hat)
+    eigmax_hat, eigmin_hat = eigval_hat[:, -1], eigval_hat[:, 0]
+
+    minmax_prod = eigmax_hat * eigmin_hat
+    semidef_idx, indef_idx = np.argwhere(minmax_prod >= 0), np.argwhere(minmax_prod < 0)
+
+
     a_true = (A_true / la.norm(A_true)) [:, np.newaxis]
     r_true = (R / la.norm(R)) [:, np.newaxis]
-    '''
-    ml_estimator = MaximumLikelihoodEstimator(dataset)
+
+
 
     hessian_true = ml_estimator.estimate_hessian(G, H, r_true, \
                         True, mdp_wrap.state_space, mdp_wrap.action_space)[0]
@@ -829,10 +683,9 @@ if __name__ == '__main__':
     hessian_true_a = ml_estimator.estimate_hessian(G, H, a_true, \
                                 True, mdp_wrap.state_space, mdp_wrap.action_space)[0]
 
-    hessian_hat = ml_estimator.estimate_hessian(G, H, psi, \
-                                True, mdp_wrap.state_space, mdp_wrap.action_space)
-    '''
 
+
+    '''
     hessian_true = estimate_hessian(dataset, n_episodes, G, H, r_true, \
                         mdp_wrap.state_space, mdp_wrap.action_space)[0]
 
@@ -841,6 +694,7 @@ if __name__ == '__main__':
 
     hessian_hat = estimate_hessian(dataset, n_episodes,G, H, psi, \
                                 mdp_wrap.state_space, mdp_wrap.action_space)
+    '''
 
     print('Computing traces...')
     trace_true = np.trace(hessian_true)
@@ -862,7 +716,7 @@ if __name__ == '__main__':
 
     semidef_idx = eigmax_hat < 1e-13
 
-    from inverse_reinforcement_learning.hessian_optimization import HeuristicOptimizerNegativeDefinite
+    from reward_space.inverse_reinforcement_learning.hessian_optimization import HeuristicOptimizerNegativeDefinite
     ho = HeuristicOptimizerNegativeDefinite(hessian_hat[semidef_idx])
     w = ho.fit()
     best_hessian = np.tensordot(w, hessian_hat[semidef_idx], axes=1)
@@ -993,7 +847,7 @@ if __name__ == '__main__':
 
     #---------------------------------------------------------------------------
     #Leanring
-    from policy_gradient.policy_gradient_learner import PolicyGradientLearner
+    from reward_space.policy_gradient.policy_gradient_learner import PolicyGradientLearner
     learner = PolicyGradientLearner(mdp, policy, lrate=0.2, verbose=1,
                                     max_iter_opt=200, tol_opt=-1, tol_eval=0.,
                                     estimator='reinforce')
@@ -1014,6 +868,33 @@ if __name__ == '__main__':
 
     theta, history_pvf50 = learner.optimize(theta0, reward=lambda traj: pvf50_norm[
         map(int, traj[:, 0] * 6 + traj[:, 1])], return_history=True)
+
+    np.save('r', np.array(history_r))
+    np.save('a', np.array(history_a))
+    np.save('b', np.array(history_b))
+    np.save('me', np.array(history_me))
+    np.save('pvf25', np.array(history_pvf25))
+    np.save('pvf50', np.array(history_pvf50))
+
+    fig, ax = plt.subplots()
+    ax.set_xlabel('iterations')
+    ax.set_ylabel('average reward')
+    fig.suptitle('REINFORCE')
+    ax.plot(np.arange(201), np.array(history_r)[:,1], color='r', marker='+',
+            label='Reward function')
+    ax.plot(np.arange(201), np.array(history_a)[:,1], color='g', marker='+',
+            label='Advantage function')
+    ax.plot(np.arange(201), np.array(history_b)[:,1], color='y', marker='+',
+            label='Best')
+    ax.plot(np.arange(201), np.array(history_me)[:,1], color='k', marker='+',
+            label='Maximum entropy')
+    ax.plot(np.arange(201), np.array(history_pvf25)[:,1], color='b', marker='o',
+            label='PVF 25')
+    ax.plot(np.arange(201), np.array(history_pvf50)[:,1], color='r', marker='o',
+            label='PVF 50')
+
+    ax.legend(loc='lower right')
+
 
     print('Collecting samples from optimal approx policy...')
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)

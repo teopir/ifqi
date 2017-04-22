@@ -66,32 +66,6 @@ class MaximumEigenvalueOptimizer(HessianOptimizer):
 
         return w.value, final_hessian.value, result
 
-class HeuristicOptimizerAll(HessianOptimizer):
-
-    def fit(self):
-
-        traces = np.trace(self.hessians, axis1=1, axis2=2)
-        eigenvalues = la.eigh(self.hessians)[0]
-        max_eigenvalues = eigenvalues[:, -1]
-
-        w0 = np.zeros(self.n_states_actions)
-        w0[traces.argmin()] = 1.
-
-        def objective(w):
-            return np.dot(w, traces)
-
-        def constraint1(w):
-            return la.norm(w) - 1
-
-        constr = [{'type':'eq', 'fun': constraint1}]
-
-        res = opt.minimize(objective, w0, constraints=constr, options={'disp': True})
-
-        w = res.x
-        print(np.dot(w, max_eigenvalues))
-
-        return w
-
 class HeuristicOptimizerNegativeDefinite(HessianOptimizer):
 
     def fit(self, skip_check=False):
