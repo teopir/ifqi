@@ -17,6 +17,8 @@ from reward_space.policy_gradient.gradient_estimator import MaximumLikelihoodEst
 #import cvxpy
 import time
 from reward_space.utils.utils import kullback_leibler_divergence
+from reward_space.inverse_reinforcement_learning.hessian_optimization import HeuristicOptimizerNegativeDefinite
+from reward_space.proto_value_functions.proto_value_functions_estimator import DiscreteProtoValueFunctionsEstimator
 
 def history_to_file(history, policy, pi_opt, J_opt, theta_opt):
     my_list = []
@@ -659,6 +661,12 @@ if __name__ == '__main__':
     #Hessian estimation
 
     print('Estimating hessians...')
+
+    names = []
+    basis_functions = []
+    gradients = []
+    hessians = []
+
     H = policy.hessian_log()
 
     ml_estimator = MaximumLikelihoodEstimator(dataset)
@@ -667,13 +675,66 @@ if __name__ == '__main__':
 
     eigval_hat, _ = la.eigh(hessian_hat)
     eigmax_hat, eigmin_hat = eigval_hat[:, -1], eigval_hat[:, 0]
+    trace_hat = np.trace(hessian_hat)
 
     minmax_prod = eigmax_hat * eigmin_hat
-    semidef_idx, indef_idx = np.argwhere(minmax_prod >= 0), np.argwhere(minmax_prod < 0)
+    pos_idx, neg_idx, ind_idx = np.argwhere(minmax_prod >= 0 & eigmax_hat >=0),\
+                                np.argwhere(minmax_prod >= 0 & eigmax_hat < 0),\
+                                np.argwhere(minmax_prod < 0)
 
+    psi[:, pos_idx] *= -1
+    psi = psi[:, np.concatenate(pos_idx, neg_idx)]
+    hessian_hat_neg = np.copy(hessian_hat)
+    hessian_hat_neg[pos_idx] *= -1
+    hessian_hat_neg = hessian_hat_neg[np.concatenate(pos_idx, neg_idx)]
 
-    a_true = (A_true / la.norm(A_true)) [:, np.newaxis]
-    r_true = (R / la.norm(R)) [:, np.newaxis]
+    names.append('Reward function')
+    basis_functions.append(R / la.norm(R))
+    names.append('Advantage function')
+    basis_functions.append(A_true / la.norm(A_true))
+
+    '''
+    HEURISTIC SOLUTION
+    max eig minimization or hessian heuristic in this case are
+    the same since the dimension of parameter space is 1
+    '''
+
+    optimizer = HeuristicOptimizerNegativeDefinite(hessian_hat_neg)
+    w = optimizer.fit()
+    grbf = np.dot(psi, w)
+    names.append('GRBF heuristic solution minimizer')
+    basis_functions.append(grbf)
+
+    '''
+    MAXIMUM ENTROPY IRL
+    '''
+    '''
+    print('-' * 100)
+    print('Estimating maximum entropy reward...')
+    from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import MaximumEntropyIRL
+    me = MaximumEntropyIRL(dataset)
+    w = me.fit(G, psi, mdp_wrap.state_space, mdp_wrap.action_space)
+    w = w / la.norm(w)
+
+    names.append('Maximum entropy GRBF')
+    basis_functions.append(np.dot(psi, w))
+    '''
+
+    '''
+    PROTO-VALUE FUNCTIONS
+    '''
+    print('Estimating proto value functions...')
+    dpvf = DiscreteProtoValueFunctionsEstimator(mdp_wrap.state_space,
+                                               mdp_wrap.action_space)
+    dpvf.fit(dataset)
+
+    for k in k_pvf:
+        _, phi_pvf = dpvf.transform(k)
+        phi_pvf = phi_pvf.sum(axis=1).ravel()
+        pvf_norm = phi_pvf / la.norm(phi_pvf)
+
+        names.append('PVF %s' % k)
+        basis_functions.append(pvf_norm)
 
 
 

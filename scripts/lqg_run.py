@@ -315,7 +315,7 @@ if __name__ == '__main__':
 
     count_sa_knn = KNeighborsRegressor2(n_neighbors=5, weights=gaussian_kernel)
     count_sa_knn.fit(states_actions, count_sa_hat)
-    plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
+    #plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
 
 
     print('-' * 100)
@@ -343,6 +343,7 @@ if __name__ == '__main__':
     t.add_column('Final return', knn_histories[:, -1, 1])
     t.add_column('Final gradient', knn_histories[:, -1, 2])
     print(t)
+
 
 
     if plot:
@@ -378,7 +379,7 @@ if __name__ == '__main__':
 
     z = reward_function(_states.ravel(), _actions.ravel()).ravel()[:,np.newaxis]
     z = scaler.fit_transform(z)
-    history_reward = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, True)
+    history_reward = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, False)
 
     z = A_function(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
     z = scaler.fit_transform(z)
@@ -390,7 +391,9 @@ if __name__ == '__main__':
     learner = PolicyGradientLearner(mdp, policy, max_iter_opt=400, lrate=0.03,
             verbose=1, lrate_decay={'method': 'inverse', 'decay': .5}, tol_opt=-1.)
 
-    for sbf in scaled_basis_functions:
+    for i in range(len(scaled_basis_functions)):
+        print(names[i])
+        sbf = scaled_basis_functions[i]
         history = train(learner, states_actions, gaussian_kernel, 2, True, sbf, count_sa_knn, False)
         histories.append(history)
     labels = labels + map(lambda x: x + ' 2knn - penalized', names)
