@@ -73,5 +73,6 @@ class DiscreteEnvSampleEstimator(SampleEstimator):
         self.mu = mu
         self.d_s_mu = d_s_mu
         self.d_sa_mu = d_sa_mu
+        self.count_sa = sa_count
 
         self.J = 1.0 / n_episodes * np.sum(rewards * discounts)

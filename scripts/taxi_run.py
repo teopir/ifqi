@@ -19,6 +19,10 @@ import time
 from reward_space.utils.utils import kullback_leibler_divergence
 from reward_space.inverse_reinforcement_learning.hessian_optimization import HeuristicOptimizerNegativeDefinite
 from reward_space.proto_value_functions.proto_value_functions_estimator import DiscreteProtoValueFunctionsEstimator
+from prettytable import PrettyTable
+
+from reward_space.policy_gradient.policy_gradient_learner import \
+    PolicyGradientLearner
 
 def history_to_file(history, policy, pi_opt, J_opt, theta_opt):
     my_list = []
@@ -106,6 +110,9 @@ def plot_state_function(mdp, f, title, _cmap='coolwarm'):
 
 def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space):
 
+    if np.ndim(reward_features) == 1:
+        reward_features = reward_features[:, np.newaxis]
+
     n_samples = dataset.shape[0]
     n_features = reward_features.shape[1]
     n_params = policy_hessian.shape[1]
@@ -114,7 +121,7 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
     episode_reward_features = np.zeros((n_episodes, n_features))
     episode_hessian = np.zeros((n_episodes, n_params, n_params))
 
-    #baseline = estimate_hessian_baseline(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space)
+    baseline = estimate_hessian_baseline(dataset, n_episodes, policy_gradient, policy_hessian, reward_features, state_space, action_space)
 
     i = 0
     episode = 0
@@ -136,7 +143,7 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
 
         i += 1
 
-    episode_reward_features_baseline = episode_reward_features #- baseline
+    episode_reward_features_baseline = episode_reward_features - baseline
 
     return_hessians = 1. / n_episodes * np.tensordot(episode_reward_features_baseline.T,
                                                      episode_hessian, axes=1)
@@ -144,6 +151,8 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
     return return_hessians
 
 def estimate_gradient(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space):
+    if np.ndim(reward_features) == 1:
+        reward_features = reward_features[:, np.newaxis]
 
     n_samples = dataset.shape[0]
     n_features = reward_features.shape[1]
@@ -540,10 +549,28 @@ class Scorer(object):
     def __str__(self):
         return '||.||%s weighted' % self.p
 
+
+class RangeScaler(object):
+
+    def __init__(self, copy=True):
+        self.copy = copy
+
+    def fit_transform(self, X):
+        if self.copy:
+            self.X = np.copy(X)
+        else:
+            self.X = X
+
+        _max, _min = self.X.max(axis=0), self.X.min(axis=0)
+        self.X = self.X / (_max - _min)
+        return self.X
+
 if __name__ == '__main__':
 
+    mytime = time.time()
+
     plot = False
-    plot_gradient = True
+    plot_gradient = False
     perform_estimation_pvf = True
     plot_pvf = True
     perform_estimation_gpvf = True
@@ -557,6 +584,9 @@ if __name__ == '__main__':
     if off_policy:
         methods.append('off-policy')
     plot_hessians = True
+
+    #k_pvf = [10, 20, 50, 100, 200]
+    k_pvf = [10, 100]
 
     tol = 1e-24
     mdp = TaxiEnv()
@@ -669,24 +699,25 @@ if __name__ == '__main__':
 
     H = policy.hessian_log()
 
-    ml_estimator = MaximumLikelihoodEstimator(dataset)
-    hessian_hat = ml_estimator.estimate_hessian(G, H, psi, \
-                            True, mdp_wrap.state_space, mdp_wrap.action_space)
+    hessian_hat = estimate_hessian(dataset, n_episodes,G, H, psi, \
+                                mdp_wrap.state_space, mdp_wrap.action_space)
 
     eigval_hat, _ = la.eigh(hessian_hat)
     eigmax_hat, eigmin_hat = eigval_hat[:, -1], eigval_hat[:, 0]
-    trace_hat = np.trace(hessian_hat)
+    trace_hat = np.trace(hessian_hat, axis1=1, axis2=2)
 
     minmax_prod = eigmax_hat * eigmin_hat
-    pos_idx, neg_idx, ind_idx = np.argwhere(minmax_prod >= 0 & eigmax_hat >=0),\
-                                np.argwhere(minmax_prod >= 0 & eigmax_hat < 0),\
+    pos_idx, neg_idx, ind_idx = np.argwhere(np.bitwise_and(minmax_prod >= 0, eigmax_hat >=0)),\
+                                np.argwhere(np.bitwise_and(minmax_prod >= 0, eigmax_hat < 0)),\
                                 np.argwhere(minmax_prod < 0)
 
+    neg_idx = np.concatenate([neg_idx, np.argwhere(np.bitwise_and(minmax_prod < 0, eigmax_hat < 1e-12))])
+
     psi[:, pos_idx] *= -1
-    psi = psi[:, np.concatenate(pos_idx, neg_idx)]
+    psi = psi[:, np.concatenate([pos_idx, neg_idx]).ravel()]
     hessian_hat_neg = np.copy(hessian_hat)
     hessian_hat_neg[pos_idx] *= -1
-    hessian_hat_neg = hessian_hat_neg[np.concatenate(pos_idx, neg_idx)]
+    hessian_hat_neg = hessian_hat_neg[np.concatenate([pos_idx, neg_idx]).ravel()]
 
     names.append('Reward function')
     basis_functions.append(R / la.norm(R))
@@ -700,15 +731,17 @@ if __name__ == '__main__':
     '''
 
     optimizer = HeuristicOptimizerNegativeDefinite(hessian_hat_neg)
-    w = optimizer.fit()
+    w = optimizer.fit(skip_check=False)
     grbf = np.dot(psi, w)
     names.append('GRBF heuristic solution minimizer')
     basis_functions.append(grbf)
 
+
     '''
     MAXIMUM ENTROPY IRL
+
     '''
-    '''
+    print(time.time())
     print('-' * 100)
     print('Estimating maximum entropy reward...')
     from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import MaximumEntropyIRL
@@ -718,11 +751,13 @@ if __name__ == '__main__':
 
     names.append('Maximum entropy GRBF')
     basis_functions.append(np.dot(psi, w))
-    '''
+    print(time.time())
+
 
     '''
     PROTO-VALUE FUNCTIONS
     '''
+
     print('Estimating proto value functions...')
     dpvf = DiscreteProtoValueFunctionsEstimator(mdp_wrap.state_space,
                                                mdp_wrap.action_space)
@@ -736,6 +771,153 @@ if __name__ == '__main__':
         names.append('PVF %s' % k)
         basis_functions.append(pvf_norm)
 
+    '''
+    Gradient and hessian estimation
+    '''
+
+    # Rescale rewards into to have difference between max and min equal to 1
+    scaler = RangeScaler()
+
+    scaled_grbf = scaler.fit_transform(grbf[:, np.newaxis]).ravel()
+
+    scaled_basis_functions = []
+    for bf in basis_functions:
+        sbf = scaler.fit_transform(bf[:, np.newaxis]).ravel()
+        scaled_basis_functions.append(sbf)
+
+    gradients, hessians, gradient_norms2, gradient_normsinf, eigvals, traces, eigvals_max = [], [], [], [], [], [], []
+    print('Estimating gradient and hessians...')
+    for sbf in scaled_basis_functions:
+        gradient = estimate_gradient(dataset, n_episodes,G, sbf, \
+                                mdp_wrap.state_space, mdp_wrap.action_space)[0]
+        hessian = estimate_hessian(dataset, n_episodes, G, H, sbf, \
+                              mdp_wrap.state_space, mdp_wrap.action_space)[0]
+        gradients.append(gradient)
+        hessians.append(hessian)
+        eigval, _ = la.eigh(hessian)
+        gradient_norms2.append(la.norm(gradient, 2))
+        gradient_normsinf.append(la.norm(gradient, np.inf))
+        eigvals_max.append(eigval[-1])
+        eigvals.append(eigval)
+        traces.append(np.trace(hessian))
+
+
+    t = PrettyTable()
+    t.add_column('Basis function', names)
+    t.add_column('Gradient norm 2', gradient_norms2)
+    t.add_column('Gradient norm inf', gradient_normsinf)
+    t.add_column('Hessian  max eigenvalue', eigvals_max)
+    t.add_column('Hessian trace', traces)
+    print(t)
+
+    print('Saving results...')
+    gradients_np = np.array(gradients)
+    hessians_np = np.array(hessians)
+    gradient_norms2_np = np.array(gradient_norms2)
+    gradient_normsinf_np = np.array(gradient_normsinf)
+    eigvals_max_np = np.array(eigvals_max)
+    eigvals_np = np.array(eigvals)
+    traces_np = np.array(traces)
+
+    saveme = np.zeros(8, dtype=object)
+    saveme[0] = names
+    saveme[1] = gradients_np
+    saveme[2] = hessians_np
+    saveme[3] = gradient_norms2_np
+    saveme[4] = gradient_normsinf_np
+    saveme[5] = eigvals_max_np
+    saveme[6] = eigvals_np
+    saveme[7] = traces_np
+    np.save('data/taxi_gradients_hessians_%s' % mytime, saveme)
+
+    if plot:
+        fig, ax = plt.subplots()
+        ax.set_xlabel('trace')
+        ax.set_ylabel('max eigval')
+        fig.suptitle('Hessians')
+        ax.scatter(trace_hat, eigmax_hat, color='k', marker='+',
+                   label='Estimated hessians')
+        for i in range(len(names)):
+            ax.plot(traces_np[i], eigvals_max_np[i], marker='+', label=names[i])
+        ax.legend(loc='upper right')
+
+        _range = np.arange(len(eigvals_np[0]))
+        fig, ax = plt.subplots()
+        ax.set_xlabel('index')
+        ax.set_ylabel('eigenvalue')
+        fig.suptitle('Hessian Eigenvalues')
+        for i in range(len(names)):
+            ax.plot(_range, eigvals_np[i], marker='+', label=names[i])
+
+        ax.legend(loc='upper right')
+        plt.yscale('symlog', linthreshy=1e-12)
+
+    '''
+    REINFORCE training
+    '''
+
+    print('-' * 100)
+    print('Estimating d(s,a)...')
+
+    count_sa_hat = estimator.get_count_sa()
+    count_sa_hat /= count_sa_hat.max()
+
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.2, verbose=1,
+                                    max_iter_opt=200, tol_opt=-1., tol_eval=0.,
+                                    estimator='reinforce')
+
+    theta0 = np.zeros((n_parameters, 1))
+
+    reward = scaled_basis_functions[0]
+    theta, history_r = learner.optimize(theta0, reward=lambda traj: reward[
+        map(int, traj[:, 0] * 6 + traj[:, 1])], return_history=True)
+
+    advantage = scaled_basis_functions[1]
+    theta, history_a = learner.optimize(theta0, reward=lambda traj: advantage[
+        map(int, traj[:, 0] * 6 + traj[:, 1])], return_history=True)
+
+    labels = ['Reward function', 'Advantage function']
+    histories = [history_r, history_a]
+
+    for i in range(2, len(scaled_basis_functions)):
+        print(names[i])
+        sbf = scaled_basis_functions[i]
+        penalized_sbf = np.copy(sbf)
+        penalized_sbf[count_sa_hat == 0] = min(penalized_sbf)
+        theta, history = learner.optimize(theta0, reward=lambda traj: penalized_sbf[
+            map(int, traj[:, 0] * 6 + traj[:, 1])],return_history=True)
+        histories.append(history)
+    labels = labels + map(lambda x: x + 'penalized', names[2:])
+
+    histories = np.array(histories)
+
+    t = PrettyTable()
+    t.add_column('Basis function', labels)
+    #t.add_column('Final parameter', la.norm(histories[:, -1, 0]))
+    t.add_column('Final return', histories[:, -1, 1])
+    #t.add_column('Final gradient', la.norm(histories[:, -1, 2]))
+    print(t)
+
+    if plot:
+        _range = np.arange(201)
+        fig, ax = plt.subplots()
+        ax.set_xlabel('average return')
+        ax.set_ylabel('iterations')
+        fig.suptitle('REINFORCE - Average return')
+
+        ax.plot([0, 100], [estimator.J, estimator.J], color='k', label='Optimal return')
+        for i in range(6):
+            ax.plot(_range, histories[i, :, 1], marker='+', label=labels[i])
+
+        ax.legend(loc='upper right')
+
+    histories = np.array(histories)
+    saveme = np.zeros(2, dtype=object)
+    saveme[0] = labels
+    saveme[1] = histories
+    np.save('data/taxi_comparision_%s' % mytime, saveme)
+
+    '''
 
 
     hessian_true = ml_estimator.estimate_hessian(G, H, r_true, \
@@ -744,7 +926,7 @@ if __name__ == '__main__':
     hessian_true_a = ml_estimator.estimate_hessian(G, H, a_true, \
                                 True, mdp_wrap.state_space, mdp_wrap.action_space)[0]
 
-
+    '''
 
     '''
     hessian_true = estimate_hessian(dataset, n_episodes, G, H, r_true, \
@@ -756,7 +938,7 @@ if __name__ == '__main__':
     hessian_hat = estimate_hessian(dataset, n_episodes,G, H, psi, \
                                 mdp_wrap.state_space, mdp_wrap.action_space)
     '''
-
+    '''
     print('Computing traces...')
     trace_true = np.trace(hessian_true)
     trace_true_a = np.trace(hessian_true_a)
@@ -825,7 +1007,7 @@ if __name__ == '__main__':
     r_norm = R / (max(R) - min(R))
     a_norm = A_true / (max(A_true) - min(A_true))
     best_norm = best2 / (max(best2) - min(best2))
-    '''
+
     from policy_gradient.policy_gradient_learner import PolicyGradientLearner
     learner = PolicyGradientLearner(mdp, policy, lrate=0.05, verbose=1,
                                     max_iter_opt=100, tol_opt=0., tol_eval=0.,
@@ -840,7 +1022,7 @@ if __name__ == '__main__':
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
     n_samples = dataset.shape[0]
     print('Dataset made of %s samples' % n_samples)
-    '''
+
 
     from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import MaximumEntropyIRL
     me = MaximumEntropyIRL(dataset)
@@ -962,7 +1144,7 @@ if __name__ == '__main__':
     n_samples = dataset.shape[0]
     print('Dataset made of %s samples' % n_samples)
 
-    '''
+
         learner = PolicyGradientLearner(mdp, policy, lrate=0.05, verbose=1,
                                         max_iter_opt=10, tol_opt=0., tol_eval=0.,
                                         estimator='reinforce')
@@ -976,8 +1158,7 @@ if __name__ == '__main__':
         dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
         n_samples = dataset.shape[0]
         print('Dataset made of %s samples' % n_samples)
-    '''
-    '''
+
     if plot_hessians:
         fig, ax = plt.subplots()
         ax.set_xlabel('trace')

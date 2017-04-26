@@ -358,7 +358,7 @@ if __name__ == '__main__':
             ax.plot(_range, np.concatenate(knn_histories[i, :, 0]).squeeze(), marker='+', label=knn_labels[i])
 
         ax.legend(loc='upper right')
-
+    '''
     saveme = np.zeros(2, dtype=object)
     saveme[0] = knn_labels
     saveme[1] = knn_histories
@@ -424,3 +424,4 @@ if __name__ == '__main__':
     saveme[0] = labels
     saveme[1] = histories
     np.save('data/lqg_comparision_%s' % mytime, saveme)
+    '''
