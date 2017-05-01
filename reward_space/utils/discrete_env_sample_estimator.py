@@ -4,7 +4,7 @@ from reward_space.utils.sample_estimator import SampleEstimator
 
 class DiscreteEnvSampleEstimator(SampleEstimator):
 
-    def __init__(self, dataset, gamma, state_space, action_space):
+    def __init__(self, dataset, gamma, state_space, action_space, horizon):
 
         '''
         Works only for discrete mdps.
@@ -20,11 +20,13 @@ class DiscreteEnvSampleEstimator(SampleEstimator):
         :param gamma: discount factor
         :param state_space: numpy array
         :param action_space: numpy array
+        :param horizon: int, maximum length of episode
         '''
         self.dataset = dataset
         self.gamma = gamma
         self.state_space = state_space
         self.action_space = action_space
+        self.horizon = horizon
         self._estimate()
 
     def _estimate(self):
@@ -46,7 +48,6 @@ class DiscreteEnvSampleEstimator(SampleEstimator):
 
         i = 0
         while i < self.dataset.shape[0]:
-            j = i
             s_i = np.argwhere(self.state_space == states[i])
             a_i = np.argwhere(self.action_space == actions[i])
             s_next_i = np.argwhere(self.state_space == next_states[i])
@@ -61,7 +62,11 @@ class DiscreteEnvSampleEstimator(SampleEstimator):
 
             i += 1
 
+        d_s_mu[-1] = n_episodes * (1 - self.gamma ** self.horizon) / (1 - self.gamma)  - d_s_mu.sum()
+        d_sa_mu[-nA:] = d_s_mu[-1] / nA
+
         sa_count = P.sum(axis=1)
+        sa_count[-nA:] = (n_episodes * self.horizon - self.dataset.shape[0]) / nA
         self.sa_count = sa_count
         P = np.apply_along_axis(lambda x: x / (sa_count + self.tol), axis=0, arr=P)
         mu /= mu.sum()

@@ -5,7 +5,7 @@ from policy import GaussianPolicy1D
 from reward_space.utils.continuous_env_sample_estimator import ContinuousEnvSampleEstimator
 from reward_space.utils.k_neighbors_regressor_2 import KNeighborsRegressor2
 from reward_space.inverse_reinforcement_learning.hessian_optimization import HeuristicOptimizerNegativeDefinite
-from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import MaximumEntropyIRL
+#from reward_space.inverse_reinforcement_learning.maximum_entropy_irl import MaximumEntropyIRL
 from reward_space.policy_gradient.policy_gradient_learner import PolicyGradientLearner
 from reward_space.policy_gradient.gradient_estimator import MaximumLikelihoodEstimator
 from reward_space.proto_value_functions.proto_value_functions_estimator import ContinuousProtoValueFunctions
@@ -113,10 +113,10 @@ if __name__ == '__main__':
     n_episodes = 20
 
     #number of neighbors for kernel extension
-    k_neighbors = [1, 2, 5, 10, 20, 50]
+    k_neighbors = [1,2]
     penalty_list = [True, False]
 
-    k_pvf = [10, 20, 50, 100, 200]
+    k_pvf = []
 
     mdp = LQG1D()
 

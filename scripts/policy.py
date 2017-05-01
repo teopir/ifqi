@@ -90,7 +90,7 @@ class GaussianPolicy1D(SimplePolicy):
     def get_dim(self):
         return 1
 
-    def set_parameter(self, K):
+    def set_parameter(self, K, build_gradient=True, build_hessian=True):
         self.K = K
 
     def draw_action(self, state, done):
@@ -283,20 +283,20 @@ class TaxiEnvPolicy(SimplePolicy):
         self.policy = compute_policy()
         self.nS = 500
         self.nA = 6
-        self.PI = np.zeros((self.nS, self.nA))
-        self.PI2 = np.zeros((self.nS, self.nS * self.nA))
+        self.pi = np.zeros((self.nS, self.nA))
+        self.pi2 = np.zeros((self.nS, self.nS * self.nA))
         s = np.array(self.policy.keys())
         a = np.array(self.policy.values())
-        self.PI[s, a] = 1.
-        self.PI2[s, s * self.nA + a] = 1.
+        self.pi[s, a] = 1.
+        self.pi2[s, s * self.nA + a] = 1.
         self.seed()
 
     def draw_action(self, state, done):
-        action = self.np_random.choice(6, p=self.PI[np.asscalar(state)])
+        action = self.np_random.choice(6, p=self.pi[np.asscalar(state)])
         return action
 
     def get_distribution(self):
-        return self.PI2
+        return self.pi2
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -690,6 +690,129 @@ class BoltzmannPolicy(Policy):
             for action in range(self.n_actions):
                 index = state * self.n_actions + action
                 self.hess_log[index] = - num / den
+
+    def pdf(self, state, action):
+        num = np.exp(np.dot(self.features[state], self.parameters[action].T))
+        den = np.sum(np.exp(np.dot(self.features[state], self.parameters.T)))
+        return num / den
+
+    def get_pi(self, type_='state-action'):
+        if type_ == 'state-action':
+            return self.pi2
+        elif type_ == 'state':
+            return self.pi
+        elif type_ == 'function':
+            return self.pdf
+        else:
+            raise NotImplementedError
+
+    def gradient_log(self, states=None, actions=None, type_='state-action'):
+        if type_ == 'state-action':
+            return self.grad_log
+        elif type_ == 'list':
+            return np.array(map(lambda s,a: self.grad_log[int(s) * self.n_actions + int(a)], states, actions))
+        else:
+            raise NotImplementedError
+
+    def hessian_log(self, type_='state-action'):
+        if type_ == 'state-action':
+            return self.hess_log
+        else:
+            raise NotImplementedError
+
+    def draw_action(self, state, done):
+        action = self.np_random.choice(self.n_actions, p=self.pi[np.asscalar(state)])
+        return action
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+
+    def get_dim(self):
+        return self.state_action_parameters.shape[0]
+
+
+class EpsilonGreedyBoltzmannPolicy(Policy):
+
+    def __init__(self, epsilon, features, parameters):
+        self.epsilon = epsilon
+        self.features = features
+        self.parameters = parameters
+        self.n_states = self.features.shape[0]
+        self.n_actions = self.parameters.shape[0]
+        self.n_parameters = self.features.shape[1]
+
+        self.state_action_features = np.zeros((self.n_states * self.n_actions, self.n_actions * self.n_parameters))
+        self.state_action_parameters = parameters.ravel()[:, np.newaxis]
+        row_index = np.repeat(np.arange(self.n_states * self.n_actions), self.n_parameters)
+        col_index = np.tile(np.arange(self.n_parameters * self.n_actions), self.n_states)
+        features_repeated = np.repeat(features, self.n_actions, axis=0).ravel()
+        self.state_action_features[row_index, col_index] = features_repeated
+
+        self._build_density()
+        self._build_grad_hess()
+
+        self.seed()
+
+    def __str__(self):
+        return str(self.__class__) + ' epsilon=' + str(self.epsilon)
+
+    def set_parameter(self, new_parameter, build_gradient=True, build_hessian=True):
+        self.state_action_parameters = np.copy(new_parameter)
+        self.parameters = self.state_action_parameters.reshape((self.n_actions, self.n_parameters))
+
+        self._build_density()
+        if build_gradient or build_hessian:
+            self._build_grad_hess(build_hessian)
+
+        self.seed()
+
+    def _build_density(self):
+        numerators = np.exp(np.dot(self.features, self.parameters.T))
+        denominators = np.sum(numerators, axis=1)[:, np.newaxis]
+
+        self.pi = numerators / denominators * (1. - self.epsilon) + self.epsilon / self.n_actions
+        self.pi2 = np.zeros((self.n_states, self.n_actions * self.n_states))
+        row_index = np.arange(self.n_states)[:, np.newaxis]
+        col_index = np.arange(self.n_states * self.n_actions).reshape(self.n_states, self.n_actions)
+        self.pi2[row_index, col_index] = self.pi
+
+    def _build_grad_hess(self, build_hessian=True):
+        self.grad_log = np.zeros((self.n_states * self.n_actions,
+                                  self.n_parameters * self.n_actions))
+        self.hess_log = np.zeros((self.n_states * self.n_actions,
+                                  self.n_parameters * self.n_actions,
+                                  self.n_parameters * self.n_actions))
+        #Compute the gradient and hessian for all (s,a) pairs
+        for state in range(self.n_states):
+
+            B_s = grad_B_s = hess_B_s = 0.
+            for action in range(self.n_actions):
+                index = state * self.n_actions + action
+                feature = self.state_action_features[index]
+                exponential = np.exp(np.dot(feature, self.state_action_parameters))
+                if build_hessian:
+                    hess_B_s += np.outer(feature, feature) * exponential
+                grad_B_s += feature * exponential
+                B_s += exponential
+
+            grad_log_B_s = grad_B_s / B_s
+            grad_hess_B_s = (hess_B_s * B_s - np.outer(grad_B_s, grad_B_s)) / B_s ** 2
+
+            for action in range(self.n_actions):
+                index = state * self.n_actions + action
+                feature = self.state_action_features[index]
+                exponential = np.exp(np.dot(feature, self.state_action_parameters))
+                A_sa = exponential
+                grad_A_sa = feature * exponential
+                C_sa = (1. - self.epsilon) * A_sa + self.epsilon * B_s
+                grad_C_sa = (1. - self.epsilon) * grad_A_sa + self.epsilon * grad_B_s
+                self.grad_log[index] = grad_C_sa / C_sa - grad_log_B_s
+                if build_hessian:
+                    hess_A_sa = np.outer(feature, feature) * exponential
+                    hess_C_sa = (1. - self.epsilon) * hess_A_sa + self.epsilon * hess_B_s
+                    self.hess_log[index] = (hess_C_sa * C_sa - np.outer(grad_C_sa, \
+                        grad_C_sa)) / C_sa ** 2 - grad_hess_B_s
+
 
     def pdf(self, state, action):
         num = np.exp(np.dot(self.features[state], self.parameters[action].T))

@@ -79,7 +79,7 @@ class PolicyGradientLearner(object):
         ite = 0
         theta = np.array(theta0, ndmin=2)
 
-        self.policy.set_parameter(theta)
+        self.policy.set_parameter(theta, build_hessian=False)
         self.estimator.set_policy(self.policy)
 
         if self.verbose >= 1:
@@ -100,7 +100,7 @@ class PolicyGradientLearner(object):
             #print(theta)
             theta += lrate * gradient  #Gradient ascent update
 
-            self.policy.set_parameter(theta)
+            self.policy.set_parameter(theta, build_hessian=False)
             self.estimator.set_policy(self.policy)
 
             gradient, avg_return  = self.estimator.estimate(reward=reward)
@@ -208,12 +208,12 @@ class ReinforceGradientEstimator(GradientEstimator):
             traj = evaluation.collect_episode(self.mdp, self.policy)
 
             # Compute the trajectory return
-            t_return_true = np.sum(traj[:, 2] * traj[:, 4])
+            t_return_true = np.dot(traj[:, 2], traj[:, 4])
             traj_return_true = np.concatenate([traj_return_true, [[t_return_true]]])
             if reward is None:
                 traj_return = np.concatenate([traj_return, [[t_return_true]]])
             else:
-                t_return = np.sum(reward(traj) * traj[:, 4])
+                t_return = np.dot(reward(traj), traj[:, 4])
                 traj_return = np.concatenate([traj_return, [[t_return]]])
 
             # Compute the trajectory log policy gradient

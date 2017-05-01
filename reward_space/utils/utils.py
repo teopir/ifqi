@@ -4,7 +4,7 @@ from numpy.polynomial.legendre import legval
 import numpy.linalg as la
 
 def kullback_leibler_divergence(pi1, pi2, tol=1e-24):
-    return np.sum(pi1 * np.log(pi1 / (pi2 + tol) + tol))
+    return np.sum(pi1 * np.log(pi1 / (pi2 + tol) + tol)) / pi1.shape[0]
 
 def exponentiated_gradient_decent(df, x0, lrate=0.1, max_iter=100, tol=1e-6):
     ite = 0

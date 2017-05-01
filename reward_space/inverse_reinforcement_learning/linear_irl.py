@@ -4,6 +4,13 @@ from cvxopt import matrix, solvers
 
 class LinearIRL(object):
 
+    '''
+    Abbeel, Pieter, and Andrew Y. Ng.
+    "Apprenticeship learning via inverse reinforcement learning."
+    Proceedings of the twenty-first international conference
+    on Machine learning. ACM, 2004.
+    '''
+
     def __init__(self,
                  transition_model,
                  policy,

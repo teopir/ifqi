@@ -642,6 +642,9 @@ if __name__ == '__main__':
         plot_state_action_function(mdp, d_sa_mu, 'd(s,a)')
         plot_state_function(mdp, V_true, 'V-function')
 
+    from reward_space.inverse_reinforcement_learning.linear_programming_apprenticeship_learning import \
+        LinearProgrammingApprenticeshipLearning
+
     #---------------------------------------------------------------------------
     #Sample estimations of return and gradient
     print('-' * 100)
@@ -741,6 +744,7 @@ if __name__ == '__main__':
     MAXIMUM ENTROPY IRL
 
     '''
+    '''
     print(time.time())
     print('-' * 100)
     print('Estimating maximum entropy reward...')
@@ -752,7 +756,7 @@ if __name__ == '__main__':
     names.append('Maximum entropy GRBF')
     basis_functions.append(np.dot(psi, w))
     print(time.time())
-
+    '''
 
     '''
     PROTO-VALUE FUNCTIONS
@@ -770,6 +774,15 @@ if __name__ == '__main__':
 
         names.append('PVF %s' % k)
         basis_functions.append(pvf_norm)
+
+    lpal = LinearProgrammingApprenticeshipLearning(mdp_wrap.non_ep_P,
+                                                   opt_policy.PI,
+                                                   mdp_wrap.nA,
+                                                   mdp_wrap.gamma, 1, 0.)
+    r_s_lpal = lpal.fit()
+    r_sa_lpal = np.repeat(r_s_lpal, mdp_wrap.nA)
+    names.append('LPAL reward')
+    basis_functions.append(r_sa_lpal)
 
     '''
     Gradient and hessian estimation

@@ -8,12 +8,12 @@ class DiscreteMdpWrapper(object):
         self._compute_mdp_parameters()
         if episodic:
             self._fix_episodic()
+        self.state_space = range(self.nS)
+        self.action_space = range(self.nA)
 
     def _compute_mdp_parameters(self):
         nS = self.mdp.observation_space.n
         nA = self.mdp.action_space.n
-        self.state_space = range(nS)
-        self.action_space = range(nA)
         P = np.zeros(shape=(nS * nA, nS))
         R_sas = np.zeros(shape=(nS * nA, nS))
         D = np.zeros(shape=(nS * nA, nS), dtype=np.bool)
@@ -45,7 +45,10 @@ class DiscreteMdpWrapper(object):
         whenever the terminal states are reached
         '''
         P = np.hstack([self.P, np.zeros((self.P.shape[0], 1))])
+        P = np.vstack([P, np.zeros((self.nA, P.shape[1]))])
+        P[-self.nA:, -1] = 1.
         R_sas = np.hstack([self.R_sas, np.zeros((self.R_sas.shape[0], 1))])
+        R_sas = np.vstack([R_sas, np.zeros((self.nA, R_sas.shape[1]))])
         for i, j in zip(*self.D.nonzero()):
             P[i, -1] = P[i, j]
             P[i, j] = 0.
@@ -64,11 +67,15 @@ class DiscreteMdpWrapper(object):
         self.R = R_sa
         self.mu = mu
 
-    def set_policy(self, PI):
+        self.nS += 1
 
-        if self.episodic:
+    def set_policy(self, PI, fix_episodic=False):
+
+        if fix_episodic:
             self.non_ep_PI = PI
             self.PI = np.vstack([PI, np.zeros((1, PI.shape[1]))])
+            self.PI = np.hstack([self.PI, np.zeros((self.PI.shape[0], self.nA))])
+            self.PI[-1, -self.nA:] = 1. / self.nA
         else:
             self.PI = PI
 

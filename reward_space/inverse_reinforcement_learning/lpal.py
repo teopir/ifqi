@@ -15,12 +15,14 @@ class LPAL(object):
                  trajectories,
                  transition_model,
                  initial_distribution,
-                 gamma):
+                 gamma,
+                 horizon):
         self.reward_features = reward_features
         self.trajectories = trajectories
         self.initial_distribution = initial_distribution
         self.transition_model = transition_model
         self.gamma = gamma
+        self.horizon = horizon
         self.n_samples = trajectories.shape[0]
         self.n_trajectories = int(trajectories[:, -1].sum())
         self.n_states = transition_model.shape[1]
@@ -35,7 +37,9 @@ class LPAL(object):
         feature_expectations = compute_feature_expectations(self.reward_features,
                                                             self.trajectories,
                                                             np.arange(self.n_states),
-                                                            np.arange(self.n_actions))
+                                                            np.arange(self.n_actions),
+                                                            self.gamma,
+                                                            self.horizon)
 
         #Build LP data structures
         c = matrix(np.concatenate([[-1], np.zeros(self.n_states_actions)]))
@@ -61,11 +65,13 @@ class LPAL(object):
         result = solvers.lp(c, G, h, A, b)
 
         #Get the weights
-        x = np.array(result['x'][1:])
+        x = np.array(result['x'][1:]).ravel()
 
         #Output policy
         pi = x.reshape(self.n_states, self.n_actions)
+        pi[pi < 0.] = 0.
         pi /= pi.sum(axis=1)[:, np.newaxis]
 
         return pi
+
 

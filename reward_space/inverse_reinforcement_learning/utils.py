@@ -1,9 +1,13 @@
 import numpy as np
 
 def compute_feature_expectations(reward_features,
-                                  trajectories,
-                                  state_space=None,
-                                  action_space=None):
+                                 trajectories,
+                                 state_space=None,
+                                 action_space=None,
+                                 gamma=0.99,
+                                 horizon=100,
+                                 type_='state-action'):
+
     n_features = reward_features.shape[1]
     n_trajectories = int(trajectories[:, -1].sum())
     n_samples = trajectories.shape[0]
@@ -19,13 +23,29 @@ def compute_feature_expectations(reward_features,
         if state_space is not None and action_space is not None:
             s = np.argwhere(state_space == trajectories[i, 0])
             a = np.argwhere(action_space == trajectories[i, 1])
-            index = s * n_actions + a
+
+            if type_ == 'state-action':
+                index = s * n_actions + a
+            elif type_ == 'state':
+                index = s
+            else:
+                raise ValueError()
+
         else:
             index = i
 
         d = trajectories[i, 4]
 
         feature_expectation[trajectory, :] += d * reward_features[index, :].squeeze()
+
+        if trajectories[i, -2] == 1:
+            disc = (gamma * d - gamma ** (horizon + 1)) / (1 - gamma)
+            if type_ == 'state-action':
+                feature_expectation[trajectory, :] += disc * (
+                    reward_features[-n_actions:, :].squeeze()).mean()
+            elif type_ == 'state':
+                feature_expectation[trajectory, :] += disc * \
+                    reward_features[-1, :].squeeze()
 
         if trajectories[i, -1] == 1:
             trajectory += 1
