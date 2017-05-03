@@ -24,49 +24,6 @@ from prettytable import PrettyTable
 from reward_space.policy_gradient.policy_gradient_learner import \
     PolicyGradientLearner
 
-def history_to_file(history, policy, pi_opt, J_opt, theta_opt):
-    my_list = []
-    for i in range(len(history)):
-        theta, J, gradient = history[i]
-
-        policy.set_parameter(theta)
-        d_kl = kullback_leibler_divergence(pi_opt, policy.pi)
-
-        mdp_wrap.set_policy(policy.pi2)
-        J_true = mdp_wrap.compute_J()
-        delta_J = J_opt - J
-        delta_J_true = J_opt - J_true
-
-        d_par = la.norm(theta - theta_opt)
-
-        grad_norm = la.norm(gradient)
-
-        my_list.append([d_kl, delta_J, delta_J_true, d_par, grad_norm])
-
-
-
-
-def mdp_norm(f, mdp_wrap):
-    d_sa_mu = mdp_wrap.compute_d_sa_mu()
-    res = la.multi_dot([f, np.diag(d_sa_mu), f[:, np.newaxis]])
-    return np.sqrt(res / sum(d_sa_mu))
-
-def compute_trajectory_features(dataset, phi, state_space, action_space):
-    i = 0
-    j = 0
-    nA = len(action_space)
-    phi_tau = np.zeros((1, phi.shape[1]))
-    while i < dataset.shape[0]:
-        s_i = np.argwhere(state_space == dataset[i, 0])
-        a_i = np.argwhere(action_space == dataset[i, 1])
-
-        phi_tau[-1, :] += phi[np.asscalar(s_i * nA + a_i), :]
-
-        if dataset[i, -1] == 1 and i < dataset.shape[0] - 1:
-            phi_tau = np.vstack([phi_tau, np.zeros((1, phi.shape[1]))])
-            j = j + 1
-        i += 1
-    return phi_tau
 
 
 def plot_state_action_function(mdp, f, title, _cmap='coolwarm'):
@@ -146,10 +103,10 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
                 diff = horizon - np.log(d) / np.log(gamma)
             disc = (gamma * d - gamma ** (horizon + 1)) / (1 - gamma)
 
-            episode_policy_gradient[episode, :] += diff * policy_gradient[-n_actions:, :].squeeze().mean(axis=0)
-            episode_policy_hessian[episode, :, :] += diff * policy_hessian[-n_actions:, :, :].squeeze().mean(axis=0)
+            episode_policy_gradient[episode, :] += diff * policy_gradient[-n_actions, :].squeeze()
+            episode_policy_hessian[episode, :, :] += diff * policy_hessian[-n_actions, :, :].squeeze()
             episode_reward_features[episode, :] += disc * \
-                (reward_features[-n_actions:, :].squeeze().mean())
+                (reward_features[-n_actions, :].squeeze())
 
         if dataset[i, -1] == 1:
             episode += 1
@@ -199,9 +156,9 @@ def estimate_gradient(dataset, n_episodes, policy_gradient, reward_features, sta
                 diff = horizon - np.log(d) / np.log(gamma)
             disc = (gamma * d - gamma ** (horizon + 1)) / (1 - gamma)
 
-            episode_gradient[episode, :] += diff * policy_gradient[-n_actions:, :].squeeze().mean(axis=0)
+            episode_gradient[episode, :] += diff * policy_gradient[-n_actions, :].squeeze()
             episode_reward_features[episode, :] += disc * \
-                (reward_features[-n_actions:, :].squeeze().mean())
+                (reward_features[-n_actions, :].squeeze())
 
         if dataset[i, -1] == 1:
             episode += 1
@@ -244,9 +201,9 @@ def estimate_gradient_baseline(dataset, n_episodes, policy_gradient, reward_feat
                 diff = horizon - np.log(d) / np.log(gamma)
             disc = (gamma * d - gamma ** (horizon + 1)) / (1 - gamma)
 
-            episode_gradient[episode, :] += diff * policy_gradient[-n_actions:, :].squeeze().mean(axis=0)
+            episode_gradient[episode, :] += diff * policy_gradient[-n_actions, :].squeeze()
             episode_reward_features[episode, :] += disc * \
-                (reward_features[-n_actions:, :].squeeze().mean())
+                (reward_features[-n_actions, :].squeeze())
 
         if dataset[i, -1] == 1:
             vectorized_gradient = episode_gradient[episode, :].ravel()
@@ -294,9 +251,9 @@ def estimate_hessian_baseline(dataset, n_episodes, policy_gradient, policy_hessi
                 diff = horizon - np.log(d) / np.log(gamma)
             disc = (gamma * d - gamma ** (horizon + 1)) / (1 - gamma)
 
-            episode_policy_gradient[episode, :] += diff * policy_gradient[-n_actions:, :].squeeze().mean(axis=0)
-            episode_policy_hessian[episode, :, :] += diff * policy_hessian[-n_actions:, :, :].squeeze().mean(axis=0)
-            episode_reward_features[episode, :] += disc * (reward_features[-n_actions:, :].squeeze().mean())
+            episode_policy_gradient[episode, :] += diff * policy_gradient[-n_actions, :].squeeze()
+            episode_policy_hessian[episode, :, :] += diff * policy_hessian[-n_actions, :, :].squeeze()
+            episode_reward_features[episode, :] += disc * reward_features[-n_actions, :].squeeze()
 
 
         if dataset[i, -1] == 1:
@@ -312,84 +269,6 @@ def estimate_hessian_baseline(dataset, n_episodes, policy_gradient, policy_hessi
 
     return baseline
 
-def trace_minimization(hessians, features, threshold):
-    n_states_actions = hessians.shape[0]
-    n_parameters = hessians.shape[1]
-    w = cvxpy.Variable(n_states_actions)
-    final_hessian = hessians[0] * w[0]
-    for i in range(1, n_states_actions):
-        final_hessian += hessians[i] * w[i]
-
-    objective = cvxpy.Minimize(cvxpy.trace(final_hessian))
-    constraints = [final_hessian + threshold * np.eye(n_parameters) << 0,
-                   cvxpy.sum_entries(w) == 1]
-    problem = cvxpy.Problem(objective, constraints)
-
-    result = problem.solve(verbose=True)
-    return w.value, final_hessian.value, result
-
-
-def maximum_eigenvalue_minimizarion(hessians, features, threshold):
-    n_states_actions = hessians.shape[0]
-    n_parameters = hessians.shape[1]
-    w = cvxpy.Variable(n_states_actions)
-    final_hessian = hessians[0] * w[0]
-    for i in range(1, n_states_actions):
-        final_hessian += hessians[i] * w[i]
-
-    objective = cvxpy.Minimize(cvxpy.lambda_max(final_hessian))
-    constraints = [final_hessian + threshold * np.eye(n_parameters) << 0,
-                   cvxpy.norm(w) <= 1]
-    problem = cvxpy.Problem(objective, constraints)
-
-    result = problem.solve(verbose=True)
-    return w.value, final_hessian.value, result
-
-def maximum_entropy(dataset, n_episodes, policy_gradient, reward_features, state_space, action_space):
-
-    n_samples = dataset.shape[0]
-    n_features = reward_features.shape[1]
-    n_params = policy_gradient.shape[1]
-    n_states, n_actions = len(state_space), len(action_space)
-
-    episode_reward_features = np.zeros((n_episodes, n_features))
-    episode_hessian = np.zeros((n_episodes, n_params, n_params))
-
-    i = 0
-    episode = 0
-    while i < n_samples:
-        s = np.argwhere(state_space == dataset[i, 0])
-        a = np.argwhere(action_space == dataset[i, 1])
-        index = s * n_actions + a
-
-        d = dataset[i, 4]
-
-        episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
-        if dataset[i, -1] == 1:
-            episode += 1
-
-        i += 1
-
-    import scipy.optimize as opt
-
-    def loss(x):
-        episode_reward = np.dot(episode_reward_features, x)
-        exp_episode_reward = np.exp(episode_reward)
-        partition_function = np.sum(exp_episode_reward)
-        episode_prob = exp_episode_reward / partition_function
-        log_episode_prob = np.log(episode_prob)
-        return -np.sum(log_episode_prob)
-
-    def constraint(x):
-        return la.norm(np.dot(reward_features, x)) - 1
-
-    res = opt.minimize(loss, np.ones(n_features),
-                       constraints=({'type': 'eq', 'fun': constraint}),
-                       options={'disp': True},
-                       tol=1e-24)
-    print(res)
-
-    return res.x
 
 
 def build_state_features(mdp, binary=True):
@@ -498,10 +377,8 @@ def fit_maximum_likelihood_boltzmann_policy(state_features, optimal_action):
                             verbose=0,
                             n_jobs=1)
 
-    state_features = np.vstack([state_features, np.tile(state_features[-1], (5,1))])
-    lr.fit(state_features, np.concatenate([optimal_action, np.arange(6)]))
+    lr.fit(state_features, np.concatenate([optimal_action, [0]]))
     action_weights = lr.coef_
-    pi_prox = lr.predict_proba(state_features)
     return action_weights
 
 def fit_maximum_likelihood_policy_from_trajectories(state_features,
@@ -640,7 +517,6 @@ if __name__ == '__main__':
     plot_hessians = True
 
     #k_pvf = [10, 20, 50, 100, 200]
-    k_pvf = [10, 100]
 
     tol = 1e-24
     mdp = TaxiEnv()
@@ -661,7 +537,7 @@ if __name__ == '__main__':
     print('Fitting eps-boltz expert policy...')
     action_weights = fit_maximum_likelihood_boltzmann_policy(state_features,
                      expert_deterministic_policy.pi.argmax(axis=1))
-    expert_policy = EpsilonGreedyBoltzmannPolicy(0.06, state_features,
+    expert_policy = EpsilonGreedyBoltzmannPolicy(0.05, state_features,
                                                  action_weights)
     d_kl_det_expert = kullback_leibler_divergence(
         expert_deterministic_policy.pi, expert_policy.pi[:n_states - 1])
@@ -673,7 +549,7 @@ if __name__ == '__main__':
     print('Dataset made of %s samples' % n_samples_ex)
 
     action_weights = np.zeros((n_actions, n_parameters))
-    ml_policy = EpsilonGreedyBoltzmannPolicy(0.06, state_features, action_weights)
+    ml_policy = EpsilonGreedyBoltzmannPolicy(0.05, state_features, action_weights)
     print('Fitting Maximum Likelihood eps-boltz policy from trajectories...')
     ml_policy = fit_maximum_likelihood_policy_from_trajectories(state_features,
                                                     mdp_wrap.state_space,
@@ -681,7 +557,7 @@ if __name__ == '__main__':
                                                     trajectories_ex,
                                                     ml_policy,
                                                     action_weights.ravel()[:, np.newaxis],
-                                                    max_iter=10,
+                                                    max_iter=500,
                                                     learning_rate=1000.)
     d_kl_det_ml = kullback_leibler_divergence(expert_deterministic_policy.pi,
                                               ml_policy.pi[:n_states - 1])
@@ -739,17 +615,24 @@ if __name__ == '__main__':
     phi = la2.nullspace(X, criterion='tol')
     print('%s ECO-Qs found' % phi.shape[1])
 
-    print('Computing ECO-Rs')
+    print('Computing model-based ECO-Rs')
+    Z = np.dot(np.eye(sa_idx[0].shape[0]) - mdp_wrap.gamma * np.dot(estimator_ex.P[sa_idx], policy.pi2[:, sa_idx].squeeze()), phi)
+    psi_mb = la2.range(Z)
+    print('%s model-based ECO-Rs found' % psi_mb.shape[1])
+
+    print('Computing model-free ECO-Rs')
     pi_tilde = np.repeat(policy.pi2, n_actions, axis=0)
     Y = np.dot(np.eye(sa_idx[0].shape[0]) - pi_tilde[sa_idx][:, sa_idx].squeeze(), phi)
     psi = la2.range(Y)
-    print('%s ECO-Rs found' % psi.shape[1])
+    print('%s model-free ECO-Rs found' % psi.shape[1])
 
     psi_padded = np.zeros((n_states * n_actions, psi.shape[1]))
+    psi_padded_mb = np.zeros((n_states * n_actions, psi_mb.shape[1]))
     for i in range(psi.shape[0]):
         psi_padded[sa_idx[0][i], :] = psi[i, :]
+        psi_padded_mb[sa_idx[0][i], :] = psi_mb[i, :]
 
-    # ---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------P
     # Standard IRL algorithms on natural features
     from reward_space.inverse_reinforcement_learning.lpal import LPAL
     from reward_space.inverse_reinforcement_learning.linear_irl import LinearIRL
@@ -762,19 +645,34 @@ if __name__ == '__main__':
     # LPAL
     lpal = LPAL(state_action_features,
                 trajectories_ex,
-                mdp_wrap.P,
+                estimator_ex.P,
                 mdp_wrap.mu,
                 mdp_wrap.gamma,
                 mdp_wrap.horizon)
 
     lpal_policy = lpal.fit()
+    from policy import TabularPolicy
+    lpal_tab_policy = TabularPolicy(lpal_policy)
+
+    print('Collecting %s trajectories with LPAL policy...' % n_episodes)
+    trajectories_lpal = evaluation.collect_episodes(mdp, lpal_tab_policy, n_episodes)
+    n_samples_lpal = trajectories_lpal.shape[0]
+    print('Dataset made of %s samples' % n_samples_lpal)
+
+    estimator_lpal = DiscreteEnvSampleEstimator(trajectories_lpal,
+                               mdp_wrap.gamma,
+                               mdp_wrap.state_space,
+                               mdp_wrap.action_space,
+                               mdp_wrap.horizon)
+
+    print('J LPAL policy %s' % estimator_lpal.get_J())
 
     #Linear IRL
     transition_model = np.zeros((n_states, n_actions, n_states))
     for s in range(n_states):
         for a in range(n_actions):
             for s1 in range(n_states):
-                transition_model[s, a, s1] = mdp_wrap.P[s * n_actions + a, s1]
+                transition_model[s, a, s1] = estimator_ex.P[s * n_actions + a, s1]
     linear_irl = LinearIRL(transition_model,
                            expert_policy.pi,
                            mdp_wrap.gamma,
@@ -798,15 +696,16 @@ if __name__ == '__main__':
     me_reward = np.repeat(me_reward, n_actions)
 
     # ---------------------------------------------------------------------------
-    # Hessian estimation
-
-    print('Estimating hessians...')
 
     names = []
     basis_functions = []
     gradients = []
     hessians = []
     H = policy.hessian_log()
+
+    # Hessian estimation - model free
+
+    print('Estimating hessians model free...')
 
     hessian_hat = estimate_hessian(trajectories_ex, n_episodes, G, H, psi_padded, \
                                    mdp_wrap.state_space, mdp_wrap.action_space, mdp_wrap.gamma, mdp_wrap.horizon)
@@ -816,7 +715,7 @@ if __name__ == '__main__':
     trace_hat = np.trace(hessian_hat, axis1=1, axis2=2)
 
     #Heuristic for negative semidefinite
-    neg_idx = np.argwhere(eigmax_hat < -eigmin_hat / 1000).ravel()
+    neg_idx = np.argwhere(eigmax_hat < -eigmin_hat / 10).ravel()
     hessian_hat_neg = hessian_hat[neg_idx]
 
     '''
@@ -832,13 +731,43 @@ if __name__ == '__main__':
     eco_r[np.setdiff1d(np.arange(eco_r.shape[0]), sa_idx[0])] = min(eco_r)
 
     # ---------------------------------------------------------------------------
+    # Hessian estimation - model based
+
+    print('Estimating hessians model based...')
+
+    hessian_hat = estimate_hessian(trajectories_ex, n_episodes, G, H, psi_padded_mb, \
+                                   mdp_wrap.state_space, mdp_wrap.action_space, mdp_wrap.gamma, mdp_wrap.horizon)
+
+    eigval_hat, _ = la.eigh(hessian_hat)
+    eigmax_hat, eigmin_hat = eigval_hat[:, -1], eigval_hat[:, 0]
+    trace_hat = np.trace(hessian_hat, axis1=1, axis2=2)
+
+    #Heuristic for negative semidefinite
+    neg_idx = np.argwhere(eigmax_hat < -eigmin_hat / 10).ravel()
+    hessian_hat_neg = hessian_hat[neg_idx]
+
+    '''
+    #HEURISTIC SOLUTION
+    #max eig minimization or hessian heuristic in this case are
+    #the same since the dimension of parameter space is 1
+    '''
+
+    optimizer = HeuristicOptimizerNegativeDefinite(hessian_hat_neg)
+    w = optimizer.fit(skip_check=True)
+    eco_r_mb = np.dot(psi_padded_mb[:, neg_idx], w)
+    #Penalization
+    eco_r_mb[np.setdiff1d(np.arange(eco_r.shape[0]), sa_idx[0])] = min(eco_r)
+
+    # ---------------------------------------------------------------------------
     # Build feature sets
     names.append('Reward function')
     basis_functions.append(R)
     names.append('Advantage function')
     basis_functions.append(A)
-    names.append('ECO-R heuristic')
+    names.append('ECO-R heuristic model free')
     basis_functions.append(eco_r)
+    names.append('ECO-R heuristic model based')
+    basis_functions.append(eco_r_mb)
     names.append('Linear irl - Russell Ng')
     basis_functions.append(linear_irl_reward)
     names.append('Maximum entropy natural features')
@@ -910,7 +839,7 @@ if __name__ == '__main__':
             ax.plot(_range, eigvals_np[i], marker='+', label=names[i])
 
         ax.legend(loc='upper right')
-        plt.yscale('symlog', linthreshy=1e-12)
+        plt.yscale('symlog', linthreshy=1e-6)
 
     '''
     #REINFORCE training
@@ -919,13 +848,13 @@ if __name__ == '__main__':
     def reward_function(sbf, traj):
         diff = mdp_wrap.horizon - traj.shape[0]
         disc = (1 - mdp_wrap.gamma ** (diff + 1)) / (1 - mdp_wrap.gamma)
-        abs_reward = disc * sbf[-n_actions:, ].mean()
+        abs_reward = disc * sbf[-n_actions, ]
         rewards = sbf[(traj[:, 0] * n_actions + traj[:, 1]).astype(int)]
         rewards[-1] += abs_reward
         return rewards
 
 
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.2, verbose=1,
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.1, verbose=1,
                                     max_iter_opt=200, tol_opt=-1., tol_eval=0.,
                                     estimator='reinforce')
 
@@ -948,6 +877,7 @@ if __name__ == '__main__':
     t.add_column('Final return', histories[:, -1, 1])
     print(t)
 
+    plot=True
     if plot:
         _range = np.arange(201)
         fig, ax = plt.subplots()
@@ -961,3 +891,8 @@ if __name__ == '__main__':
             ax.plot(_range, histories[i, :, 1], marker='+', label=names[i])
 
         ax.legend(loc='upper right')
+
+    saveme = np.zeros(2, dtype=object)
+    saveme[0] = names
+    saveme[1] = histories
+    np.save('data/taxi_comparision_%s' % mytime, saveme)

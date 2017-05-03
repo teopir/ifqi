@@ -69,7 +69,7 @@ class LPAL(object):
 
         #Output policy
         pi = x.reshape(self.n_states, self.n_actions)
-        pi[pi < 0.] = 0.
+        pi[pi < 1e-24] = 1e-24
         pi /= pi.sum(axis=1)[:, np.newaxis]
 
         return pi

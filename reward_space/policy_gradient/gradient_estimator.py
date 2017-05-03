@@ -151,7 +151,10 @@ class MaximumLikelihoodEstimator(GradientEstimator):
             n_states, n_actions = len(state_space), len(action_space)
 
         episode_reward_features = np.zeros((self.n_episodes, n_features))
-        episode_hessian = np.zeros((self.n_episodes, n_params, n_params))
+
+        episode_policy_gradient = np.zeros((self.n_episodes, n_params))
+        episode_policy_hessian = np.zeros((self.n_episodes, n_params, n_params))
+
 
         if use_baseline:
             baseline = self._estimate_hessian_baseline(reward_features,
@@ -175,16 +178,17 @@ class MaximumLikelihoodEstimator(GradientEstimator):
             d = self.dataset[i, 4]
 
             episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
-            episode_hessian[episode, :, :] += np.outer(
-                policy_gradient[index, :].squeeze(), \
-                policy_gradient[index, :].squeeze()) + \
-                policy_hessian[index, :, :].squeeze()
+            episode_policy_gradient[episode, :] += policy_gradient[index, :].squeeze()
+            episode_policy_hessian[episode, :, :] += policy_hessian[index, :, :].squeeze()
 
             if self.dataset[i, -1] == 1:
                 episode += 1
 
             i += 1
 
+        episode_hessian = episode_policy_gradient.reshape(self.n_episodes, 1,
+                                                          n_params) * episode_policy_gradient.reshape(
+            self.n_episodes, 1, n_params) + episode_policy_hessian
         episode_reward_features_baseline = episode_reward_features - baseline
 
         return_hessians = 1. / self.n_episodes * np.tensordot(
@@ -209,7 +213,9 @@ class MaximumLikelihoodEstimator(GradientEstimator):
             n_states, n_actions = len(state_space), len(action_space)
 
         episode_reward_features = np.zeros((self.n_episodes, n_features))
-        episode_hessian = np.zeros((self.n_episodes, n_params, n_params))
+        episode_policy_gradient = np.zeros((self.n_episodes, n_params))
+        episode_policy_hessian = np.zeros((self.n_episodes, n_params, n_params))
+
         numerator = denominator = 0.
 
         i = 0
@@ -225,13 +231,14 @@ class MaximumLikelihoodEstimator(GradientEstimator):
             d = self.dataset[i, 4]
 
             episode_reward_features[episode, :] += d * reward_features[index, :].squeeze()
-            episode_hessian[episode, :, :] += np.outer(
-                policy_gradient[index, :].squeeze(), \
-                policy_gradient[index, :].squeeze()) + \
-                policy_hessian[index, :, :].squeeze()
+            episode_policy_gradient[episode, :] += policy_gradient[index, :].squeeze()
+            episode_policy_hessian[episode, :, :] += policy_hessian[index, :, :].squeeze()
 
             if self.dataset[i, -1] == 1:
-                vectorized_hessian = episode_hessian[episode, :, :].ravel()
+                episode_hessian = np.outer(episode_policy_gradient[episode],
+                                           episode_policy_gradient[episode]) + \
+                                  episode_policy_hessian[episode]
+                vectorized_hessian = episode_hessian.ravel()
                 numerator += episode_reward_features[episode, :] * la.norm(
                     vectorized_hessian) ** 2
                 denominator += la.norm(vectorized_hessian) ** 2

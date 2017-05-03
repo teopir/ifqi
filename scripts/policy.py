@@ -865,6 +865,7 @@ class TabularPolicy(Policy):
         rows = np.repeat(np.arange(self.n_states), self.n_actions)
         cols = np.arange(self.n_state_actions)
         self.pi2[rows, cols] = self.pi.ravel()
+        self.seed()
 
     def draw_action(self, state, done):
         action = self.np_random.choice(self.n_actions, p=self.pi[np.asscalar(state)])

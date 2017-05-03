@@ -114,6 +114,7 @@ if __name__ == '__main__':
 
     #number of neighbors for kernel extension
     k_neighbors = [1,2]
+    #k_neighbors = [1]
     penalty_list = [True, False]
 
     k_pvf = []
@@ -122,7 +123,7 @@ if __name__ == '__main__':
 
     #Policy parameters
     K = mdp.computeOptimalK()
-    sigma = np.sqrt(0.1)
+    sigma = np.sqrt(.1)
 
     policy = GaussianPolicy1D(K, sigma)
 
@@ -143,6 +144,7 @@ if __name__ == '__main__':
     #Collect samples
     dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
     n_samples = dataset.shape[0]
+
 
     estimator = ContinuousEnvSampleEstimator(dataset, mdp.gamma)
     ml_estimator = MaximumLikelihoodEstimator(dataset)
@@ -216,6 +218,38 @@ if __name__ == '__main__':
     psi[:, mask] *= -1
     hessian_hat[mask] *= -1
 
+
+
+    '''
+    GIRL
+    '''
+
+    from reward_space.inverse_reinforcement_learning.girl import LinearGIRL
+    lgirl = LinearGIRL(dataset, dataset[:, :2] ** 2, G)
+    par_sa_squared = lgirl.fit()
+
+    lgirl = LinearGIRL(dataset, dataset[:, :2], G)
+    par_sa_linear = lgirl.fit()
+
+    print(par_sa_squared)
+    print(par_sa_linear)
+
+
+    def girl1(s, a):
+        return s**2 * par_sa_squared[0] + a**2 * par_sa_squared[1]
+
+    def girl2(s, a):
+        return s * par_sa_linear[0] + a * par_sa_linear[1]
+
+    g1 = girl1(dataset[:, 0], dataset[:, 1]).ravel()
+    g2 = girl2(dataset[:, 0], dataset[:, 1]).ravel()
+
+    names.append('GIRL - square')
+    basis_functions.append(g1)
+
+    names.append('GIRL - linear')
+    basis_functions.append(g2)
+
     '''
     TRACE MINIMIZATION
     max eig minimization or hessian heuristic in this case are
@@ -225,37 +259,10 @@ if __name__ == '__main__':
     optimizer = HeuristicOptimizerNegativeDefinite(hessian_hat)
     w = optimizer.fit()
     grbf = np.dot(psi, w)
-    names.append('GRBF trace minimizer')
+    names.append('ECO-R')
     basis_functions.append(grbf)
 
-    '''
-    MAXIMUM ENTROPY IRL
-    '''
-    '''
-    print('-' * 100)
-    print('Estimating maximum entropy reward...')
-    me = MaximumEntropyIRL(dataset)
-    w = me.fit(G, psi)
-    w = w / la.norm(w)
 
-    names.append('Maximum entropy GRBF')
-    basis_functions.append(np.dot(psi, w))
-    '''
-
-    '''
-    PROTO-VALUE FUNCTIONS
-    '''
-    print('Estimating proto value functions...')
-    cpvf = ContinuousProtoValueFunctions(k_neighbors=10, kernel=gaussian_kernel)
-    cpvf.fit(dataset)
-
-    for k in k_pvf:
-        _, phi_pvf = cpvf.transform(k)
-        phi_pvf = phi_pvf.sum(axis=1).ravel()
-        pvf_norm = phi_pvf / la.norm(phi_pvf)
-
-        names.append('PVF %s' % k)
-        basis_functions.append(pvf_norm)
 
     '''
     Gradient and hessian estimation
@@ -317,7 +324,7 @@ if __name__ == '__main__':
     count_sa_knn.fit(states_actions, count_sa_hat)
     #plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
 
-
+    '''
     print('-' * 100)
     print('Training with REINFORCE using the estimated grbf trace minimizer')
 
@@ -358,16 +365,18 @@ if __name__ == '__main__':
             ax.plot(_range, np.concatenate(knn_histories[i, :, 0]).squeeze(), marker='+', label=knn_labels[i])
 
         ax.legend(loc='upper right')
-    '''
+
     saveme = np.zeros(2, dtype=object)
     saveme[0] = knn_labels
     saveme[1] = knn_histories
     np.save('data/lqg_gbrf_knn_%s' % mytime, saveme)
-
+    '''
     print('-' * 100)
     print('Training with REINFORCE using true reward and true a function')
 
-    learner = PolicyGradientLearner(mdp, policy, max_iter_opt=400, lrate=0.03,
+    iterations = 100
+
+    learner = PolicyGradientLearner(mdp, policy, max_iter_opt=iterations, lrate=0.03,
             verbose=1, lrate_decay={'method': 'inverse', 'decay': .0}, tol_opt=-1.)
 
     #Building knn for reward and advantage
@@ -379,24 +388,34 @@ if __name__ == '__main__':
 
     z = reward_function(_states.ravel(), _actions.ravel()).ravel()[:,np.newaxis]
     z = scaler.fit_transform(z)
-    history_reward = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, False)
+    history_reward = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, True)
 
     z = A_function(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
     z = scaler.fit_transform(z)
-    history_advantage = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, False)
+    history_advantage = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, True)
 
-    labels = ['Reward function', 'Advantage function']
-    histories = [history_reward, history_advantage]
+    z = girl1(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
+    z = scaler.fit_transform(z)
+    history_g1 = train(learner, _states_actions, gaussian_kernel, 1,
+                              False, z, None, True)
 
-    learner = PolicyGradientLearner(mdp, policy, max_iter_opt=400, lrate=0.03,
+    z = girl2(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
+    z = scaler.fit_transform(z)
+    history_g2 = train(learner, _states_actions, gaussian_kernel, 1,
+                              False, z, None, True)
+
+    labels = ['Reward function', 'Advantage function', 'GIRL - linear', 'GIRL - square']
+    histories = [history_reward, history_advantage, history_g1, history_g2]
+
+    learner = PolicyGradientLearner(mdp, policy, max_iter_opt=iterations, lrate=0.03,
             verbose=1, lrate_decay={'method': 'inverse', 'decay': .5}, tol_opt=-1.)
 
-    for i in range(len(scaled_basis_functions)):
+    for i in range(4, len(scaled_basis_functions)):
         print(names[i])
         sbf = scaled_basis_functions[i]
         history = train(learner, states_actions, gaussian_kernel, 2, True, sbf, count_sa_knn, False)
         histories.append(history)
-    labels = labels + map(lambda x: x + ' 2knn - penalized', names)
+    labels = labels + map(lambda x: x + ' 2knn - penalized', names[4:])
 
     histories = np.array(histories)
     t = PrettyTable()
@@ -406,15 +425,15 @@ if __name__ == '__main__':
     t.add_column('Final gradient', histories[:, -1, 2])
     print(t)
 
-
+    plot=True
     if plot:
-        _range = np.arange(401)
+        _range = np.arange(iterations+1)
         fig, ax = plt.subplots()
         ax.set_xlabel('parameter')
         ax.set_ylabel('iterations')
-        fig.suptitle('REINFORCE - Parameter')
+        fig.suptitle('REINFORCE - Parameter ' + str(sigma**2))
 
-        ax.plot([0, 400], [K.ravel(), K.ravel()], color='k', label='Optimal parameter')
+        ax.plot([0, iterations+1], [K.ravel(), K.ravel()], color='k', label='Optimal parameter')
         for i in range(len(histories)):
             ax.plot(_range, np.concatenate(histories[i, :, 0]).squeeze(), marker=None, label=labels[i])
 
@@ -424,4 +443,3 @@ if __name__ == '__main__':
     saveme[0] = labels
     saveme[1] = histories
     np.save('data/lqg_comparision_%s' % mytime, saveme)
-    '''
