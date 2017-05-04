@@ -8,8 +8,18 @@ import pandas as pd
 plot = True
 mytime = time.time()
 
-gh_paths = glob.glob('data/taxi/taxi_gradients_hessians_*.npy')
-comp_paths = glob.glob('data/taxi/taxi_comparision_*.npy')
+epsilon=0.0
+
+gh_paths = glob.glob('data/taxi/taxi_gradients_hessians_%s_*.npy' % epsilon)
+comp_paths = glob.glob('data/taxi/taxi_comparision_%s_*.npy' % epsilon)
+lpal_paths = glob.glob('data/taxi/taxi_comparision_%s_*.npy' % epsilon)
+
+common = set(map(lambda x: x.split('_')[-1], gh_paths)) & \
+         set(map(lambda x: x.split('_')[-1], comp_paths)) & \
+         set(map(lambda x: x.split('_')[-1], lpal_paths))
+gh_paths = filter(lambda x: x.split('_')[-1] in common, gh_paths)
+lpal_paths = filter(lambda x: x.split('_')[-1] in common, lpal_paths)
+comp_paths = filter(lambda x: x.split('_')[-1] in common, comp_paths)
 
 n = len(gh_paths)
 confidence = 0.95
@@ -29,7 +39,7 @@ for i in range(1, gh_arrays.shape[1]):
 
 
 if plot:
-    _range = np.arange(234)
+    _range = np.arange(240)
     fig, axes = plt.subplots()
     for i in range(len(names)):
         y = gh_mean[5][i]
@@ -50,10 +60,10 @@ if plot:
     axes[3].set_title('Traces')
 
 
-res = np.stack([gh_mean[5], gh_std[5], gh_error[5]]).transpose([1, 0, 2]).reshape(27, 234).T
+res = np.stack([gh_mean[5], gh_std[5], gh_error[5]]).transpose([1, 0, 2]).reshape(27, 240).T
 col_names = map(str.__add__, np.repeat(names, 3), np.tile(['-Mean', '-Std', '-Error'], 9))
 df = pd.DataFrame(res, columns=col_names)
-df.to_csv('data/csv/taxi_eigenvalues.csv', index_label='index')
+df.to_csv('data/csv/taxi_eigenvalues_%s.csv' % epsilon, index_label='index')
 
 #------------------------------------------------------------------------------
 comp_labels = comp_arrays[0, 0]
@@ -88,7 +98,7 @@ if plot:
 titles = map(lambda x: x+'-mean', comp_labels) + map(lambda x: x+'-error', comp_labels)
 res = np.vstack([return_mean, return_error]).T[range(0, 201, 10)]
 df = pd.DataFrame(res, columns=titles, index=range(0, 201, 10))
-df.to_csv('data/csv/taxi_return.csv', index_label='Iterations')
+df.to_csv('data/csv/taxi_return_%s.csv' % epsilon, index_label='Iterations')
 
 #-------------------------------------------------------------------------------
 from policy import BoltzmannPolicy
@@ -150,5 +160,5 @@ if plot:
 titles = map(lambda x: x+'-mean', comp_labels) + map(lambda x: x+'-error', comp_labels)
 res = np.vstack([comp_d_kl_mean, comp_d_kl_error]).T
 df = pd.DataFrame(res, columns=titles, index=range(0, 201, 10))
-df.to_csv('data/csv/taxi_kl.csv', index_label='Iterations')
+df.to_csv('data/csv/taxi_kl_%s.csv' % epsilon, index_label='Iterations')
 

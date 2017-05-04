@@ -8,10 +8,22 @@ import pandas as pd
 plot = True
 mytime = time.time()
 
-gh_paths = glob.glob('data/lqg_e/lqg_gradients_hessians_*.npy')
-grbf_paths = glob.glob('data/lqg_gbrf_knn_*.npy')
-comp_paths = glob.glob('data/lqg_comparision_*.npy')
-comp_paths_e = glob.glob('data/lqg_e/lqg_comparision_*.npy')
+sigma = 0.1
+ite_knn=101
+ite_comp=201
+
+gh_paths = glob.glob('data/lqg/lqg_gradients_hessians_%s_*.npy' % sigma)
+grbf_paths = glob.glob('data/lqg/lqg_gbrf_knn_%s_*.npy' % sigma)
+comp_paths = glob.glob('data/lqg/lqg_comparision_%s_*.npy' % sigma)
+
+common = set(map(lambda x: x.split('_')[-1], gh_paths)) & \
+         set(map(lambda x: x.split('_')[-1], comp_paths)) & \
+         set(map(lambda x: x.split('_')[-1], grbf_paths))
+gh_paths = filter(lambda x: x.split('_')[-1] in common, gh_paths)
+grbf_paths = filter(lambda x: x.split('_')[-1] in common, grbf_paths)
+comp_paths = filter(lambda x: x.split('_')[-1] in common, comp_paths)
+
+print(len(common))
 
 n = len(gh_paths)
 confidence = 0.95
@@ -19,11 +31,7 @@ confidence = 0.95
 gh_arrays = np.array(map(np.load, gh_paths))
 grbf_arrays = np.array(map(np.load, grbf_paths))
 comp_arrays = np.array(map(np.load, comp_paths))
-comp_arrays_e = np.array(map(np.load, comp_paths_e))
 
-for i in range(80):
-    comp_arrays[i, 1] = np.vstack([comp_arrays[i, 1], comp_arrays_e[i, 1]])
-    comp_arrays[i, 0].append('Maximum entropy')
 
 names = gh_arrays[0, 0]
 #Compute gradient and hessian statistics
@@ -54,17 +62,22 @@ saveme[3] = gradient_mean - gradient_ci[0]
 saveme[4] = hessian_mean
 saveme[5] = hessian_std
 saveme[6] = hessian_mean - hessian_ci[0]
-np.save('data/confidence_intervals/ci_lqg_gradients_hessians_%s' % mytime, saveme)
+#np.save('data/confidence_intervals/ci_lqg_gradients_hessians_%s' % mytime, saveme)
 
+data = np.vstack([saveme[0], saveme[1].squeeze(), saveme[3].squeeze(), saveme[4].squeeze(), saveme[6].squeeze()]).T
+df = pd.DataFrame(data, columns=['Basis function', 'Gradient-mean', 'Gradient-ci', 'Hessian-mean', 'Hessian-ci'])
+df.to_csv('data/csv/lqg_grad_hessian_%s.csv' % sigma, index_label='Iterations')
 #------------------------------------------------------------------------------
 labels = grbf_arrays[0, 0]
+n_knn = len(labels)
+print(n_knn)
 iter_mean = np.mean(grbf_arrays[:, 1]).astype(np.float64)
 iter_std = (np.var(grbf_arrays[:, 1]) ** 0.5).astype(np.float64)
 iter_ci = st.t.interval(confidence, n-1, loc=iter_mean, \
                             scale=iter_std/np.sqrt(n-1))
 
 if plot:
-    _range = np.arange(101)
+    _range = np.arange(ite_knn)
     fig, ax = plt.subplots()
     ax.set_xlabel('parameter')
     ax.set_ylabel('iterations')
@@ -85,15 +98,15 @@ saveme[0] = labels
 saveme[1] = iter_mean
 saveme[2] = iter_std
 saveme[3] = iter_mean - iter_ci[0]
-np.save('data/confidence_intervals/ci_lqg_gbrf_knn_%s' % mytime, saveme)
+#np.save('data/confidence_intervals/ci_lqg_gbrf_knn_%s' % mytime, saveme)
 
 second = ['Parameter', 'Return', 'Gradient']
 third = ['Mean', 'Std', 'Error']
 
-data = np.stack(saveme[1:], axis=2).transpose([0, 3, 2, 1]).reshape(108, 101).T
-col_names1 = np.zeros((12, 3, 3), dtype=object)
-col_names2 = np.zeros((12, 3, 3), dtype=object)
-col_names3 = np.zeros((12, 3, 3), dtype=object)
+data = np.stack(saveme[1:], axis=2).transpose([0, 3, 2, 1]).reshape(9 * n_knn, ite_knn).T
+col_names1 = np.zeros((n_knn, 3, 3), dtype=object)
+col_names2 = np.zeros((n_knn, 3, 3), dtype=object)
+col_names3 = np.zeros((n_knn, 3, 3), dtype=object)
 
 for i in range(len(labels)):
     col_names1[i, :, :] = labels[i]
@@ -102,20 +115,21 @@ for i in range(len(second)):
 for i in range(len(third)):
     col_names3[:, :, i] = third[i]
 
-col_names = (col_names1 + '---' + col_names2 + '---' + col_names3).reshape(108, 1).ravel()
+col_names = (col_names1 + '---' + col_names2 + '---' + col_names3).reshape(9 * n_knn, 1).ravel()
 df = pd.DataFrame(data, columns=col_names)
-df = df.iloc[np.arange(0, 101, 10)]
-df.to_csv('data/csv/ci_lqg_gbrf_knn.csv', index_label='Iterations')
+df = df.iloc[np.arange(0, ite_knn, 10)]
+df.to_csv('data/csv/lqg_gbrf_knn_%s.csv' % sigma, index_label='Iterations')
 
 #------------------------------------------------------------------------------
 comp_labels = comp_arrays[0, 0]
+n_comp = len(comp_labels)
 comp_mean = np.mean(comp_arrays[:, 1]).astype(np.float64)
 comp_std = (np.var(comp_arrays[:, 1]) ** 0.5).astype(np.float64)
 comp_ci = st.t.interval(confidence, n-1, loc=comp_mean, \
                             scale=comp_std/np.sqrt(n-1))
 
 if plot:
-    _range = np.arange(401)
+    _range = np.arange(ite_comp)
     fig, ax = plt.subplots()
     ax.set_xlabel('parameter')
     ax.set_ylabel('iterations')
@@ -136,15 +150,15 @@ saveme[0] = comp_labels
 saveme[1] = comp_mean
 saveme[2] = comp_std
 saveme[3] = comp_mean - comp_ci[0]
-np.save('data/confidence_intervals/ci_lqg_comparision_%s' % mytime, saveme)
+#np.save('data/confidence_intervals/ci_lqg_comparision_%s' % mytime, saveme)
 
 second = ['Parameter', 'Return', 'Gradient']
 third = ['Mean', 'Std', 'Error']
 
-data = np.stack(saveme[1:], axis=2).transpose([0, 3, 2, 1]).reshape(99, 401).T
-col_names1 = np.zeros((11, 3, 3), dtype=object)
-col_names2 = np.zeros((11, 3, 3), dtype=object)
-col_names3 = np.zeros((11, 3, 3), dtype=object)
+data = np.stack(saveme[1:], axis=2).transpose([0, 3, 2, 1]).reshape(9*n_comp, ite_comp).T
+col_names1 = np.zeros((n_comp, 3, 3), dtype=object)
+col_names2 = np.zeros((n_comp, 3, 3), dtype=object)
+col_names3 = np.zeros((n_comp, 3, 3), dtype=object)
 
 for i in range(len(comp_labels)):
     col_names1[i, :, :] = comp_labels[i]
@@ -153,8 +167,7 @@ for i in range(len(second)):
 for i in range(len(third)):
     col_names3[:, :, i] = third[i]
 
-col_names = (col_names1 + '---' + col_names2 + '---' + col_names3).reshape(99, 1).ravel()
+col_names = (col_names1 + '---' + col_names2 + '---' + col_names3).reshape(9*n_comp, 1).ravel()
 df = pd.DataFrame(data, columns=col_names)
-df = df.iloc[np.arange(0, 401, 40)]
-df.to_csv('data/csv/ci_lqg_comparision.csv', index_label='Iterations')
-
+df = df.iloc[np.arange(0, ite_comp, 20)]
+df.to_csv('data/csv/lqg_comparision_%s.csv' % sigma, index_label='Iterations')
