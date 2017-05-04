@@ -296,7 +296,7 @@ if __name__ == '__main__':
     saveme[0] = names
     saveme[1] = gradients_np
     saveme[2] = hessians_np
-    np.save('data/lqg_gradients_hessians_%s_%s' % (sigma**2, mytime), saveme)
+    np.save('data/lqg/lqg_gradients_hessians_%s_%s' % (sigma**2, mytime), saveme)
 
     if plot:
         fig, ax = plt.subplots()
@@ -367,7 +367,7 @@ if __name__ == '__main__':
     saveme = np.zeros(2, dtype=object)
     saveme[0] = knn_labels
     saveme[1] = knn_histories
-    np.save('data/lqg_gbrf_knn_%s_%s' % (sigma**2, mytime), saveme)
+    np.save('data/lqg/lqg_gbrf_knn_%s_%s' % (sigma**2, mytime), saveme)
 
 
     print('-' * 100)
@@ -441,4 +441,4 @@ if __name__ == '__main__':
     saveme = np.zeros(2, dtype=object)
     saveme[0] = labels
     saveme[1] = histories
-    np.save('data/lqg_comparision_%s_%s' % (sigma**2, mytime), saveme)
+    np.save('data/lqg/lqg_comparision_%s_%s' % (sigma**2, mytime), saveme)
