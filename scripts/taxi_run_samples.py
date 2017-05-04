@@ -500,6 +500,8 @@ if __name__ == '__main__':
 
     mytime = time.time()
 
+    epsilon = 0.
+
     plot = False
     plot_gradient = False
     perform_estimation_pvf = True
@@ -537,7 +539,7 @@ if __name__ == '__main__':
     print('Fitting eps-boltz expert policy...')
     action_weights = fit_maximum_likelihood_boltzmann_policy(state_features,
                      expert_deterministic_policy.pi.argmax(axis=1))
-    expert_policy = EpsilonGreedyBoltzmannPolicy(0.05, state_features,
+    expert_policy = EpsilonGreedyBoltzmannPolicy(epsilon, state_features,
                                                  action_weights)
     d_kl_det_expert = kullback_leibler_divergence(
         expert_deterministic_policy.pi, expert_policy.pi[:n_states - 1])
@@ -549,7 +551,7 @@ if __name__ == '__main__':
     print('Dataset made of %s samples' % n_samples_ex)
 
     action_weights = np.zeros((n_actions, n_parameters))
-    ml_policy = EpsilonGreedyBoltzmannPolicy(0.05, state_features, action_weights)
+    ml_policy = EpsilonGreedyBoltzmannPolicy(epsilon, state_features, action_weights)
     print('Fitting Maximum Likelihood eps-boltz policy from trajectories...')
     ml_policy = fit_maximum_likelihood_policy_from_trajectories(state_features,
                                                     mdp_wrap.state_space,
@@ -643,6 +645,7 @@ if __name__ == '__main__':
     state_action_features = np.hstack([state_action_features, np.tile(np.eye(n_actions), (n_states, 1))])
 
     # LPAL
+
     lpal = LPAL(state_action_features,
                 trajectories_ex,
                 estimator_ex.P,
@@ -659,6 +662,7 @@ if __name__ == '__main__':
     n_samples_lpal = trajectories_lpal.shape[0]
     print('Dataset made of %s samples' % n_samples_lpal)
 
+
     estimator_lpal = DiscreteEnvSampleEstimator(trajectories_lpal,
                                mdp_wrap.gamma,
                                mdp_wrap.state_space,
@@ -666,6 +670,10 @@ if __name__ == '__main__':
                                mdp_wrap.horizon)
 
     print('J LPAL policy %s' % estimator_lpal.get_J())
+    saveme = np.zeros(2, dtype=object)
+    saveme[0] = lpal_policy
+    saveme[1] = estimator_lpal.get_J()
+    np.save('data/taxi/lpal_%s_%s' % (epsilon, mytime), saveme)
 
     #Linear IRL
     transition_model = np.zeros((n_states, n_actions, n_states))
@@ -819,6 +827,18 @@ if __name__ == '__main__':
     eigvals_np = np.array(eigvals)
     traces_np = np.array(traces)
 
+    saveme = np.zeros(8, dtype=object)
+    saveme[0] = names
+    saveme[1] = gradients_np
+    saveme[2] = hessians_np
+    saveme[3] = gradient_norms2_np
+    saveme[4] = gradient_normsinf_np
+    saveme[5] = eigvals_max_np
+    saveme[6] = eigvals_np
+    saveme[7] = traces_np
+    np.save('data/taxi/taxi_gradients_hessians_%s_%s' % (epsilon, mytime), saveme)
+
+
     if plot:
         fig, ax = plt.subplots()
         ax.set_xlabel('trace')
@@ -877,7 +897,6 @@ if __name__ == '__main__':
     t.add_column('Final return', histories[:, -1, 1])
     print(t)
 
-    plot=True
     if plot:
         _range = np.arange(201)
         fig, ax = plt.subplots()
@@ -895,4 +914,4 @@ if __name__ == '__main__':
     saveme = np.zeros(2, dtype=object)
     saveme[0] = names
     saveme[1] = histories
-    np.save('data/taxi_comparision_%s' % mytime, saveme)
+    np.save('data/taxi/taxi_comparision_%s_%s' % (epsilon, mytime), saveme)

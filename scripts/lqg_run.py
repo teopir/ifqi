@@ -113,7 +113,7 @@ if __name__ == '__main__':
     n_episodes = 20
 
     #number of neighbors for kernel extension
-    k_neighbors = [1,2]
+    k_neighbors = [1, 2, 5, 10]
     #k_neighbors = [1]
     penalty_list = [True, False]
 
@@ -123,6 +123,7 @@ if __name__ == '__main__':
 
     #Policy parameters
     K = mdp.computeOptimalK()
+    print(K)
     sigma = np.sqrt(.1)
 
     policy = GaussianPolicy1D(K, sigma)
@@ -218,8 +219,6 @@ if __name__ == '__main__':
     psi[:, mask] *= -1
     hessian_hat[mask] *= -1
 
-
-
     '''
     GIRL
     '''
@@ -228,7 +227,7 @@ if __name__ == '__main__':
     lgirl = LinearGIRL(dataset, dataset[:, :2] ** 2, G)
     par_sa_squared = lgirl.fit()
 
-    lgirl = LinearGIRL(dataset, dataset[:, :2], G)
+    lgirl = LinearGIRL(dataset, abs(dataset[:, :2]), G)
     par_sa_linear = lgirl.fit()
 
     print(par_sa_squared)
@@ -239,7 +238,7 @@ if __name__ == '__main__':
         return s**2 * par_sa_squared[0] + a**2 * par_sa_squared[1]
 
     def girl2(s, a):
-        return s * par_sa_linear[0] + a * par_sa_linear[1]
+        return abs(s) * par_sa_linear[0] + abs(a) * par_sa_linear[1]
 
     g1 = girl1(dataset[:, 0], dataset[:, 1]).ravel()
     g2 = girl2(dataset[:, 0], dataset[:, 1]).ravel()
@@ -297,7 +296,7 @@ if __name__ == '__main__':
     saveme[0] = names
     saveme[1] = gradients_np
     saveme[2] = hessians_np
-    np.save('data/lqg_gradients_hessians_%s' % mytime, saveme)
+    np.save('data/lqg_gradients_hessians_%s_%s' % (sigma**2, mytime), saveme)
 
     if plot:
         fig, ax = plt.subplots()
@@ -324,7 +323,7 @@ if __name__ == '__main__':
     count_sa_knn.fit(states_actions, count_sa_hat)
     #plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
 
-    '''
+
     print('-' * 100)
     print('Training with REINFORCE using the estimated grbf trace minimizer')
 
@@ -352,7 +351,6 @@ if __name__ == '__main__':
     print(t)
 
 
-
     if plot:
         _range = np.arange(101)
         fig, ax = plt.subplots()
@@ -369,12 +367,13 @@ if __name__ == '__main__':
     saveme = np.zeros(2, dtype=object)
     saveme[0] = knn_labels
     saveme[1] = knn_histories
-    np.save('data/lqg_gbrf_knn_%s' % mytime, saveme)
-    '''
+    np.save('data/lqg_gbrf_knn_%s_%s' % (sigma**2, mytime), saveme)
+
+
     print('-' * 100)
     print('Training with REINFORCE using true reward and true a function')
 
-    iterations = 100
+    iterations = 200
 
     learner = PolicyGradientLearner(mdp, policy, max_iter_opt=iterations, lrate=0.03,
             verbose=1, lrate_decay={'method': 'inverse', 'decay': .0}, tol_opt=-1.)
@@ -388,27 +387,28 @@ if __name__ == '__main__':
 
     z = reward_function(_states.ravel(), _actions.ravel()).ravel()[:,np.newaxis]
     z = scaler.fit_transform(z)
-    history_reward = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, True)
+    history_reward = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, False)
 
     z = A_function(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
     z = scaler.fit_transform(z)
-    history_advantage = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, True)
+    history_advantage = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, False)
+
+    learner = PolicyGradientLearner(mdp, policy, max_iter_opt=iterations, lrate=0.03,
+            verbose=1, lrate_decay={'method': 'inverse', 'decay': .5}, tol_opt=-1.)
 
     z = girl1(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
     z = scaler.fit_transform(z)
     history_g1 = train(learner, _states_actions, gaussian_kernel, 1,
-                              False, z, None, True)
+                              False, z, None, False)
 
     z = girl2(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
     z = scaler.fit_transform(z)
     history_g2 = train(learner, _states_actions, gaussian_kernel, 1,
-                              False, z, None, True)
+                              False, z, None, False)
 
     labels = ['Reward function', 'Advantage function', 'GIRL - linear', 'GIRL - square']
     histories = [history_reward, history_advantage, history_g1, history_g2]
 
-    learner = PolicyGradientLearner(mdp, policy, max_iter_opt=iterations, lrate=0.03,
-            verbose=1, lrate_decay={'method': 'inverse', 'decay': .5}, tol_opt=-1.)
 
     for i in range(4, len(scaled_basis_functions)):
         print(names[i])
@@ -425,7 +425,6 @@ if __name__ == '__main__':
     t.add_column('Final gradient', histories[:, -1, 2])
     print(t)
 
-    plot=True
     if plot:
         _range = np.arange(iterations+1)
         fig, ax = plt.subplots()
@@ -442,4 +441,4 @@ if __name__ == '__main__':
     saveme = np.zeros(2, dtype=object)
     saveme[0] = labels
     saveme[1] = histories
-    np.save('data/lqg_comparision_%s' % mytime, saveme)
+    np.save('data/lqg_comparision_%s_%s' % (sigma**2, mytime), saveme)
