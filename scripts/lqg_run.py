@@ -321,7 +321,7 @@ if __name__ == '__main__':
 
     count_sa_knn = KNeighborsRegressor2(n_neighbors=5, weights=gaussian_kernel)
     count_sa_knn.fit(states_actions, count_sa_hat)
-    plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
+    #plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
 
     '''
     print('-' * 100)
@@ -409,7 +409,7 @@ if __name__ == '__main__':
     for i in range(4, len(scaled_basis_functions)):
         print(names[i])
         sbf = scaled_basis_functions[i]
-        history = train(learner, states_actions, gaussian_kernel, 2, True, sbf, count_sa_knn, True)
+        history = train(learner, states_actions, gaussian_kernel, 2, True, sbf, count_sa_knn, False)
         histories.append(history)
     labels = labels + map(lambda x: x + ' 2knn - penalized', names[4:])
 
@@ -421,7 +421,6 @@ if __name__ == '__main__':
     t.add_column('Final gradient', histories[:, -1, 2])
     print(t)
 
-    plot = True
     if plot:
         _range = np.arange(iterations+1)
         fig, ax = plt.subplots()
