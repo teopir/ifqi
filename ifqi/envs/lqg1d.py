@@ -45,7 +45,7 @@ class LQG1D(Environment):
         self.discrete_reward = discrete_reward
         self.max_pos = 10.0
         self.max_action = 8.0
-        self.sigma_noise = np.sqrt(0.1)
+        self.sigma_noise = 0.1
         self.A = np.array([1]).reshape((1, 1))
         self.B = np.array([1]).reshape((1, 1))
         self.Q = np.array([0.9]).reshape((1, 1))

@@ -2,6 +2,7 @@ import numpy.linalg as la
 import numpy as np
 from ifqi.evaluation import evaluation
 import copy
+from reward_space.policy_gradient.gradient_descent import *
 
 class PolicyGradientLearner(object):
 
@@ -16,6 +17,7 @@ class PolicyGradientLearner(object):
                  lrate=0.01,
                  lrate_decay=None,
                  estimator='reinforce',
+                 gradient_updater='vanilla',
                  max_iter_eval=100,
                  tol_eval=1e-5,
                  max_iter_opt=100,
@@ -67,6 +69,11 @@ class PolicyGradientLearner(object):
         else:
             raise NotImplementedError()
 
+        if gradient_updater == 'vanilla':
+            self.gradient_updater = VanillaGradient(lrate, ascent=True)
+        elif gradient_updater == 'adam':
+            self.gradient_updater = Adam(lrate, ascent=True)
+
     def optimize(self, theta0, reward=None, return_history=False):
         '''
         This method performs simple gradient ascent optimization of the policy
@@ -78,6 +85,7 @@ class PolicyGradientLearner(object):
 
         ite = 0
         theta = np.array(theta0, ndmin=2)
+        self.gradient_updater.initialize(theta)
 
         self.policy.set_parameter(theta, build_hessian=False)
         self.estimator.set_policy(self.policy)
@@ -98,7 +106,8 @@ class PolicyGradientLearner(object):
 
         while gradient_norm > self.tol_opt and ite < self.max_iter_opt:
             #print(theta)
-            theta += lrate * gradient  #Gradient ascent update
+            theta = self.gradient_updater.update(gradient) #Gradient ascent update
+            #theta += lrate * gradient
 
             self.policy.set_parameter(theta, build_hessian=False)
             self.estimator.set_policy(self.policy)
@@ -110,6 +119,7 @@ class PolicyGradientLearner(object):
             gradient_norm = la.norm(gradient)
             ite += 1
 
+            '''
             if self.lrate_decay is not None:
                 decay = self.lrate_decay['decay']
                 method = self.lrate_decay['method']
@@ -119,6 +129,7 @@ class PolicyGradientLearner(object):
                     lrate = self.lrate / (1. + decay * ite)
                 else:
                     raise NotImplementedError()
+            '''
 
             if self.verbose >= 1:
                 print('Ite %s: gradient norm %s' % (ite, gradient_norm))

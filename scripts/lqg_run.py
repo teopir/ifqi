@@ -56,15 +56,15 @@ def train(learner, states_actions, gaussian_kernel, k, penalty, feature, knn_pen
     if plot:
         if penalty:
             function = lambda states, actions: .5 * \
-                        get_knn_function_for_plot(knn)(states, actions) + \
-                        .5 * 1. / 0.4 * get_knn_function_for_plot(knn_penalty, True)(states, actions)
+                        get_knn_function_for_plot(knn)(states, actions) *+ \
+                        .5 * 1. / 2. * get_knn_function_for_plot(knn_penalty, True)(states, actions)
         else:
             function = get_knn_function_for_plot(knn)
         plot_state_action_function(function, '%sknn %s' % (k, '- penalty' if penalty else ''))
 
     if penalty:
         function = lambda traj: .5 * get_knn_function_for_prediction(knn)(traj) + \
-                            .5 * 1. / 0.4 * get_knn_function_for_prediction(knn_penalty, True)(traj)
+                             .5 * 1. / 2. * get_knn_function_for_prediction(knn_penalty, True)(traj)
     else:
         function = get_knn_function_for_prediction(knn)
 
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     n_episodes = 20
 
     #number of neighbors for kernel extension
-    k_neighbors = [1, 2, 5, 10]
+    k_neighbors = [1, 2, 5, 10, 50]
     #k_neighbors = [1]
     penalty_list = [True, False]
 
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     #Policy parameters
     K = mdp.computeOptimalK()
     print(K)
-    sigma = np.sqrt(.1)
+    sigma = np.sqrt(1.)
 
     policy = GaussianPolicy1D(K, sigma)
 
@@ -172,9 +172,9 @@ if __name__ == '__main__':
     print('-' * 100)
     print('Computing A-function approx space...')
 
-    sigma_kernel = 4.
+    sigma_kernel = 1.
     def gaussian_kernel(x):
-        return 1. / np.sqrt(2 * np.pi * sigma_kernel ** 2) * np.exp(- 1. / 2 * x ** sigma_kernel / sigma ** 2)
+        return 1. / np.sqrt(2 * np.pi * sigma_kernel ** 2) * np.exp(- 1. / 2 * x ** 2 / (sigma_kernel ** 2))
 
     knn_states = NearestNeighbors(n_neighbors=10)
     knn_states.fit(states[:, np.newaxis])
@@ -321,9 +321,9 @@ if __name__ == '__main__':
 
     count_sa_knn = KNeighborsRegressor2(n_neighbors=5, weights=gaussian_kernel)
     count_sa_knn.fit(states_actions, count_sa_hat)
-    #plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
+    plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
 
-
+    '''
     print('-' * 100)
     print('Training with REINFORCE using the estimated grbf trace minimizer')
 
@@ -369,14 +369,14 @@ if __name__ == '__main__':
     saveme[1] = knn_histories
     np.save('data/lqg/lqg_gbrf_knn_%s_%s' % (sigma**2, mytime), saveme)
 
-
+    '''
     print('-' * 100)
     print('Training with REINFORCE using true reward and true a function')
 
     iterations = 200
 
-    learner = PolicyGradientLearner(mdp, policy, max_iter_opt=iterations, lrate=0.03,
-            verbose=1, lrate_decay={'method': 'inverse', 'decay': .0}, tol_opt=-1.)
+    learner = PolicyGradientLearner(mdp, policy, max_iter_opt=iterations, lrate=0.002,
+            gradient_updater='adam', verbose=1, tol_opt=-1.)
 
     #Building knn for reward and advantage
     _states = np.arange(-10, 10.5, .5)
@@ -393,9 +393,6 @@ if __name__ == '__main__':
     z = scaler.fit_transform(z)
     history_advantage = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, False)
 
-    learner = PolicyGradientLearner(mdp, policy, max_iter_opt=iterations, lrate=0.03,
-            verbose=1, lrate_decay={'method': 'inverse', 'decay': .5}, tol_opt=-1.)
-
     z = girl1(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
     z = scaler.fit_transform(z)
     history_g1 = train(learner, _states_actions, gaussian_kernel, 1,
@@ -409,11 +406,10 @@ if __name__ == '__main__':
     labels = ['Reward function', 'Advantage function', 'GIRL - linear', 'GIRL - square']
     histories = [history_reward, history_advantage, history_g1, history_g2]
 
-
     for i in range(4, len(scaled_basis_functions)):
         print(names[i])
         sbf = scaled_basis_functions[i]
-        history = train(learner, states_actions, gaussian_kernel, 2, True, sbf, count_sa_knn, False)
+        history = train(learner, states_actions, gaussian_kernel, 2, True, sbf, count_sa_knn, True)
         histories.append(history)
     labels = labels + map(lambda x: x + ' 2knn - penalized', names[4:])
 
@@ -425,18 +421,32 @@ if __name__ == '__main__':
     t.add_column('Final gradient', histories[:, -1, 2])
     print(t)
 
+    plot = True
     if plot:
         _range = np.arange(iterations+1)
         fig, ax = plt.subplots()
         ax.set_xlabel('parameter')
         ax.set_ylabel('iterations')
-        fig.suptitle('REINFORCE - Parameter ' + str(sigma**2))
+        fig.suptitle('REINFORCE - Parameter ' + str(sigma**2) + str(mytime))
 
         ax.plot([0, iterations+1], [K.ravel(), K.ravel()], color='k', label='Optimal parameter')
         for i in range(len(histories)):
             ax.plot(_range, np.concatenate(histories[i, :, 0]).squeeze(), marker=None, label=labels[i])
 
         ax.legend(loc='upper right')
+
+        _range = np.arange(iterations+1)
+        fig, ax = plt.subplots()
+        ax.set_xlabel('parameter')
+        ax.set_ylabel('iterations')
+        fig.suptitle('REINFORCE - Return ' + str(sigma**2) + str(mytime))
+
+        ax.plot([0, iterations+1], [K.ravel(), K.ravel()], color='k', label='Optimal parameter')
+        for i in range(len(histories)):
+            ax.plot(_range, histories[i, :, 1], marker=None, label=labels[i])
+
+        ax.legend(loc='upper right')
+
 
     saveme = np.zeros(2, dtype=object)
     saveme[0] = labels
