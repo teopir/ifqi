@@ -630,13 +630,13 @@ class BoltzmannPolicy(Policy):
 
         self.seed()
 
-    def set_parameter(self, new_parameter, build_gradient_hessian=True):
+    def set_parameter(self, new_parameter, build_gradient=True, build_hessian=True):
         self.state_action_parameters = np.copy(new_parameter)
         self.parameters = self.state_action_parameters.reshape((self.n_actions, self.n_parameters))
 
         self._build_density()
-        if build_gradient_hessian:
-            self._build_grad_hess()
+        if build_gradient or build_hessian:
+            self._build_grad_hess(build_hessian)
 
         self.seed()
 
@@ -650,7 +650,7 @@ class BoltzmannPolicy(Policy):
         col_index = np.arange(self.n_states * self.n_actions).reshape(self.n_states, self.n_actions)
         self.pi2[row_index, col_index] = self.pi
 
-    def _build_grad_hess(self):
+    def _build_grad_hess(self, build_hessian=True):
         self.grad_log = np.zeros((self.n_states * self.n_actions,
                                   self.n_parameters * self.n_actions))
         self.hess_log = np.zeros((self.n_states * self.n_actions,
@@ -672,24 +672,25 @@ class BoltzmannPolicy(Policy):
                 self.grad_log[index] = self.state_action_features[index] - num / den
 
         #Compute the hessian for all (s,a) pairs
-        for state in range(self.n_states):
+        if build_hessian:
+            for state in range(self.n_states):
 
-            num1 = num2 = den1 = 0
-            for action in range(self.n_actions):
-                index = state * self.n_actions + action
-                exponential = np.exp(np.dot(self.state_action_features[index], \
-                                            self.state_action_parameters))
-                num1 += np.outer(self.state_action_features[index],\
-                                 self.state_action_features[index]) * exponential
-                num2 += self.state_action_features[index] * exponential
-                den1 += exponential
+                num1 = num2 = den1 = 0
+                for action in range(self.n_actions):
+                    index = state * self.n_actions + action
+                    exponential = np.exp(np.dot(self.state_action_features[index], \
+                                                self.state_action_parameters))
+                    num1 += np.outer(self.state_action_features[index],\
+                                     self.state_action_features[index]) * exponential
+                    num2 += self.state_action_features[index] * exponential
+                    den1 += exponential
 
-            num = num1 * den1 - np.outer(num2, num2)
-            den = den1 ** 2
+                num = num1 * den1 - np.outer(num2, num2)
+                den = den1 ** 2
 
-            for action in range(self.n_actions):
-                index = state * self.n_actions + action
-                self.hess_log[index] = - num / den
+                for action in range(self.n_actions):
+                    index = state * self.n_actions + action
+                    self.hess_log[index] = - num / den
 
     def pdf(self, state, action):
         num = np.exp(np.dot(self.features[state], self.parameters[action].T))

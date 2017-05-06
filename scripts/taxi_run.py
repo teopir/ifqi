@@ -595,7 +595,7 @@ if __name__ == '__main__':
 
     print('Computing optimal policy...')
     opt_policy = TaxiEnvPolicy()
-    pi_opt = opt_policy.PI
+    pi_opt = opt_policy.pi
 
     print('Building state features...')
     state_features = build_state_features(mdp, binary=True)
@@ -875,9 +875,10 @@ if __name__ == '__main__':
     count_sa_hat = estimator.get_count_sa()
     count_sa_hat /= count_sa_hat.max()
 
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.2, verbose=1,
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.02, verbose=1,
                                     max_iter_opt=200, tol_opt=-1., tol_eval=0.,
-                                    estimator='reinforce')
+                                    estimator='reinforce',
+                                    gradient_updater='adam')
 
     theta0 = np.zeros((n_parameters, 1))
 

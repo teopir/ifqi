@@ -113,7 +113,7 @@ if __name__ == '__main__':
     n_episodes = 20
 
     #number of neighbors for kernel extension
-    k_neighbors = [1, 2, 5, 10, 50]
+    k_neighbors = [1, 2, 10, 50, 100]
     #k_neighbors = [1]
     penalty_list = [True, False]
 
@@ -323,12 +323,12 @@ if __name__ == '__main__':
     count_sa_knn.fit(states_actions, count_sa_hat)
     #plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
 
-    '''
+
     print('-' * 100)
     print('Training with REINFORCE using the estimated grbf trace minimizer')
 
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.01, verbose=1, tol_opt=-1.,
-                            lrate_decay={'method' :'inverse', 'decay': .3})
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.002, verbose=1, tol_opt=-1.,
+                            gradient_updater='adam')
 
     knn_histories = []
     knn_labels = []
@@ -364,10 +364,22 @@ if __name__ == '__main__':
 
         ax.legend(loc='upper right')
 
+        _range = np.arange(101)
+        fig, ax = plt.subplots()
+        ax.set_xlabel('parameter')
+        ax.set_ylabel('iterations')
+        fig.suptitle('REINFORCE - Return')
+
+        for i in range(len(knn_histories)):
+            ax.plot(_range, knn_histories[i, :, 1], marker='+', label=knn_labels[i])
+
+        ax.legend(loc='upper right')
+
     saveme = np.zeros(2, dtype=object)
     saveme[0] = knn_labels
     saveme[1] = knn_histories
     np.save('data/lqg/lqg_gbrf_knn_%s_%s' % (sigma**2, mytime), saveme)
+
 
     '''
     print('-' * 100)
@@ -451,3 +463,4 @@ if __name__ == '__main__':
     saveme[0] = labels
     saveme[1] = histories
     np.save('data/lqg/lqg_comparision_%s_%s' % (sigma**2, mytime), saveme)
+    '''

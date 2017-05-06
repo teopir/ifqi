@@ -8,28 +8,28 @@ import pandas as pd
 plot = True
 mytime = time.time()
 
-sigma = 0.1
+sigma = 1.
 ite_knn=101
 ite_comp=201
 
 gh_paths = glob.glob('data/lqg/lqg_gradients_hessians_%s_*.npy' % sigma)
-grbf_paths = glob.glob('data/lqg/lqg_gbrf_knn_%s_*.npy' % sigma)
+#grbf_paths = glob.glob('data/lqg/lqg_gbrf_knn_%s_*.npy' % sigma)
 comp_paths = glob.glob('data/lqg/lqg_comparision_%s_*.npy' % sigma)
 
 common = set(map(lambda x: x.split('_')[-1], gh_paths)) & \
-         set(map(lambda x: x.split('_')[-1], comp_paths)) & \
-         set(map(lambda x: x.split('_')[-1], grbf_paths))
+         set(map(lambda x: x.split('_')[-1], comp_paths)) #& \
+         #set(map(lambda x: x.split('_')[-1], grbf_paths))
 gh_paths = filter(lambda x: x.split('_')[-1] in common, gh_paths)
-grbf_paths = filter(lambda x: x.split('_')[-1] in common, grbf_paths)
+#grbf_paths = filter(lambda x: x.split('_')[-1] in common, grbf_paths)
 comp_paths = filter(lambda x: x.split('_')[-1] in common, comp_paths)
 
 print(len(common))
 
 n = len(gh_paths)
-confidence = 0.95
+confidence = 0.9
 
 gh_arrays = np.array(map(np.load, gh_paths))
-grbf_arrays = np.array(map(np.load, grbf_paths))
+#grbf_arrays = np.array(map(np.load, grbf_paths))
 comp_arrays = np.array(map(np.load, comp_paths))
 
 
@@ -68,6 +68,7 @@ data = np.vstack([saveme[0], saveme[1].squeeze(), saveme[3].squeeze(), saveme[4]
 df = pd.DataFrame(data, columns=['Basis function', 'Gradient-mean', 'Gradient-ci', 'Hessian-mean', 'Hessian-ci'])
 df.to_csv('data/csv/lqg_grad_hessian_%s.csv' % sigma, index_label='Iterations')
 #------------------------------------------------------------------------------
+'''
 labels = grbf_arrays[0, 0]
 n_knn = len(labels)
 print(n_knn)
@@ -119,7 +120,7 @@ col_names = (col_names1 + '---' + col_names2 + '---' + col_names3).reshape(9 * n
 df = pd.DataFrame(data, columns=col_names)
 df = df.iloc[np.arange(0, ite_knn, 10)]
 df.to_csv('data/csv/lqg_gbrf_knn_%s.csv' % sigma, index_label='Iterations')
-
+'''
 #------------------------------------------------------------------------------
 comp_labels = comp_arrays[0, 0]
 n_comp = len(comp_labels)
@@ -128,19 +129,36 @@ comp_std = (np.var(comp_arrays[:, 1]) ** 0.5).astype(np.float64)
 comp_ci = st.t.interval(confidence, n-1, loc=comp_mean, \
                             scale=comp_std/np.sqrt(n-1))
 
+_filter = np.arange(0, ite_comp, 10)
 if plot:
     _range = np.arange(ite_comp)
     fig, ax = plt.subplots()
     ax.set_xlabel('parameter')
     ax.set_ylabel('iterations')
-    fig.suptitle('REINFORCE - Parameter')
+    fig.suptitle('REINFORCE - Parameter - sigma^2 = %s' % sigma)
 
     for i in range(comp_mean.shape[0]):
         y = comp_mean[i, :, 0]
         y_upper = comp_ci[1][i, :, 0] - y
         y_lower = y - comp_ci[0][i, :, 0]
-        ax.errorbar(_range, y,
-                    yerr=[y_lower, y_upper],
+        ax.errorbar(_range[_filter], y[_filter],
+                    yerr=[y_lower[_filter], y_upper[_filter]],
+                    marker='+', label=comp_labels[i])
+
+    ax.legend(loc='upper right')
+
+    _range = np.arange(ite_comp)
+    fig, ax = plt.subplots()
+    ax.set_xlabel('parameter')
+    ax.set_ylabel('iterations')
+    fig.suptitle('REINFORCE - Return - sigma^2 = %s' % sigma)
+
+    for i in range(comp_mean.shape[0]):
+        y = comp_mean[i, :, 1]
+        y_upper = comp_ci[1][i, :, 1] - y
+        y_lower = y - comp_ci[0][i, :, 1]
+        ax.errorbar(_range[_filter], y[_filter],
+                    yerr=[y_lower[_filter], y_upper[_filter]],
                     marker='+', label=comp_labels[i])
 
     ax.legend(loc='upper right')

@@ -559,7 +559,7 @@ if __name__ == '__main__':
                                                     trajectories_ex,
                                                     ml_policy,
                                                     action_weights.ravel()[:, np.newaxis],
-                                                    max_iter=500,
+                                                    max_iter=5,#500,
                                                     learning_rate=1000.)
     d_kl_det_ml = kullback_leibler_divergence(expert_deterministic_policy.pi,
                                               ml_policy.pi[:n_states - 1])
@@ -873,10 +873,11 @@ if __name__ == '__main__':
         rewards[-1] += abs_reward
         return rewards
 
-
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.05, verbose=1,
+    policy = BoltzmannPolicy(state_features, action_weights)
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.004, verbose=1,
                                     max_iter_opt=300, tol_opt=-1., tol_eval=0.,
-                                    estimator='reinforce')
+                                    estimator='reinforce',
+                                    gradient_updater='adam')
 
     theta0 = np.zeros((240, 1))
 
@@ -892,13 +893,13 @@ if __name__ == '__main__':
 
     histories = np.array(histories)
 
-    #t = PrettyTable()
-    #t.add_column('Basis function', names)
-    #t.add_column('Final return', histories[:, -1, 1])
-    #print(t)
+    t = PrettyTable()
+    t.add_column('Basis function', names)
+    t.add_column('Final return', histories[:, -1, 1])
+    print(t)
 
     if plot:
-        _range = np.arange(201)
+        _range = np.arange(301)
         fig, ax = plt.subplots()
         ax.set_xlabel('average return')
         ax.set_ylabel('iterations')
@@ -906,7 +907,7 @@ if __name__ == '__main__':
 
         ax.plot([0, 200], [estimator_ex.get_J(), estimator_ex.get_J()], color='k',
                 label='Optimal return')
-        for i in range(len(names)):
+        for i in range(len(histories)):
             ax.plot(_range, histories[i, :, 1], marker='+', label=names[i])
 
         ax.legend(loc='upper right')
