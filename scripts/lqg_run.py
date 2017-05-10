@@ -292,11 +292,12 @@ if __name__ == '__main__':
     gradients_np = np.vstack(gradients)
     hessians_np = np.vstack(hessians)
 
-    saveme = np.zeros(3, dtype=object)
-    saveme[0] = names
-    saveme[1] = gradients_np
-    saveme[2] = hessians_np
-    np.save('data/lqg/lqg_gradients_hessians_%s_%s' % (sigma**2, mytime), saveme)
+    saveme1 = np.zeros(3, dtype=object)
+    saveme1[0] = names
+    saveme1[1] = gradients_np
+    saveme1[2] = hessians_np
+
+
 
     if plot:
         fig, ax = plt.subplots()
@@ -322,7 +323,7 @@ if __name__ == '__main__':
     count_sa_knn = KNeighborsRegressor2(n_neighbors=5, weights=gaussian_kernel)
     count_sa_knn.fit(states_actions, count_sa_hat)
     #plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
-
+    '''
 
     print('-' * 100)
     print('Training with REINFORCE using the estimated grbf trace minimizer')
@@ -375,17 +376,19 @@ if __name__ == '__main__':
 
         ax.legend(loc='upper right')
 
-    saveme = np.zeros(2, dtype=object)
-    saveme[0] = knn_labels
-    saveme[1] = knn_histories
-    np.save('data/lqg/lqg_gbrf_knn_%s_%s' % (sigma**2, mytime), saveme)
+    saveme3 = np.zeros(2, dtype=object)
+    saveme3[0] = knn_labels
+    saveme3[1] = knn_histories
 
 
     '''
+
     print('-' * 100)
     print('Training with REINFORCE using true reward and true a function')
 
-    iterations = 200
+    iterations = 300
+
+    policy = GaussianPolicy1D(K, sigma=np.sqrt(0.01))
 
     learner = PolicyGradientLearner(mdp, policy, max_iter_opt=iterations, lrate=0.002,
             gradient_updater='adam', verbose=1, tol_opt=-1.)
@@ -459,8 +462,12 @@ if __name__ == '__main__':
         ax.legend(loc='upper right')
 
 
-    saveme = np.zeros(2, dtype=object)
-    saveme[0] = labels
-    saveme[1] = histories
-    np.save('data/lqg/lqg_comparision_%s_%s' % (sigma**2, mytime), saveme)
-    '''
+    saveme2 = np.zeros(2, dtype=object)
+    saveme2[0] = labels
+    saveme2[1] = histories
+
+    np.save('data/lqg/lqg_gradients_hessians_%s_%s' % (sigma ** 2, mytime), saveme1)
+    np.save('data/lqg/lqg_comparision_%s_%s' % (sigma**2, mytime), saveme2)
+    #np.save('data/lqg/lqg_gbrf_knn_%s_%s' % (sigma ** 2, mytime), saveme3)
+
+

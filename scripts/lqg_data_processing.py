@@ -8,9 +8,9 @@ import pandas as pd
 plot = True
 mytime = time.time()
 
-sigma = 1.
+sigma = 0.01
 ite_knn=101
-ite_comp=201
+ite_comp=401
 
 gh_paths = glob.glob('data/lqg/lqg_gradients_hessians_%s_*.npy' % sigma)
 #grbf_paths = glob.glob('data/lqg/lqg_gbrf_knn_%s_*.npy' % sigma)
@@ -129,7 +129,7 @@ comp_std = (np.var(comp_arrays[:, 1]) ** 0.5).astype(np.float64)
 comp_ci = st.t.interval(confidence, n-1, loc=comp_mean, \
                             scale=comp_std/np.sqrt(n-1))
 
-_filter = np.arange(0, ite_comp, 10)
+_filter = np.arange(0, ite_comp, 60)
 if plot:
     _range = np.arange(ite_comp)
     fig, ax = plt.subplots()
@@ -187,5 +187,5 @@ for i in range(len(third)):
 
 col_names = (col_names1 + '---' + col_names2 + '---' + col_names3).reshape(9*n_comp, 1).ravel()
 df = pd.DataFrame(data, columns=col_names)
-df = df.iloc[np.arange(0, ite_comp, 20)]
+df = df.iloc[_filter]
 df.to_csv('data/csv/lqg_comparision_%s.csv' % sigma, index_label='Iterations')

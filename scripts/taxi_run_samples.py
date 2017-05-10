@@ -500,7 +500,7 @@ if __name__ == '__main__':
 
     mytime = time.time()
 
-    epsilon = 0.
+    epsilon = 0.01
 
     plot = False
     plot_gradient = False
@@ -634,6 +634,10 @@ if __name__ == '__main__':
         psi_padded[sa_idx[0][i], :] = psi[i, :]
         psi_padded_mb[sa_idx[0][i], :] = psi_mb[i, :]
 
+    del X
+    del Y
+    del Z
+
     # --------------------------------------------------------------------------P
     # Standard IRL algorithms on natural features
     from reward_space.inverse_reinforcement_learning.lpal import LPAL
@@ -648,8 +652,8 @@ if __name__ == '__main__':
 
     lpal = LPAL(state_action_features,
                 trajectories_ex,
-                estimator_ex.P,
-                mdp_wrap.mu,
+                estimator_ex.get_P(),
+                estimator_ex.get_mu(),
                 mdp_wrap.gamma,
                 mdp_wrap.horizon)
 
@@ -681,6 +685,7 @@ if __name__ == '__main__':
         for a in range(n_actions):
             for s1 in range(n_states):
                 transition_model[s, a, s1] = estimator_ex.P[s * n_actions + a, s1]
+
     linear_irl = LinearIRL(transition_model,
                            expert_policy.pi,
                            mdp_wrap.gamma,
@@ -691,7 +696,7 @@ if __name__ == '__main__':
     linear_irl_reward = np.repeat(linear_irl_reward, n_actions)
 
 
-    #Maximum entropy
+    #Maximum entropy natural features
     me_state = MaximumEntropyIRL(state_features,
                                  trajectories_ex,
                                  transition_model,
@@ -873,9 +878,11 @@ if __name__ == '__main__':
         rewards[-1] += abs_reward
         return rewards
 
+    iterations = 300
+
     policy = BoltzmannPolicy(state_features, action_weights)
     learner = PolicyGradientLearner(mdp, policy, lrate=0.004, verbose=1,
-                                    max_iter_opt=300, tol_opt=-1., tol_eval=0.,
+                                    max_iter_opt=iterations, tol_opt=-1., tol_eval=0.,
                                     estimator='reinforce',
                                     gradient_updater='adam')
 
@@ -899,14 +906,16 @@ if __name__ == '__main__':
     print(t)
 
     if plot:
-        _range = np.arange(301)
+        _range = np.arange(iterations+1)
         fig, ax = plt.subplots()
         ax.set_xlabel('average return')
         ax.set_ylabel('iterations')
         fig.suptitle('REINFORCE - Average return')
 
-        ax.plot([0, 200], [estimator_ex.get_J(), estimator_ex.get_J()], color='k',
+        ax.plot([0, iterations], [estimator_ex.get_J(), estimator_ex.get_J()], color='k',
                 label='Optimal return')
+        ax.plot([0, iterations], [estimator_lpal.get_J(), estimator_lpal.get_J()], color='k',
+                label='LPAL')
         for i in range(len(histories)):
             ax.plot(_range, histories[i, :, 1], marker='+', label=names[i])
 

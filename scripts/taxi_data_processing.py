@@ -9,6 +9,8 @@ plot = True
 mytime = time.time()
 
 epsilon=0.0
+iterations = 401
+n_features = 5
 
 gh_paths = glob.glob('data/taxi/taxi_gradients_hessians_%s_*.npy' % epsilon)
 comp_paths = glob.glob('data/taxi/taxi_comparision_%s_*.npy' % epsilon)
@@ -22,6 +24,8 @@ lpal_paths = filter(lambda x: x.split('_')[-1] in common, lpal_paths)
 comp_paths = filter(lambda x: x.split('_')[-1] in common, comp_paths)
 
 n = len(gh_paths)
+print(n)
+
 confidence = 0.95
 
 gh_arrays = np.array(map(np.load, gh_paths))
@@ -60,8 +64,8 @@ if plot:
     axes[3].set_title('Traces')
 
 
-res = np.stack([gh_mean[5], gh_std[5], gh_error[5]]).transpose([1, 0, 2]).reshape(27, 240).T
-col_names = map(str.__add__, np.repeat(names, 3), np.tile(['-Mean', '-Std', '-Error'], 9))
+res = np.stack([gh_mean[5], gh_std[5], gh_error[5]]).transpose([1, 0, 2]).reshape(3*n_features, 240).T
+col_names = map(str.__add__, np.repeat(names, 3), np.tile(['-Mean', '-Std', '-Error'], n_features))
 df = pd.DataFrame(res, columns=col_names)
 df.to_csv('data/csv/taxi_eigenvalues_%s.csv' % epsilon, index_label='index')
 
@@ -70,6 +74,7 @@ comp_labels = comp_arrays[0, 0]
 comp_mean = np.mean(comp_arrays[:, 1])
 comp_std = (np.var(comp_arrays[:, 1]) ** 0.5)
 
+_filter = range(0, iterations, 40)
 
 return_mean = comp_mean[:, :, 1].astype(np.float64)
 return_std = comp_std[:, :, 1].astype(np.float64)
@@ -78,11 +83,14 @@ return_ci = st.t.interval(confidence, n-1, loc=return_mean, \
 return_error =  return_mean - return_ci[0]
 
 if plot:
-    _range = np.arange(201)
+    _range = np.arange(iterations)
     fig, ax = plt.subplots()
     ax.set_xlabel('return')
     ax.set_ylabel('iterations')
     fig.suptitle('REINFORCE - Return')
+
+    print(len(return_mean[0, :]))
+    print(len(_range))
 
     for i in range(comp_mean.shape[0]):
         y = return_mean[i, :]
@@ -96,52 +104,55 @@ if plot:
 
 
 titles = map(lambda x: x+'-mean', comp_labels) + map(lambda x: x+'-error', comp_labels)
-res = np.vstack([return_mean, return_error]).T[range(0, 201, 10)]
-df = pd.DataFrame(res, columns=titles, index=range(0, 201, 10))
+res = np.vstack([return_mean, return_error]).T[_filter]
+df = pd.DataFrame(res, columns=titles, index=_filter)
 df.to_csv('data/csv/taxi_return_%s.csv' % epsilon, index_label='Iterations')
 
 #-------------------------------------------------------------------------------
-from policy import BoltzmannPolicy
+from policy import BoltzmannPolicy, EpsilonGreedyBoltzmannPolicy
 from ifqi.evaluation import evaluation
 from ifqi.envs import TaxiEnv
 import copy
 state_features = np.load('taxi_features_weights/taxi_state_features.npy')
 action_weights = np.load('taxi_features_weights/taxi_action_weights.npy')
-expert_policy =  BoltzmannPolicy(state_features, action_weights)
+expert_policy =  EpsilonGreedyBoltzmannPolicy(epsilon, state_features, action_weights)
 policy = copy.deepcopy(expert_policy)
 
 mdp = TaxiEnv()
 mdp.horizon = 100
 
-comp_d_kl_mean = np.zeros((comp_arrays[:, 1][0].shape[0], 201))
-comp_d_kl_std = np.zeros((comp_arrays[:, 1][0].shape[0], 201))
+comp_d_kl_mean = np.zeros((comp_arrays[:, 1][0].shape[0], iterations))
+comp_d_kl_std = np.zeros((comp_arrays[:, 1][0].shape[0], iterations))
 
 for i in range(comp_arrays[:, 1][0].shape[0]): #for every basis function
-    for j in range(0, 201, 10): #for every iteration (not all!)
-        policy.set_parameter(comp_mean[i, j, 0], build_gradient_hessian=False)
+    for j in _filter: #for every iteration (not all!)
         d_kl = []
-        print('%s-%s' % (i, j))
-        for k in range(100):
-            dataset = evaluation.collect_episode(mdp, policy)
-            states = dataset[:, 0].astype(np.int)
-            actions = dataset[:, 1].astype(np.int)
-            #compute the kl
-            p_expert = expert_policy.pi[states, actions]
-            p_hat = policy.pi[states, actions]
-            kl = (p_expert * np.log(p_expert / (p_hat + 1e-24) + 1e-24)).sum() / len(dataset)
-            d_kl.append(kl)
+        for l in range(n):
+            policy.set_parameter(np.array(comp_arrays[l, 1])[i, j, 0], build_gradient=False,
+                                 build_hessian=False)
+            d_kl_trial = []
+            for k in range(100):
+                dataset = evaluation.collect_episode(mdp, policy)
+                states = dataset[:, 0].astype(np.int)
+                actions = dataset[:, 1].astype(np.int)
+                # compute the kl
+                p_expert = expert_policy.pi[states, actions]
+                p_hat = policy.pi[states, actions]
+                kl = (p_expert * np.log(
+                    p_expert / (p_hat + 1e-24) + 1e-24)).sum() / len(dataset)
+                d_kl_trial.append(kl)
+            d_kl.append(np.mean(d_kl_trial))
 
         comp_d_kl_mean[i, j] = np.mean(d_kl)
         comp_d_kl_std[i, j] = np.std(d_kl)
 
-comp_d_kl_mean = comp_d_kl_mean[:, range(0, 201, 10)]
-comp_d_kl_std = comp_d_kl_std[:, range(0, 201, 10)]
-comp_d_kl_ci = st.t.interval(confidence, 100-1, loc=comp_d_kl_mean, \
-                            scale=comp_d_kl_std/np.sqrt(100-1))
+comp_d_kl_mean = comp_d_kl_mean[:, _filter]
+comp_d_kl_std = comp_d_kl_std[:, _filter]
+comp_d_kl_ci = st.t.interval(confidence, n-1, loc=comp_d_kl_mean, \
+                            scale=comp_d_kl_std/np.sqrt(n-1))
 comp_d_kl_error = comp_d_kl_mean - comp_d_kl_ci[0]
 
 if plot:
-    _range = np.arange(21)
     fig, ax = plt.subplots()
     ax.set_xlabel('kl div')
     ax.set_ylabel('iterations')
@@ -151,7 +162,7 @@ if plot:
         y = comp_d_kl_mean[i, :]
         y_upper = comp_d_kl_error[i, :]
         y_lower = comp_d_kl_error[i, :]
-        ax.errorbar(_range, y,
+        ax.errorbar(_filter, y,
                     yerr=[y_lower, y_upper],
                     marker='+', label=comp_labels[i])
 
@@ -159,6 +170,6 @@ if plot:
 
 titles = map(lambda x: x+'-mean', comp_labels) + map(lambda x: x+'-error', comp_labels)
 res = np.vstack([comp_d_kl_mean, comp_d_kl_error]).T
-df = pd.DataFrame(res, columns=titles, index=range(0, 201, 10))
+df = pd.DataFrame(res, columns=titles, index=_filter)
 df.to_csv('data/csv/taxi_kl_%s.csv' % epsilon, index_label='Iterations')
 
