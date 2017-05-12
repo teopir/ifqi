@@ -111,7 +111,6 @@ class PolicyGradientLearner(object):
 
             self.policy.set_parameter(theta, build_hessian=False)
             self.estimator.set_policy(self.policy)
-
             gradient, avg_return  = self.estimator.estimate(reward=reward)
             if return_history:
                 history.append([np.copy(theta), avg_return, gradient])

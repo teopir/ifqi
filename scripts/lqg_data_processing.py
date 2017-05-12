@@ -8,9 +8,10 @@ import pandas as pd
 plot = True
 mytime = time.time()
 
-sigma = 0.01
+sigma = 1.
 ite_knn=101
-ite_comp=401
+ite_comp=601
+_filter = np.arange(0, ite_comp, (ite_comp-1)/10)
 
 gh_paths = glob.glob('data/lqg/lqg_gradients_hessians_%s_*.npy' % sigma)
 #grbf_paths = glob.glob('data/lqg/lqg_gbrf_knn_%s_*.npy' % sigma)
@@ -19,14 +20,14 @@ comp_paths = glob.glob('data/lqg/lqg_comparision_%s_*.npy' % sigma)
 common = set(map(lambda x: x.split('_')[-1], gh_paths)) & \
          set(map(lambda x: x.split('_')[-1], comp_paths)) #& \
          #set(map(lambda x: x.split('_')[-1], grbf_paths))
-gh_paths = filter(lambda x: x.split('_')[-1] in common, gh_paths)
+gh_paths = filter(lambda x: x.split('_')[-1] in common, gh_paths)[:40]
 #grbf_paths = filter(lambda x: x.split('_')[-1] in common, grbf_paths)
-comp_paths = filter(lambda x: x.split('_')[-1] in common, comp_paths)
+comp_paths = filter(lambda x: x.split('_')[-1] in common, comp_paths)[:40]
 
 print(len(common))
 
 n = len(gh_paths)
-confidence = 0.9
+confidence = 0.95
 
 gh_arrays = np.array(map(np.load, gh_paths))
 #grbf_arrays = np.array(map(np.load, grbf_paths))
@@ -129,7 +130,7 @@ comp_std = (np.var(comp_arrays[:, 1]) ** 0.5).astype(np.float64)
 comp_ci = st.t.interval(confidence, n-1, loc=comp_mean, \
                             scale=comp_std/np.sqrt(n-1))
 
-_filter = np.arange(0, ite_comp, 60)
+
 if plot:
     _range = np.arange(ite_comp)
     fig, ax = plt.subplots()

@@ -498,9 +498,22 @@ class RangeScaler(object):
 
 if __name__ == '__main__':
 
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epsilon', type=float, default=0.)
+    parser.add_argument('--episodes', type=int, default=100)
+
+    args = parser.parse_args()
+    epsilon = args.epsilon
+    n_episodes = args.episodes
+
+    print(epsilon)
+    print(n_episodes)
+
     mytime = time.time()
 
-    epsilon = 0.01
+    #epsilon = 0.1
 
     plot = False
     plot_gradient = False
@@ -523,7 +536,7 @@ if __name__ == '__main__':
     tol = 1e-24
     mdp = TaxiEnv()
     mdp.horizon = 100
-    n_episodes = 1000
+    #n_episodes = 1000
 
     mdp_wrap = DiscreteMdpWrapper(mdp, episodic=True)
     n_states, n_actions = mdp_wrap.nS, mdp_wrap.nA
@@ -551,7 +564,7 @@ if __name__ == '__main__':
     print('Dataset made of %s samples' % n_samples_ex)
 
     action_weights = np.zeros((n_actions, n_parameters))
-    ml_policy = EpsilonGreedyBoltzmannPolicy(epsilon, state_features, action_weights)
+    ml_policy = BoltzmannPolicy(state_features, action_weights)
     print('Fitting Maximum Likelihood eps-boltz policy from trajectories...')
     ml_policy = fit_maximum_likelihood_policy_from_trajectories(state_features,
                                                     mdp_wrap.state_space,
@@ -559,11 +572,12 @@ if __name__ == '__main__':
                                                     trajectories_ex,
                                                     ml_policy,
                                                     action_weights.ravel()[:, np.newaxis],
-                                                    max_iter=5,#500,
+                                                    max_iter=500,
                                                     learning_rate=1000.)
     d_kl_det_ml = kullback_leibler_divergence(expert_deterministic_policy.pi,
                                               ml_policy.pi[:n_states - 1])
     print('KL-divergence expert deterministic - maximum likelihood %s' % d_kl_det_ml)
+
 
     print('Collecting %s trajectories with ML policy...' % n_episodes)
     trajectories_ml = evaluation.collect_episodes(mdp, ml_policy, n_episodes)
@@ -575,6 +589,11 @@ if __name__ == '__main__':
                                mdp_wrap.state_space,
                                mdp_wrap.action_space,
                                mdp_wrap.horizon)
+
+    saveme = np.zeros(2, dtype=object)
+    saveme[0] = ml_policy.pi
+    saveme[1] = estimator_ml.get_J()
+    np.save('data/taxi/bc_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme)
 
     estimator_ex = DiscreteEnvSampleEstimator(trajectories_ex,
                                mdp_wrap.gamma,
@@ -634,6 +653,13 @@ if __name__ == '__main__':
         psi_padded[sa_idx[0][i], :] = psi[i, :]
         psi_padded_mb[sa_idx[0][i], :] = psi_mb[i, :]
 
+    non_visited = np.setdiff1d(np.arange(psi_padded.shape[0]), sa_idx[0])
+    for j in range(psi_padded.shape[1]):
+        psi_padded[non_visited, j] = min(psi_padded[:, j])
+
+    for j in range(psi_padded_mb.shape[1]):
+        psi_padded_mb[non_visited, j] = min(psi_padded_mb[:, j])
+
     del X
     del Y
     del Z
@@ -648,8 +674,12 @@ if __name__ == '__main__':
     state_action_features = np.repeat(state_features, n_actions, axis=0)
     state_action_features = np.hstack([state_action_features, np.tile(np.eye(n_actions), (n_states, 1))])
 
-    # LPAL
+    rs = RangeScaler()
+    scaled_psi_padded = rs.fit_transform(psi_padded)
+    scaled_psi_padded_mb = rs.fit_transform(psi_padded_mb)
 
+    # LPAL
+    lpal_policies = []
     lpal = LPAL(state_action_features,
                 trajectories_ex,
                 estimator_ex.get_P(),
@@ -657,27 +687,48 @@ if __name__ == '__main__':
                 mdp_wrap.gamma,
                 mdp_wrap.horizon)
 
-    lpal_policy = lpal.fit()
+    lpal_policies.append(lpal.fit())
+
+    lpal = LPAL(scaled_psi_padded,
+                trajectories_ex,
+                estimator_ex.get_P(),
+                estimator_ex.get_mu(),
+                mdp_wrap.gamma,
+                mdp_wrap.horizon)
+
+    lpal_policies.append(lpal.fit())
+
+    lpal = LPAL(scaled_psi_padded_mb,
+                trajectories_ex,
+                estimator_ex.get_P(),
+                estimator_ex.get_mu(),
+                mdp_wrap.gamma,
+                mdp_wrap.horizon)
+
+    lpal_policies.append(lpal.fit())
+
     from policy import TabularPolicy
-    lpal_tab_policy = TabularPolicy(lpal_policy)
+    lpal_tab_policies = map(TabularPolicy, lpal_policies)
+    lpal_returns = []
+    lpal_labels = ['LPAL natural features', 'LPAL ECO-R model free', 'LPAL ECO-R model based']
 
     print('Collecting %s trajectories with LPAL policy...' % n_episodes)
-    trajectories_lpal = evaluation.collect_episodes(mdp, lpal_tab_policy, n_episodes)
-    n_samples_lpal = trajectories_lpal.shape[0]
-    print('Dataset made of %s samples' % n_samples_lpal)
+    for lpal_tab_policy in lpal_tab_policies:
+        trajectories_lpal = evaluation.collect_episodes(mdp, lpal_tab_policy, 1000)
+        estimator_lpal = DiscreteEnvSampleEstimator(trajectories_lpal,
+                                   mdp_wrap.gamma,
+                                   mdp_wrap.state_space,
+                                   mdp_wrap.action_space,
+                                   mdp_wrap.horizon)
 
-
-    estimator_lpal = DiscreteEnvSampleEstimator(trajectories_lpal,
-                               mdp_wrap.gamma,
-                               mdp_wrap.state_space,
-                               mdp_wrap.action_space,
-                               mdp_wrap.horizon)
+        lpal_returns.append(estimator_lpal.get_J())
 
     print('J LPAL policy %s' % estimator_lpal.get_J())
     saveme = np.zeros(2, dtype=object)
-    saveme[0] = lpal_policy
-    saveme[1] = estimator_lpal.get_J()
-    np.save('data/taxi/lpal_%s_%s' % (epsilon, mytime), saveme)
+    saveme[0] = lpal_policies
+    saveme[1] = lpal_returns
+    np.save('data/taxi/lpal_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme)
+
 
     #Linear IRL
     transition_model = np.zeros((n_states, n_actions, n_states))
@@ -685,7 +736,7 @@ if __name__ == '__main__':
         for a in range(n_actions):
             for s1 in range(n_states):
                 transition_model[s, a, s1] = estimator_ex.P[s * n_actions + a, s1]
-
+    '''
     linear_irl = LinearIRL(transition_model,
                            expert_policy.pi,
                            mdp_wrap.gamma,
@@ -694,7 +745,7 @@ if __name__ == '__main__':
                            type_='state')
     linear_irl_reward = linear_irl.fit()
     linear_irl_reward = np.repeat(linear_irl_reward, n_actions)
-
+    '''
 
     #Maximum entropy natural features
     me_state = MaximumEntropyIRL(state_features,
@@ -707,6 +758,38 @@ if __name__ == '__main__':
                                  max_iter=100)
     me_reward = me_state.fit()
     me_reward = np.repeat(me_reward, n_actions)
+
+    # Maximum entropy natural features mf
+    eco_state_features_mf = np.dot(mdp_wrap.PI, psi_padded)
+    eco_state_features_mb = np.dot(mdp_wrap.PI, psi_padded_mb)
+    rs = RangeScaler()
+    eco_state_features_mf = rs.fit_transform(eco_state_features_mf)
+    eco_state_features_mb = rs.fit_transform(eco_state_features_mb)
+
+
+    me_state = MaximumEntropyIRL(eco_state_features_mf,
+                                 trajectories_ex,
+                                 transition_model,
+                                 mdp_wrap.mu,
+                                 mdp_wrap.gamma,
+                                 mdp_wrap.horizon,
+                                 learning_rate=0.01,
+                                 max_iter=100)
+    me_eco_mf = me_state.fit()
+    me_eco_mf = np.repeat(me_eco_mf, n_actions)
+
+    # Maximum entropy natural features mb
+
+    me_state = MaximumEntropyIRL(eco_state_features_mb,
+                                 trajectories_ex,
+                                 transition_model,
+                                 mdp_wrap.mu,
+                                 mdp_wrap.gamma,
+                                 mdp_wrap.horizon,
+                                 learning_rate=0.01,
+                                 max_iter=100)
+    me_eco_mb = me_state.fit()
+    me_eco_mb = np.repeat(me_eco_mb, n_actions)
 
     # ---------------------------------------------------------------------------
 
@@ -740,8 +823,9 @@ if __name__ == '__main__':
     optimizer = HeuristicOptimizerNegativeDefinite(hessian_hat_neg)
     w = optimizer.fit(skip_check=True)
     eco_r = np.dot(psi_padded[:, neg_idx], w)
+
     #Penalization
-    eco_r[np.setdiff1d(np.arange(eco_r.shape[0]), sa_idx[0])] = min(eco_r)
+    #eco_r[np.setdiff1d(np.arange(eco_r.shape[0]), sa_idx[0])] = min(eco_r) #- 0.5
 
     # ---------------------------------------------------------------------------
     # Hessian estimation - model based
@@ -769,7 +853,7 @@ if __name__ == '__main__':
     w = optimizer.fit(skip_check=True)
     eco_r_mb = np.dot(psi_padded_mb[:, neg_idx], w)
     #Penalization
-    eco_r_mb[np.setdiff1d(np.arange(eco_r.shape[0]), sa_idx[0])] = min(eco_r)
+    #eco_r_mb[np.setdiff1d(np.arange(eco_r.shape[0]), sa_idx[0])] = min(eco_r)
 
     # ---------------------------------------------------------------------------
     # Build feature sets
@@ -781,10 +865,14 @@ if __name__ == '__main__':
     basis_functions.append(eco_r)
     names.append('ECO-R heuristic model based')
     basis_functions.append(eco_r_mb)
-    names.append('Linear irl - Russell Ng')
-    basis_functions.append(linear_irl_reward)
-    names.append('Maximum entropy natural features')
+    #names.append('Linear irl - Russell Ng')
+    #basis_functions.append(linear_irl_reward)
+    names.append('Maximum entropy nat ural features')
     basis_functions.append(me_reward)
+    names.append('Maximum entropy ECO-R model free')
+    basis_functions.append(me_eco_mf)
+    names.append('Maximum entropy ECO-R model based')
+    basis_functions.append(me_eco_mb)
 
     '''
     #Gradient and hessian estimation
@@ -841,7 +929,7 @@ if __name__ == '__main__':
     saveme[5] = eigvals_max_np
     saveme[6] = eigvals_np
     saveme[7] = traces_np
-    np.save('data/taxi/taxi_gradients_hessians_%s_%s' % (epsilon, mytime), saveme)
+    np.save('data/taxi/taxi_gradients_hessians_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme)
 
 
     if plot:
@@ -878,11 +966,11 @@ if __name__ == '__main__':
         rewards[-1] += abs_reward
         return rewards
 
-    iterations = 300
+    iterations = 1000
 
     policy = BoltzmannPolicy(state_features, action_weights)
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.004, verbose=1,
-                                    max_iter_opt=iterations, tol_opt=-1., tol_eval=0.,
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.008, verbose=1,
+                                    max_iter_opt=iterations, max_iter_eval=100, tol_opt=-1., tol_eval=0.,
                                     estimator='reinforce',
                                     gradient_updater='adam')
 
@@ -913,15 +1001,16 @@ if __name__ == '__main__':
         fig.suptitle('REINFORCE - Average return')
 
         ax.plot([0, iterations], [estimator_ex.get_J(), estimator_ex.get_J()], color='k',
-                label='Optimal return')
-        ax.plot([0, iterations], [estimator_lpal.get_J(), estimator_lpal.get_J()], color='k',
-                label='LPAL')
+                label='Expert')
+        for i in range(len(lpal_returns)):
+            ax.plot([0, iterations], [lpal_returns[i], lpal_returns[i]],
+                label=lpal_labels[i])
         for i in range(len(histories)):
             ax.plot(_range, histories[i, :, 1], marker='+', label=names[i])
 
-        ax.legend(loc='upper right')
+        ax.legend(loc='lower right')
 
     saveme = np.zeros(2, dtype=object)
     saveme[0] = names
     saveme[1] = histories
-    np.save('data/taxi/taxi_comparision_%s_%s' % (epsilon, mytime), saveme)
+    np.save('data/taxi/taxi_comparision_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme)
