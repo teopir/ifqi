@@ -106,11 +106,25 @@ def plot_curve(mdp, policy, reward=None, edgecolor='#3F7F4C', facecolor='#7EFF99
 
 if __name__ == '__main__':
 
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sigma2', type=float, default=0.1)
+    parser.add_argument('--episodes', type=int, default=20)
+
+    args = parser.parse_args()
+    sigma2 = args.sigma2
+    sigma = np.sqrt(sigma2)
+    n_episodes = args.episodes
+
+    print(sigma)
+    print(n_episodes)
+
     mytime = time.time()
     plot = False
     plot_train = False
 
-    n_episodes = 20
+    #n_episodes = 20
 
     #number of neighbors for kernel extension
     k_neighbors = [1, 2, 10, 50, 100]
@@ -124,7 +138,7 @@ if __name__ == '__main__':
     #Policy parameters
     K = mdp.computeOptimalK()
     print(K)
-    sigma = np.sqrt(0.01)
+    #sigma = np.sqrt(0.01)
 
     policy = GaussianPolicy1D(K, sigma)
 
@@ -143,18 +157,9 @@ if __name__ == '__main__':
         plot_state_action_function(lambda s, a: V_function(s), 'V-function')
 
     #Collect samples
-    r=[]
-    import scipy.stats as st
-    for i in range(38,40):
-        dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
-        n_samples = dataset.shape[0]
-        r.append(np.dot(dataset[:, 2], dataset[:, 4]) / 20)
-    ci = st.t.interval(0.95, 40 - 1, loc=np.mean(r), \
-                  scale=np.std(r) / np.sqrt(40 - 1))
+    dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
+    n_samples = dataset.shape[0]
 
-    print(np.mean(r))
-    print(ci)
-    print(ci - np.mean(r))
     estimator = ContinuousEnvSampleEstimator(dataset, mdp.gamma)
     ml_estimator = MaximumLikelihoodEstimator(dataset)
     d_sa_mu_hat = estimator.get_d_sa_mu()
@@ -332,7 +337,7 @@ if __name__ == '__main__':
     count_sa_knn.fit(states_actions, count_sa_hat)
     #plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
 
-
+    '''
     print('-' * 100)
     print('Training with REINFORCE using the estimated grbf trace minimizer')
 
@@ -388,15 +393,12 @@ if __name__ == '__main__':
     saveme3[0] = knn_labels
     saveme3[1] = knn_histories
     np.save('data/lqg/lqg_gbrf_knn_%s_%s' % (sigma ** 2, mytime), saveme3)
-
-
     '''
+
     print('-' * 100)
     print('Training with REINFORCE using true reward and true a function')
 
-    iterations = 300
-
-    policy = GaussianPolicy1D(K, sigma=np.sqrt(0.01))
+    iterations = 600
 
     learner = PolicyGradientLearner(mdp, policy, max_iter_opt=iterations, lrate=0.002,
             gradient_updater='adam', verbose=1, tol_opt=-1.)
@@ -474,8 +476,8 @@ if __name__ == '__main__':
     saveme2[0] = labels
     saveme2[1] = histories
 
-    np.save('data/lqg/lqg_gradients_hessians_%s_%s' % (sigma ** 2, mytime), saveme1)
-    np.save('data/lqg/lqg_comparision_%s_%s' % (sigma**2, mytime), saveme2)
+    np.save('data/lqg/lqg_gradients_hessians_%s_%s_%s' % (sigma ** 2, n_episodes, mytime), saveme1)
+    np.save('data/lqg/lqg_comparision_%s_%s_%s' % (sigma**2, n_episodes, mytime), saveme2)
     #np.save('data/lqg/lqg_gbrf_knn_%s_%s' % (sigma ** 2, mytime), saveme3)
-    '''
+
 

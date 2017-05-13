@@ -113,8 +113,6 @@ def estimate_hessian(dataset, n_episodes, policy_gradient, policy_hessian, rewar
 
         i += 1
 
-    print(episode_policy_gradient.shape)
-    print((n_episodes, 1, n_params))
     episode_hessian = episode_policy_gradient.reshape(n_episodes, 1, n_params) * episode_policy_gradient.reshape(n_episodes, 1, n_params) + episode_policy_hessian
     episode_reward_features_baseline = episode_reward_features - baseline
 
@@ -580,7 +578,7 @@ if __name__ == '__main__':
 
 
     print('Collecting %s trajectories with ML policy...' % n_episodes)
-    trajectories_ml = evaluation.collect_episodes(mdp, ml_policy, n_episodes)
+    trajectories_ml = evaluation.collect_episodes(mdp, ml_policy, 1000)
     n_samples_ml = trajectories_ml.shape[0]
     print('Dataset made of %s samples' % n_samples_ml)
 
@@ -590,10 +588,10 @@ if __name__ == '__main__':
                                mdp_wrap.action_space,
                                mdp_wrap.horizon)
 
-    saveme = np.zeros(2, dtype=object)
-    saveme[0] = ml_policy.pi
-    saveme[1] = estimator_ml.get_J()
-    np.save('data/taxi/bc_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme)
+    saveme_bc = np.zeros(2, dtype=object)
+    saveme_bc[0] = ml_policy.pi
+    saveme_bc[1] = estimator_ml.get_J()
+
 
     estimator_ex = DiscreteEnvSampleEstimator(trajectories_ex,
                                mdp_wrap.gamma,
@@ -712,9 +710,9 @@ if __name__ == '__main__':
     lpal_returns = []
     lpal_labels = ['LPAL natural features', 'LPAL ECO-R model free', 'LPAL ECO-R model based']
 
-    print('Collecting %s trajectories with LPAL policy...' % n_episodes)
+    print('Collecting %s trajectories with LPAL policy...' % 100)
     for lpal_tab_policy in lpal_tab_policies:
-        trajectories_lpal = evaluation.collect_episodes(mdp, lpal_tab_policy, 1000)
+        trajectories_lpal = evaluation.collect_episodes(mdp, lpal_tab_policy, 100)
         estimator_lpal = DiscreteEnvSampleEstimator(trajectories_lpal,
                                    mdp_wrap.gamma,
                                    mdp_wrap.state_space,
@@ -723,11 +721,11 @@ if __name__ == '__main__':
 
         lpal_returns.append(estimator_lpal.get_J())
 
-    print('J LPAL policy %s' % estimator_lpal.get_J())
-    saveme = np.zeros(2, dtype=object)
-    saveme[0] = lpal_policies
-    saveme[1] = lpal_returns
-    np.save('data/taxi/lpal_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme)
+    print('J LPAL policy %s' % lpal_returns)
+    saveme_lpal = np.zeros(2, dtype=object)
+    saveme_lpal[0] = lpal_policies
+    saveme_lpal[1] = lpal_returns
+
 
 
     #Linear IRL
@@ -929,7 +927,7 @@ if __name__ == '__main__':
     saveme[5] = eigvals_max_np
     saveme[6] = eigvals_np
     saveme[7] = traces_np
-    np.save('data/taxi/taxi_gradients_hessians_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme)
+
 
 
     if plot:
@@ -969,7 +967,7 @@ if __name__ == '__main__':
     iterations = 1000
 
     policy = BoltzmannPolicy(state_features, action_weights)
-    learner = PolicyGradientLearner(mdp, policy, lrate=0.008, verbose=1,
+    learner = PolicyGradientLearner(mdp, policy, lrate=0.008, verbose=0,
                                     max_iter_opt=iterations, max_iter_eval=100, tol_opt=-1., tol_eval=0.,
                                     estimator='reinforce',
                                     gradient_updater='adam')
@@ -983,6 +981,7 @@ if __name__ == '__main__':
         #theta, history = learner.optimize(theta0, reward=lambda traj: sbf[
         #    (traj[:, 0] * 6 + traj[:, 1]).astype(int)],return_history=True)
         theta, history = learner.optimize(theta0, reward=lambda traj: reward_function(sbf, traj),return_history=True)
+        print(np.array(history)[-1, 1])
 
         histories.append(history)
 
@@ -1010,7 +1009,12 @@ if __name__ == '__main__':
 
         ax.legend(loc='lower right')
 
-    saveme = np.zeros(2, dtype=object)
-    saveme[0] = names
-    saveme[1] = histories
-    np.save('data/taxi/taxi_comparision_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme)
+    saveme_comp = np.zeros(2, dtype=object)
+    saveme_comp[0] = names
+    saveme_comp[1] = histories
+
+
+    np.save('data/taxi/bc_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme_bc)
+    np.save('data/taxi/lpal_%s_%s_%s' % (epsilon, n_episodes, mytime),saveme_lpal)
+    np.save('data/taxi/taxi_gradients_hessians_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme)
+    np.save('data/taxi/taxi_comparision_%s_%s_%s' % (epsilon, n_episodes, mytime), saveme_comp)

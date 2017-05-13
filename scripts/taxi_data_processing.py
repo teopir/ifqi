@@ -9,15 +9,16 @@ plot = True
 mytime = time.time()
 
 epsilon=0.0
-iterations = 401
-n_features = 5
+n_episodes = 100
+iterations = 1001
+n_features = 7
 
-expert = {0.0 : (8.813, 0.03815), 0.01 : (8.425, 0.04475), 0.05 : (6.743, 0.06871)}
+expert = {0.0 : (8.813, 0.03815), 0.01 : (8.425, 0.04475), 0.05 : (6.743, 0.06871), 0.1 : (4.397, 0.06242)}
 
-gh_paths = glob.glob('data/taxi/taxi_gradients_hessians_%s_*.npy' % epsilon)
-comp_paths = glob.glob('data/taxi/taxi_comparision_%s_*.npy' % epsilon)
-lpal_paths = glob.glob('data/taxi/lpal_%s_*.npy' % epsilon)
-bc_paths = glob.glob('data/taxi/bc_%s_*.npy' % epsilon)
+gh_paths = glob.glob('data/taxi/taxi_gradients_hessians_%s_%s_*.npy' % (epsilon, n_episodes))
+comp_paths = glob.glob('data/taxi/taxi_comparision_%s_%s_*.npy' % (epsilon, n_episodes))
+lpal_paths = glob.glob('data/taxi/lpal_%s_%s_*.npy' % (epsilon, n_episodes))
+bc_paths = glob.glob('data/taxi/bc_%s_%s_*.npy' % (epsilon, n_episodes))
 
 common = set(map(lambda x: x.split('_')[-1], gh_paths)) & \
          set(map(lambda x: x.split('_')[-1], comp_paths)) & \
@@ -73,14 +74,14 @@ res = np.stack([gh_mean[5], gh_std[5], gh_error[5]]).transpose([1, 0, 2]).reshap
 col_names = map(str.__add__, np.repeat(names, 3), np.tile(['-Mean', '-Std', '-Error'], n_features))
 df = pd.DataFrame(res, columns=col_names)
 df.to_csv('data/csv/taxi_eigenvalues_%s.csv' % epsilon, index_label='index')
-'''
+
 #------------------------------------------------------------------------------
 comp_labels = comp_arrays[0, 0]
 comp_mean = np.mean(comp_arrays[:, 1])
 comp_std = (np.var(comp_arrays[:, 1]) ** 0.5)
 
-lpal_mean = np.mean(lpal_arrays[:, 1])
-lpal_std = (np.var(lpal_arrays[:, 1]) ** 0.5)
+lpal_mean = np.mean(map(np.array, lpal_arrays[:, 1]), axis=0)
+lpal_std = (np.var(map(np.array, lpal_arrays[:, 1]), axis=0) ** 0.5)
 lpal_ci = st.t.interval(confidence, n-1, loc=lpal_mean, \
                             scale=lpal_std/np.sqrt(n-1))
 lpal_error = lpal_mean - lpal_ci[0]
@@ -92,7 +93,7 @@ bc_ci = st.t.interval(confidence, n-1, loc=bc_mean, \
                             scale=bc_std/np.sqrt(n-1))
 bc_error = bc_mean - bc_ci[0]
 
-_filter = range(0, iterations, (iterations-1)/10)
+_filter = range(0, 500, 25)
 
 return_mean = comp_mean[:, :, 1].astype(np.float64)
 return_std = comp_std[:, :, 1].astype(np.float64)
@@ -101,14 +102,14 @@ return_ci = st.t.interval(confidence, n-1, loc=return_mean, \
 return_error =  return_mean - return_ci[0]
 
 return_mean = np.vstack([return_mean,
-                         np.tile(lpal_mean, (1,iterations)),
+                         np.tile(lpal_mean[:, np.newaxis], (1,iterations)),
                          np.tile(bc_mean, (1,iterations)),
                          np.tile(expert[epsilon][0], (1, iterations))])
 return_error = np.vstack([return_error,
-                          np.tile(lpal_error, (1,iterations)),
+                          np.tile(lpal_error[:, np.newaxis], (1,iterations)),
                           np.tile(bc_error, (1,iterations)),
                           np.tile(expert[epsilon][1], (1, iterations))])
-comp_labels = comp_labels + ['LPAL', 'BC', 'Expert']
+comp_labels = comp_labels + ['LPAL natural features', 'LPAL ECO-R model free', 'LPAL ECO-R model based', 'BC', 'Expert']
 
 if plot:
     _range = np.arange(iterations)
@@ -135,7 +136,7 @@ titles = map(lambda x: x+'-mean', comp_labels) + map(lambda x: x+'-error', comp_
 res = np.vstack([return_mean, return_error]).T[_filter]
 df = pd.DataFrame(res, columns=titles, index=_filter)
 df.to_csv('data/csv/taxi_return_%s.csv' % epsilon, index_label='Iterations')
-
+'''
 #-------------------------------------------------------------------------------
 from policy import BoltzmannPolicy, EpsilonGreedyBoltzmannPolicy, TabularPolicy
 from ifqi.evaluation import evaluation
@@ -149,8 +150,8 @@ policy = copy.deepcopy(expert_policy)
 mdp = TaxiEnv()
 mdp.horizon = 100
 
-comp_d_kl_mean = np.zeros((comp_arrays[:, 1][0].shape[0]+2, iterations))
-comp_d_kl_std = np.zeros((comp_arrays[:, 1][0].shape[0]+2, iterations))
+comp_d_kl_mean = np.zeros((comp_arrays[:, 1][0].shape[0]+4, iterations))
+comp_d_kl_std = np.zeros((comp_arrays[:, 1][0].shape[0]+4, iterations))
 
 for i in range(comp_arrays[:, 1][0].shape[0]): #for every basis function
     print(i)
@@ -176,27 +177,28 @@ for i in range(comp_arrays[:, 1][0].shape[0]): #for every basis function
         comp_d_kl_mean[i, j] = np.mean(d_kl)
         comp_d_kl_std[i, j] = np.std(d_kl)
 
-d_kl = []
-i = comp_arrays[:, 1][0].shape[0]
-for l in range(n):
-    policy = TabularPolicy(lpal_arrays[l, 0])
-    d_kl_trial = []
-    for k in range(100):
-        dataset = evaluation.collect_episode(mdp, expert_policy)
-        states = dataset[:, 0].astype(np.int)
-        actions = dataset[:, 1].astype(np.int)
-        # compute the kl
-        p_expert = expert_policy.pi[states, actions]
-        p_hat = policy.pi[states, actions]
-        kl = (p_expert * np.log(
-            p_expert / (p_hat + 1e-24) + 1e-24)).sum() / len(dataset)
-        d_kl_trial.append(kl)
-    d_kl.append(np.mean(d_kl_trial))
-comp_d_kl_mean[i, :] = np.mean(d_kl)
-comp_d_kl_std[i, :] = np.std(d_kl)
+
+for i in range(comp_arrays[:, 1][0].shape[0], comp_arrays[:, 1][0].shape[0]+3):
+    d_kl = []
+    for l in range(n):
+        policy = TabularPolicy(lpal_arrays[l, 0][i-comp_arrays[:, 1][0].shape[0]])
+        d_kl_trial = []
+        for k in range(100):
+            dataset = evaluation.collect_episode(mdp, expert_policy)
+            states = dataset[:, 0].astype(np.int)
+            actions = dataset[:, 1].astype(np.int)
+            # compute the kl
+            p_expert = expert_policy.pi[states, actions]
+            p_hat = policy.pi[states, actions]
+            kl = (p_expert * np.log(
+                p_expert / (p_hat + 1e-24) + 1e-24)).sum() / len(dataset)
+            d_kl_trial.append(kl)
+        d_kl.append(np.mean(d_kl_trial))
+    comp_d_kl_mean[i, :] = np.mean(d_kl)
+    comp_d_kl_std[i, :] = np.std(d_kl)
 
 d_kl = []
-i = comp_arrays[:, 1][0].shape[0] + 1
+i = comp_arrays[:, 1][0].shape[0] + 3
 for l in range(n):
     policy = TabularPolicy(bc_arrays[l, 0])
     d_kl_trial = []
@@ -224,11 +226,11 @@ comp_d_kl_error = comp_d_kl_mean - comp_d_kl_ci[0]
 
 if plot:
     fig, ax = plt.subplots()
-    ax.set_xlabel('kl div')
-    ax.set_ylabel('iterations')
+    ax.set_ylabel('KL div - epsilon=%s' % epsilon)
+    ax.set_xlabel('iterations')
     fig.suptitle('REINFORCE - kl div')
 
-    for i in range(comp_mean.shape[0]+2):
+    for i in range(comp_mean.shape[0]+4):
         y = comp_d_kl_mean[i, :]
         y_upper = comp_d_kl_error[i, :]
         y_lower = comp_d_kl_error[i, :]

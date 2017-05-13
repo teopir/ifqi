@@ -104,7 +104,7 @@ class PolicyGradientLearner(object):
         if self.verbose >= 1:
             print('Ite %s: gradient norm %s' % (ite, gradient_norm))
 
-        while gradient_norm > self.tol_opt and ite < self.max_iter_opt:
+        while ite < self.max_iter_opt:  #and gradient_norm > self.tol_opt:
             #print(theta)
             theta = self.gradient_updater.update(gradient) #Gradient ascent update
             #theta += lrate * gradient
@@ -115,7 +115,7 @@ class PolicyGradientLearner(object):
             if return_history:
                 history.append([np.copy(theta), avg_return, gradient])
 
-            gradient_norm = la.norm(gradient)
+            #gradient_norm = la.norm(gradient)
             ite += 1
 
             '''
@@ -252,7 +252,7 @@ class ReinforceGradientEstimator(GradientEstimator):
             if self.verbose:
                 print('\tIteration %s return %s gradient_norm %s gradient_increment %s' % (ite, t_return, la.norm(gradient_estimate), gradient_increment))
 
-        print(np.mean(traj_return_true))
+        #print(np.mean(traj_return_true))
         return gradient_estimate, np.mean(traj_return_true)
 
 class GMDPGradientEstimator(GradientEstimator):

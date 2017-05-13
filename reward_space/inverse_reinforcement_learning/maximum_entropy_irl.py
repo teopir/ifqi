@@ -167,7 +167,7 @@ class MaximumEntropyIRL(object):
         return D_s
     '''
 
-    def fit(self, verbose=True):
+    def fit(self, verbose=False):
 
         #Compute features expectations
         feature_expectations = compute_feature_expectations(self.reward_features,
@@ -177,7 +177,6 @@ class MaximumEntropyIRL(object):
                                                             self.gamma,
                                                             self.horizon,
                                                             self.type_)
-        print(self.reward_features[-1])
         #Weights initialization
         w = np.ones(self.n_features) / self.n_features
 

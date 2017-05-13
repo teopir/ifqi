@@ -62,6 +62,7 @@ class LPAL(object):
         b = matrix(self.initial_distribution)
 
         #Solve the LP problem
+        solvers.options['show_progress'] = False
         result = solvers.lp(c, G, h, A, b)
 
         #Get the weights
