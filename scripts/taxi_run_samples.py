@@ -653,10 +653,20 @@ if __name__ == '__main__':
 
     non_visited = np.setdiff1d(np.arange(psi_padded.shape[0]), sa_idx[0])
     for j in range(psi_padded.shape[1]):
-        psi_padded[non_visited, j] = min(psi_padded[:, j])
+        _min = min(psi_padded[:, j])
+        _max = max(psi_padded[:, j])
+        if _min == _max:
+            psi_padded[non_visited, j] = -1
+        else:
+            psi_padded[non_visited, j] = min(psi_padded[:, j])
 
     for j in range(psi_padded_mb.shape[1]):
-        psi_padded_mb[non_visited, j] = min(psi_padded_mb[:, j])
+        _min = min(psi_padded_mb[:, j])
+        _max = max(psi_padded_mb[:, j])
+        if _min == _max:
+            psi_padded_mb[non_visited, j] = -1
+        else:
+            psi_padded_mb[non_visited, j] = min(psi_padded_mb[:, j])
 
     del X
     del Y
