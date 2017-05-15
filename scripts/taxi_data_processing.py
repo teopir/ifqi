@@ -12,7 +12,7 @@ kkl=[]
 rrr=[]
 
 for n_episodes in [10,100,1000]:
-    epsilon=0.1
+    epsilon=0.0
     #n_episodes = 1
     iterations = 1001
     n_features = 7
@@ -358,3 +358,21 @@ for i in range(9):
 
 ax.legend(loc='upper right')
 ax.set_xscale('log')
+
+r_lower = rrr[:,:9] - rrr[:,9:]
+r_upper = rrr[:,:9] + rrr[:,9:]
+
+kl_lower = kkl[:,:9] - kkl[:,9:]
+kl_upper = kkl[:,:9] + kkl[:,9:]
+
+r = np.hstack([rrr[:,:9], r_lower, r_upper])
+kl = np.hstack([kkl[:,:9], kl_lower, kl_upper])
+
+cl = np.array(comp_labels)[[2,3,4,5,6,7,8,9,10]]
+t = map(lambda x: x+'-mean', cl) + map(lambda x: x+'-lower', cl) + map(lambda x: x+'-upper', cl)
+
+df = pd.DataFrame(r, columns=t, index=[10,100,1000])
+df.to_csv('data/csv/taxi_episodes_return_comp_%s.csv' % epsilon, index_label='Episodes')
+
+df = pd.DataFrame(kl, columns=t, index=[10,100,1000])
+df.to_csv('data/csv/taxi_episodes_kl_comp_%s.csv' % epsilon, index_label='Episodes')
