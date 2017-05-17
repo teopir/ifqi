@@ -94,8 +94,15 @@ fit_params = {}
 
 fqi.partial_fit(sast, r, **fit_params)
 
+ex_returns = []
+n_episodes_expert = 20
+trajectories_expert = evaluation.collect_episodes(mdp, fqi, n_episodes_expert)
+ex_return = np.dot(trajectories_expert[:, 3], trajectories_expert[:, 6])
+ex_returns.append(ex_return)
+
 iterations = 20
 iteration_values = []
+
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fit_params)
 
@@ -104,8 +111,10 @@ for i in range(iterations - 1):
     #Collect episodes from expert's policy
     n_episodes_expert = 20
     trajectories_expert = evaluation.collect_episodes(mdp, fqi, n_episodes_expert)
+    ex_return = np.dot(trajectories_expert[:, 3], trajectories_expert[:, 6])
     print('Expert trajectories have %d samples' % trajectories_expert.shape[0])
-    print('Expert return %s' % np.dot(trajectories_expert[:, 3], trajectories_expert[:, 6]))
+    print('Expert return %s' % ex_return)
+    ex_returns.append(ex_return)
 
 n_dim_centers = 10
 n_centers = n_dim_centers * n_dim_centers
@@ -336,18 +345,30 @@ fit_params = {}
 
 fqi.partial_fit(sast, r, **fit_params)
 
+lr_returns = []
+trajectories_expert2 = evaluation.collect_episodes(mdp, fqi,
+                                                   n_episodes_expert)
+lr_return = np.dot(trajectories_expert2[:, 3],
+                   trajectories_expert2[:, 6])
+lr_returns.append(lr_return)
+
 iterations = 20
 iteration_values = []
+
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fit_params)
 
     trajectories_expert2 = evaluation.collect_episodes(mdp, fqi,
                                                       n_episodes_expert)
+    lr_return = np.dot(trajectories_expert2[:, 3],
+                                      trajectories_expert2[:, 6])
+    lr_returns.append(lr_return)
     print('Expert trajectories have %d samples' % trajectories_expert2.shape[0])
-    print('Expert return %s' % np.dot(trajectories_expert2[:, 3],
-                                      trajectories_expert2[:, 6]))
+    print('Expert return %s' % lr_return)
 
-def reward_function2( state, action):
-    return 0.1 * knn.predict([np.hstack([state, [action]])]) + \
-           0.5 / max_value * count_sa_knn.predict([np.hstack([state, [action]])], rescale=False)
-#values = evaluation.evaluate_policy(mdp, fqi, initial_states=mdp.initial_states)
+
+import time
+mytime = time.time()
+
+np.save('data/ch/expert_returns_%s' % mytime, np.array(ex_returns))
+np.save('data/ch/eco_returns_%s' % mytime, np.array(lr_returns))
