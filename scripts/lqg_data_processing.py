@@ -8,10 +8,11 @@ import pandas as pd
 plot = True
 mytime = time.time()
 
-sigma = 1.
+sigma = 0.01
 ite_knn=101
-ite_comp=601
+ite_comp=401
 _filter = np.arange(0, ite_comp, (ite_comp-1)/10)
+_filter = np.arange(0,201,20)
 
 gh_paths = glob.glob('data/lqg/lqg_gradients_hessians_%s_*.npy' % sigma)
 #grbf_paths = glob.glob('data/lqg/lqg_gbrf_knn_%s_*.npy' % sigma)
@@ -27,7 +28,7 @@ comp_paths = filter(lambda x: x.split('_')[-1] in common, comp_paths)[:40]
 print(len(common))
 
 n = len(gh_paths)
-confidence = 0.95
+confidence = 0.85
 
 gh_arrays = np.array(map(np.load, gh_paths))
 #grbf_arrays = np.array(map(np.load, grbf_paths))

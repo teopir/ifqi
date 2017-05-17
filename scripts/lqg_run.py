@@ -157,8 +157,12 @@ if __name__ == '__main__':
         plot_state_action_function(lambda s, a: V_function(s), 'V-function')
 
     #Collect samples
-    dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
-    n_samples = dataset.shape[0]
+    r = []
+    for i in range(40):
+        dataset = evaluation.collect_episodes(mdp, policy, n_episodes)
+        n_samples = dataset.shape[0]
+        r.append(dataset[:,2].dot(dataset[:,4]))
+    print(np.mean(r)/n_episodes)
 
     estimator = ContinuousEnvSampleEstimator(dataset, mdp.gamma)
     ml_estimator = MaximumLikelihoodEstimator(dataset)

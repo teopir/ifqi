@@ -864,7 +864,34 @@ if __name__ == '__main__':
     #eco_r_mb[np.setdiff1d(np.arange(eco_r.shape[0]), sa_idx[0])] = min(eco_r)
 
     # ---------------------------------------------------------------------------
+    # Hessian estimation - natural
+
+    print('Estimating hessians model based...')
+    natural = la2.range(state_action_features)
+    hessian_hat = estimate_hessian(trajectories_ex, n_episodes, G, H, natural, \
+                                   mdp_wrap.state_space, mdp_wrap.action_space, mdp_wrap.gamma, mdp_wrap.horizon)
+
+    eigval_hat, _ = la.eigh(hessian_hat)
+    eigmax_hat, eigmin_hat = eigval_hat[:, -1], eigval_hat[:, 0]
+    trace_hat = np.trace(hessian_hat, axis1=1, axis2=2)
+
+    #Heuristic for negative semidefinite
+    neg_idx = np.argwhere(eigmax_hat < -eigmin_hat).ravel()
+    hessian_hat_neg = hessian_hat[neg_idx]
+
+    '''
+    #HEURISTIC SOLUTION
+    #max eig minimization or hessian heuristic in this case are
+    #the same since the dimension of parameter space is 1
+    '''
+
+    optimizer = HeuristicOptimizerNegativeDefinite(hessian_hat_neg)
+    w = optimizer.fit(skip_check=True)
+    natural_r = np.dot(state_action_features[:, neg_idx], w)
+
+    # ---------------------------------------------------------------------------
     # Build feature sets
+    '''
     names.append('Reward function')
     basis_functions.append(R)
     names.append('Advantage function')
@@ -881,6 +908,9 @@ if __name__ == '__main__':
     basis_functions.append(me_eco_mf)
     names.append('Maximum entropy ECO-R model based')
     basis_functions.append(me_eco_mb)
+    '''
+    names.append('Hessian natural features')
+    basis_functions.append(natural_r)
 
     '''
     #Gradient and hessian estimation

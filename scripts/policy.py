@@ -879,3 +879,64 @@ class TabularPolicy(Policy):
         self.np_random, seed = seeding.np_random(seed)
 
 
+class RBFGaussianPolicy(SimplePolicy):
+
+    def __init__(self,
+                 centers,
+                 parameters,
+                 sigma,
+                 radial_basis='gaussian',
+                 radial_basis_parameters=None):
+
+        self.centers = centers
+        self.n_centers = self.centers.shape[0]
+        self.parameters = parameters.ravel()[:, np.newaxis]
+        self.sigma = sigma
+
+        if radial_basis == 'gaussian':
+            self.radial_basis = lambda x, center: np.exp(-radial_basis_parameters \
+                                                         * la.norm(x - center))
+        else:
+            raise ValueError()
+
+        self.seed()
+
+    def set_parameter(self, parameter, build_gradient=True, build_hessian=True):
+        self.parameters = parameter.ravel()[:, np.newaxis]
+
+    def _compute_mean(self, state):
+        rbf = [self.radial_basis(state, self.centers[i])
+               for i in range(self.n_centers)]
+        mean = np.dot(self.parameters.ravel(), rbf)
+        return mean
+
+    def draw_action(self, state, done):
+        action = self._compute_mean(state) + self.np_random.randn() * self.sigma
+        return action
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+
+    def pdf(self, state, action):
+        return np.array(1. / np.sqrt(2 * np.pi * self.sigma ** 2) * np.exp(
+            - 1. / 2 * (action - self._compute_mean(state)) ** 2 / self.sigma ** 2),
+                        ndmin=1)
+
+    def gradient_log(self, state, action, type_='state-action'):
+
+        if type_ == 'state-action':
+            rbf = [self.radial_basis(state, self.centers[i])
+                   for i in range(self.n_centers)]
+            mean = np.dot(self.parameters.ravel(), rbf)
+            gradient = (action - mean) / self.sigma ** 2 * np.array(rbf)
+            return np.array(gradient.ravel(), ndmin=1)
+        elif type_ == 'list':
+            return map(lambda s, a: self.gradient_log(s, a), state, action)
+
+    def hessian_log(self, state, action):
+        rbf = [self.radial_basis(state, self.centers[i])
+               for i in range(self.n_centers)]
+        mean = np.dot(self.parameters.ravel(), rbf)
+        hessian = (action - mean) / self.sigma ** 2 * np.outer(np.array(rbf), np.array(rbf))
+        return np.array(hessian, ndmin=2)
+

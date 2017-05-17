@@ -211,10 +211,19 @@ fig.suptitle('REINFORCE - Parameter - sigma^2 = %s' % sigma)
 
 colors = ['r', 'b', 'g']
 
+names[3]='GIRL - absolute value'
+
+res = None
+
 for i in range(3):
-    y = lll[:, 18+9*i]
-    y_upper = lll[:, 18+9*i+2] + y
-    y_lower = y - lll[:, 18+9*i+2]
+    y = lll[:, 18+9*i+3]
+    y_upper = lll[:, 18+9*i+2+3] + y
+    y_lower = y - lll[:, 18+9*i+2+3]
+    if res is None:
+        res = np.vstack([y, y_upper, y_lower])
+    else:
+        res = np.vstack([res, y, y_upper, y_lower])
+
     ax.plot(_range, y, marker='o', color=colors[i], label=comp_labels[i+2])
     #ax.errorbar(_range, y,
     #            yerr=[y_lower, y_upper],
@@ -224,3 +233,10 @@ for i in range(3):
 ax.plot([2,20], [-0.615,-0.615], color='k', label='Optimal parameter')
 
 ax.legend(loc='lower right')
+
+res = res.T
+titles = map(lambda x: [x+'-mean', x+'-upper', x+'-lower'] , names[2:])
+titles = [t for l in titles for t in l]
+
+df = pd.DataFrame(res,index=[2,5,10,20], columns=titles)
+df.to_csv('data/csv/lqg_episodes_return.csv', index_label='Episodes')

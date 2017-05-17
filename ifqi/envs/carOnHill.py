@@ -1,18 +1,25 @@
+import gym
 import numpy as np
 from builtins import range
 from gym import spaces
+from gym.envs.registration import register
 from gym.utils import seeding
 from scipy.integrate import odeint
 
 import ifqi.utils.spaces as fqispaces
-from .environment import Environment
 
 
-class CarOnHill(Environment):
+
+register(
+    id='CarOnHill-v0',
+    entry_point='ifqi.envs.carOnHill:CarOnHill'
+)
+
+
+class CarOnHill(gym.Env):
     """
     The Car On Hill environment as presented in:
     "Tree-Based Batch Mode Reinforcement Learning, D. Ernst et. al."
-
     """
     metadata = {
         'render.modes': ['human', 'rgb_array'],
@@ -20,7 +27,7 @@ class CarOnHill(Environment):
     }
 
     def __init__(self):
-        self.horizon = 300
+        self.horizon = 100
         self.gamma = 0.95
 
         self.max_pos = 1.
@@ -35,6 +42,14 @@ class CarOnHill(Environment):
         high = np.array([self.max_pos, self.max_velocity])
         self.observation_space = spaces.Box(low=-high, high=high)
         self.action_space = fqispaces.DiscreteValued([-4., 4.], decimals=0)
+
+        # evaluation initial states
+        self.initial_states = np.zeros((289, 2))
+        cont = 0
+        for i in range(-8, 9):
+            for j in range(-8, 9):
+                self.initial_states[cont, :] = [0.125 * i, 0.375 * j]
+                cont += 1
 
         # initialize state
         self.seed()
@@ -58,10 +73,6 @@ class CarOnHill(Environment):
             reward = 0
 
         return self.get_state(), reward, self._absorbing, {}
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def reset(self, state=None):
         self._absorbing = False
@@ -92,3 +103,6 @@ class CarOnHill(Environment):
               diff_hill * diff_2_hill) / (self._m * (1 + diff_hill ** 2))
 
         return dp, ds, 0.
+
+    def _render(self, mode=None, close=None):
+        pass

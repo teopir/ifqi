@@ -14,8 +14,9 @@ n_episodes = 100
 iterations = 1001
 n_features = 7
 m=40
-confidence = 0.80
-_filter = range(0, 301, 30)
+confidence = 0.95
+#_filter = range(0, 151, 15)
+_filter = [1000]
 
 expert = {0.0 : (8.813, 0.03815), 0.01 : (8.425, 0.04475), 0.05 : (6.743, 0.06871), 0.1 : (4.397, 0.06242)}
 
