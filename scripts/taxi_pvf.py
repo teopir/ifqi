@@ -813,7 +813,7 @@ if __name__ == '__main__':
         rewards[-1] += abs_reward
         return rewards
 
-    iterations = 1000
+    iterations = 300
 
     policy = BoltzmannPolicy(state_features, action_weights)
     learner = PolicyGradientLearner(mdp, policy, lrate=0.008, verbose=0,
