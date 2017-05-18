@@ -62,7 +62,71 @@ class DiscreteProtoValueFunctionsEstimator(ProtoValueFunctionsEstimator):
             raise NotImplementedError
 
     def _fit_state_pvfs(self, dataset, count_method):
-        raise NotImplementedError
+        states = dataset[:, 0]
+        discounts = dataset[:, 4]
+        n_samples = dataset.shape[0]
+
+        W = np.zeros((self.n_states, self.n_states))
+
+        i = 0
+        while i < n_samples:
+            if dataset[i, -1] == 0:
+                s_i = np.argwhere(self.state_space == states[i])
+                s_next_i = np.argwhere(self.state_space == states[i + 1])
+
+                idx, idx_next = s_i , s_next_i
+
+                if count_method == 'unique-undiscounted':
+                    if W[idx, idx_next] == 0:
+                        if self.method == 'on-policy':
+                            W[idx, idx_next] = 1
+                        elif self.method == 'off-policy':
+                            raise ValueError()
+                elif count_method == 'count-undiscounted':
+                    if self.method == 'on-policy':
+                        W[idx, idx_next] = 1
+                    elif self.method == 'off-policy':
+                        raise ValueError()
+                elif count_method == 'discounted':
+                    if W[idx, idx_next] == 0:
+                        if self.method == 'on-policy':
+                            W[idx, idx_next] = discounts[i]
+                        elif self.method == 'off-policy':
+                            raise ValueError()
+                else:
+                    raise NotImplementedError
+
+            i = i + 1
+
+        # Adjcency matrix symmetrization
+        W = .5 * (W + W.T)
+        self.W = W
+
+        d = W.sum(axis=1)
+        D = np.diag(d)
+        D1 = np.diag(np.power(d + self.eps, -0.5))
+
+        # Compute the operator
+        if self.operator == 'norm-laplacian':
+            self.L = np.eye(self.n_states) - la.multi_dot([D1, W, D1])
+        elif self.operator == 'comb-laplacian':
+            self.L = D - W
+        elif self.operator == 'random-walk':
+            self.L = la.solve(np.diag(d + self.eps), W)
+        else:
+            raise NotImplementedError
+
+        # Diagonalize the operator
+        if np.allclose(self.L.T, self.L):
+            eigval, eigvec = la.eigh(self.L)
+        else:
+            eigval, eigvec = la.eig(self.L)
+            eigval, eigvec = abs(eigval), abs(eigvec)
+            ind = eigval.argsort()[::-1]
+            eigval, eigvec = eigval[ind], eigvec[ind]
+
+        self.eigval = eigval
+        self.eigvec = eigvec
 
     def _fit_state_action_pvfs(self, dataset, count_method):
         states = dataset[:, 0]
