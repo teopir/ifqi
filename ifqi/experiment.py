@@ -4,6 +4,7 @@ from gym import spaces
 from sklearn.ensemble import ExtraTreesRegressor
 from sklearn.tree import DecisionTreeRegressor
 from models.mlp import MLP
+from models.fairMlp import FairMLP
 from sklearn.linear_model import LinearRegression
 from models.ensemble import Ensemble
 from models.actionregressor import ActionRegressor
@@ -147,6 +148,15 @@ class Experiment(object):
                       'activation': modelConfig['activation']}
             if fitActions:
                 params["n_input"] = stateDim + actionDim
+        elif modelConfig['modelName'] == 'FairMLP':
+            model = Regressor
+            params = {'regressor_class':FairMLP, 'n_input': stateDim,
+                      'n_output': 1,
+                      'hidden_neurons': modelConfig['hidden_neurons'],
+                      'optimizer': modelConfig['optimizer'],
+                      'activation': modelConfig['activation'], 'n_different_models':modelConfig['n_different_models']}
+            if fitActions:
+                params["n_input"] = stateDim + actionDim
         elif modelConfig['modelName'] == 'MLPEnsemble':
             model = Ensemble
             params = {'ens_regressor_class':Regressor,'regressor_class':MLP, 'n_input': stateDim,
@@ -172,7 +182,7 @@ class Experiment(object):
         if modelConfig['modelName'] in ["ExtraTree", "ExtraTreeEnsemble", "DecisionTree"]:
             if "max_depth" in modelConfig: params["max_depth"] = modelConfig["max_depth"]
             if "min_weight_fraction_leaf" in modelConfig: params["min_weight_fraction_leaf"] = modelConfig["min_weight_fraction_leaf"]
-        if modelConfig['modelName'] in ["MLP", "MLPEnsemble"]:
+        if modelConfig['modelName'] in ["MLP", "MLPEnsemble", "FairMLP"]:
             if "early_stopping" in modelConfig: params["early_stopping"] = modelConfig["early_stopping"]
             if "delta_min" in modelConfig: params["delta_min"] = modelConfig["delta_min"]
             if "patience" in modelConfig: params["patience"] = modelConfig["patience"]

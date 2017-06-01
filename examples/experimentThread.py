@@ -139,6 +139,7 @@ state_dim, action_dim = envs.get_space_info(environment)
 reward_idx = state_dim + action_dim
 if not loadSast:
     if not exp.config["mdp"]["mdpName"] == "LunarLander":
+
         dataset = evaluate.collect_episodes(environment,policy=None,n_episodes=size)
     else:
 
