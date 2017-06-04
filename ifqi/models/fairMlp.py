@@ -29,11 +29,11 @@ class FairMLP(object):
         self.n_output = n_output
         self.activation = activation
         self.regularizer = regularizer
-        self.model = self.init_model()
         self.early_stopping = early_stopping
         self.delta_min = delta_min
         self.patience = patience
         self.n_different_models=n_different_models
+        self.model = self.init_model()
 
     def fit(self, X, y, **kwargs):
         if self.early_stopping:
@@ -54,6 +54,13 @@ class FairMLP(object):
         pass
 
     def init_model(self):
+
+        def tensorAdd(x ):
+            ret = x[0]
+            for y in x[1:]:
+                ret = ret + y
+            return ret
+
         model = [None] * self.n_different_models
         input_layer = Dense(self.hidden_neurons[0],
                             init="glorot_uniform",
@@ -78,7 +85,7 @@ class FairMLP(object):
                             b_regularizer=self.regularizer))
 
         final_model = Sequential()
-        final_model.add(Merge(model, mode="add"))
+        final_model.add(Merge(model))
         final_model.compile(loss='mse', optimizer=self.optimizer)
 
         return final_model
