@@ -22,11 +22,15 @@ import matplotlib.pyplot as plt
 
 def plot_state_action_function(f, title, states=None, actions=None, _cmap='coolwarm'):
     if states is None:
-        states = np.arange(-10, 11, .5)
+        states = np.arange(-10, 10.5, .5)
     if actions is None:
-        actions = np.arange(-8, 9, .5)
+        actions = np.arange(-8, 8.5, .5)
     states, actions = np.meshgrid(states, actions)
     z = f(states.ravel(), actions.ravel()).reshape(states.shape)
+
+    arr = np.vstack([states.ravel()[:, np.newaxis], actions.ravel()[:, np.newaxis], z.ravel()[:, np.newaxis]])
+
+    np.savetxt('data/csv/lqg_crirl_map', arr, delimiter=';')
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -67,6 +71,8 @@ def train(learner, states_actions, gaussian_kernel, k, penalty, feature, knn_pen
                              .5 * 1. / 2. * get_knn_function_for_prediction(knn_penalty, True)(traj)
     else:
         function = get_knn_function_for_prediction(knn)
+
+
 
     theta, history = learner.optimize(-0.2, reward=function, return_history=True)
     return history
@@ -109,7 +115,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--sigma2', type=float, default=0.1)
+    parser.add_argument('--sigma2', type=float, default=0.01)
     parser.add_argument('--episodes', type=int, default=20)
 
     args = parser.parse_args()
@@ -124,6 +130,7 @@ if __name__ == '__main__':
     plot = False
     plot_train = False
 
+    sigma = 0.1
     #n_episodes = 20
 
     #number of neighbors for kernel extension
@@ -416,30 +423,37 @@ if __name__ == '__main__':
 
     z = reward_function(_states.ravel(), _actions.ravel()).ravel()[:,np.newaxis]
     z = scaler.fit_transform(z)
-    history_reward = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, False)
+    np.savetxt('data/csv/lqg_reward_map', np.hstack([_states_actions, z]), delimiter=';')
+    #history_reward = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, False)
 
     z = A_function(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
     z = scaler.fit_transform(z)
-    history_advantage = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, False)
+    np.savetxt('data/csv/lqg_advantage_map',
+            np.hstack([_states_actions, z]), delimiter=';')
+    #history_advantage = train(learner, _states_actions, gaussian_kernel, 1, False, z, None, False)
 
     z = girl1(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
     z = scaler.fit_transform(z)
-    history_g1 = train(learner, _states_actions, gaussian_kernel, 1,
-                              False, z, None, False)
+    np.savetxt('data/csv/lqg_girl_square_map',
+            np.hstack([_states_actions, z]), delimiter=';')
+    #history_g1 = train(learner, _states_actions, gaussian_kernel, 1,
+    #                          False, z, None, False)
 
     z = girl2(_states.ravel(), _actions.ravel()).ravel()[:, np.newaxis]
     z = scaler.fit_transform(z)
-    history_g2 = train(learner, _states_actions, gaussian_kernel, 1,
-                              False, z, None, False)
+    np.savetxt('data/csv/lqg_girl_abs_map',
+            np.hstack([_states_actions, z]), delimiter=';')
+    #history_g2 = train(learner, _states_actions, gaussian_kernel, 1,
+     #                         False, z, None, False)
 
     labels = ['Reward function', 'Advantage function', 'GIRL - linear', 'GIRL - square']
-    histories = [history_reward, history_advantage, history_g1, history_g2]
+    #histories = [history_reward, history_advantage, history_g1, history_g2]
 
     for i in range(4, len(scaled_basis_functions)):
         print(names[i])
         sbf = scaled_basis_functions[i]
-        history = train(learner, states_actions, gaussian_kernel, 2, True, sbf, count_sa_knn, False)
-        histories.append(history)
+        history = train(learner, states_actions, gaussian_kernel, 2, True, sbf, count_sa_knn, True)
+        #histories.append(history)
     labels = labels + map(lambda x: x + ' 2knn - penalized', names[4:])
 
     histories = np.array(histories)

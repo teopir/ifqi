@@ -9,7 +9,7 @@ plot = True
 mytime = time.time()
 
 
-epsilon=0.1
+epsilon=0.0
 n_episodes = 100
 iterations = 1001
 n_features = 7
@@ -59,8 +59,8 @@ if plot:
         y_upper = gh_error[5][i]
         y_lower = gh_error[5][i]
         axes.errorbar(_range, gh_mean[5][i], yerr=[y_upper, y_lower], label =names[i])
-    #axes.legend(loc='upper right')
-    plt.yscale('symlog', linthreshy=1e-12)
+    axes.legend(loc='upper right')
+    plt.yscale('symlog', linthreshy=1e-7)
 
     fig, axes = plt.subplots(nrows=4, ncols=1)
     axes[0].boxplot(np.vstack(gh_arrays[:, 3]), labels=names)
@@ -77,7 +77,7 @@ res = np.stack([gh_mean[5], gh_std[5], gh_error[5]]).transpose([1, 0, 2]).reshap
 col_names = map(str.__add__, np.repeat(names, 3), np.tile(['-Mean', '-Std', '-Error'], n_features))
 df = pd.DataFrame(res, columns=col_names)
 df.to_csv('data/csv/taxi_eigenvalues_%s.csv' % epsilon, index_label='index')
-
+'''
 #------------------------------------------------------------------------------
 comp_labels = comp_arrays[0, 0]
 comp_mean = np.mean(comp_arrays[:, 1])
@@ -282,3 +282,4 @@ res = np.vstack([comp_d_kl_mean, comp_d_kl_error]).T
 df = pd.DataFrame(res, columns=titles, index=_filter)
 df.to_csv('data/csv/taxi_kl_%s.csv' % epsilon, index_label='Iterations')
 
+'''

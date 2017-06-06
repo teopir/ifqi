@@ -218,7 +218,8 @@ class ReinforceGradientEstimator(GradientEstimator):
             traj = evaluation.collect_episode(self.mdp, self.policy)
 
             # Compute the trajectory return
-            t_return_true = np.dot(traj[:, 2], traj[:, 4])
+            t_return_true = np.dot(traj[:, 3], traj[:, 5])
+            #t_return_true = np.dot(traj[:, 2], traj[:, 4])
             traj_return_true = np.concatenate([traj_return_true, [[t_return_true]]])
             if reward is None:
                 traj_return = np.concatenate([traj_return, [[t_return_true]]])
@@ -252,7 +253,7 @@ class ReinforceGradientEstimator(GradientEstimator):
             if self.verbose:
                 print('\tIteration %s return %s gradient_norm %s gradient_increment %s' % (ite, t_return, la.norm(gradient_estimate), gradient_increment))
 
-        #print(np.mean(traj_return_true))
+        print(np.mean(traj_return_true))
         return gradient_estimate, np.mean(traj_return_true)
 
 class GMDPGradientEstimator(GradientEstimator):

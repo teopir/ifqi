@@ -511,7 +511,7 @@ if __name__ == '__main__':
 
     mytime = time.time()
 
-    #epsilon = 0.0
+    #epsilon = 0.1
 
     plot = False
     plot_gradient = False
@@ -570,7 +570,7 @@ if __name__ == '__main__':
                                                     trajectories_ex,
                                                     ml_policy,
                                                     action_weights.ravel()[:, np.newaxis],
-                                                    max_iter=1,
+                                                    max_iter=500,
                                                     learning_rate=1000.)
     d_kl_det_ml = kullback_leibler_divergence(expert_deterministic_policy.pi,
                                               ml_policy.pi[:n_states - 1])
@@ -629,11 +629,6 @@ if __name__ == '__main__':
 
     sa_idx = count_sa_hat.nonzero()
     X = np.dot(G[sa_idx].T, np.diag(d_sa_hat[sa_idx]))
-
-    U, s, Vt = la.svd(G)
-    s = np.vstack([np.arange(len(s))+1, s]).T
-    np.savetxt('data/csv/gradiend_sv_%s' % epsilon, s, delimiter=',')
-
 
     print('Computing ECO-Qs...')
     phi = la2.nullspace(X, criterion='tol')

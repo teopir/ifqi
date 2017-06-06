@@ -125,8 +125,10 @@ class GaussianPolicy(SimplePolicy):
     TBR
     '''
     
-    def __init__(self, K, covar, action_bounds=None):
-        SimplePolicy.__init__(self, K, action_bounds)
+    def __init__(self, K, covar):
+        SimplePolicy.__init__(self, K)
+        self.K = np.array(K, ndmin=2)
+        self.ndim = self.K.shape[0]
         self.covar = np.array(covar, ndmin=2)
         self.seed()
 
@@ -134,18 +136,35 @@ class GaussianPolicy(SimplePolicy):
         state = np.array(state, ndmin=1)
         mean = np.dot(self.K, state)
         action = self.np_random.multivariate_normal(mean, self.covar)
-        bound_action = self.check_action_bounds(action)
-        return bound_action
+        return action
     
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
-    '''
-    TODO: check the following code
-    def gradient_log_pdf(self,state,action):
-        state = np.array(state, ndmin=1)
-        action = np.array(action, ndmin=1)
-        return np.array(state.dot(action - np.dot(self.K,state)).dot(np.linalg.inv(self.cov)), ndmin=1)
-    '''
+
+    def set_parameter(self, K, build_gradient=True, build_hessian=True):
+        self.K = K
+
+    def pdf(self, state, action):
+        mean = np.dot(self.K, state)
+        return multivariate_normal(action, mean, self.covar)
+
+    def gradient_log(self, state, action, type_='state-action'):
+        if type_ == 'state-action':
+            deriv = np.transpose(np.tensordot(np.eye(self.ndim), state, axes=0).squeeze(),
+                         (0, 2, 1))
+            mean = np.dot(self.K, state)
+            sol = la.solve(self.covar, mean)
+            return np.array(np.tensordot(deriv, sol[:, np.newaxis], axes=1).squeeze(), ndmin=2)
+        elif type_ == 'list':
+            return map(lambda s,a: self.gradient_log(s, a), state, action)
+
+    def hessian_log(self, state, action):
+        deriv = np.transpose(
+            np.tensordot(np.eye(self.ndim), state, axes=0).squeeze(),
+            (0, 2, 1))
+        mean = np.dot(self.K, state)
+        sol = la.solve(self.covar, mean)
+        return np.array(np.tensordot(np.tensordot(deriv, deriv, axes=1), sol[:, np.newaxis][:, np.newaxis], axes=1).squeeze(), ndmin=2)
     
     
     
@@ -901,6 +920,9 @@ class RBFGaussianPolicy(SimplePolicy):
 
         self.seed()
 
+    def get_dim(self):
+        return self.parameters.shape[0]
+
     def set_parameter(self, parameter, build_gradient=True, build_hessian=True):
         self.parameters = parameter.ravel()[:, np.newaxis]
 
@@ -939,4 +961,5 @@ class RBFGaussianPolicy(SimplePolicy):
         mean = np.dot(self.parameters.ravel(), rbf)
         hessian = (action - mean) / self.sigma ** 2 * np.outer(np.array(rbf), np.array(rbf))
         return np.array(hessian, ndmin=2)
+
 

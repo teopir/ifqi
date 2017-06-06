@@ -51,6 +51,11 @@ def fit_maximum_likelihood_policy_from_trajectories(  trajectories,
     return policy
 
 mdp = envs.CarOnHill()
+
+
+
+
+
 state_dim, action_dim, reward_dim = envs.get_space_info(mdp)
 assert reward_dim == 1
 
@@ -130,49 +135,49 @@ class epsilon_expert(object):
             return action
 
 r = []
-for i in range(20):
-    n_episodes_expert = 20
-    trajectories_expert = evaluation.collect_episodes(mdp, epsilon_expert(), n_episodes_expert)
-    ex_return = np.dot(trajectories_expert[:, 3], trajectories_expert[:, 6])
-    print('Expert trajectories have %d samples' % trajectories_expert.shape[0])
-    print('Expert return %s' % (ex_return/20.0))
+#for i in range(20):
+n_episodes_expert = 20
+trajectories_expert = evaluation.collect_episodes(mdp, epsilon_expert(), n_episodes_expert)
+ex_return = np.dot(trajectories_expert[:, 3], trajectories_expert[:, 6])
+print('Expert trajectories have %d samples' % trajectories_expert.shape[0])
+print('Expert return %s' % (ex_return/20.0))
 
 
-    n_dim_centers = 40
-    n_centers = n_dim_centers * n_dim_centers
-    centers = np.meshgrid(np.linspace(-mdp.max_pos, mdp.max_pos, n_dim_centers),
-                          np.linspace(-mdp.max_velocity, mdp.max_velocity, n_dim_centers))
+n_dim_centers = 20
+n_centers = n_dim_centers * n_dim_centers
+centers = np.meshgrid(np.linspace(-mdp.max_pos, mdp.max_pos, n_dim_centers),
+                      np.linspace(-mdp.max_velocity, mdp.max_velocity, n_dim_centers))
 
-    centers = np.vstack([centers[0].ravel(), centers[1].ravel()]).T
+centers = np.vstack([centers[0].ravel(), centers[1].ravel()]).T
 
-    parameters = np.zeros((n_centers, 1))
-    from policy import RBFGaussianPolicy
-    policy = RBFGaussianPolicy(centers, parameters, sigma=0.01, radial_basis_parameters=0.01)
+parameters = np.zeros((n_centers, 1))
+from policy import RBFGaussianPolicy
+policy = RBFGaussianPolicy(centers, parameters, sigma=0.01, radial_basis_parameters=0.01)
 
-    #DA SISTEMARE
-    def fit_lr(trajectories, centers, policy):
-        states = trajectories[:, :2]
-        actions = trajectories[:, 2]
-        X = np.zeros((len(states), len(centers)))
-        for i in range(len(states)):
-            for j in range(len(centers)):
-                X[i, j] = policy.radial_basis(states[i], centers[j])
+#DA SISTEMARE
+def fit_lr(trajectories, centers, policy):
+    states = trajectories[:, :2]
+    actions = trajectories[:, 2]
+    X = np.zeros((len(states), len(centers)))
+    for i in range(len(states)):
+        for j in range(len(centers)):
+            X[i, j] = policy.radial_basis(states[i], centers[j])
 
-        from sklearn.linear_model import Ridge
-        lr = Ridge(alpha=0.0005, fit_intercept=False)
-        lr.fit(X, actions)
+    from sklearn.linear_model import Ridge
+    lr = Ridge(alpha=0.0005, fit_intercept=False)
+    lr.fit(X, actions)
 
-        print(lr.coef_)
-        policy.set_parameter(lr.coef_[:, np.newaxis])
-        return policy
+    print(lr.coef_)
+    policy.set_parameter(lr.coef_[:, np.newaxis])
+    return policy
 
-    ml_policy = fit_lr(trajectories_expert, centers, policy)
+ml_policy = fit_lr(trajectories_expert, centers, policy)
 
-    n_episodes_ml = 20
-    trajectories_ml = evaluation.collect_episodes(mdp, ml_policy, n_episodes_ml)
-    print('ML policy trajectories have %d samples' % trajectories_ml.shape[0])
-    print('ML policy return %s' % np.dot(trajectories_ml[:, 3], trajectories_ml[:, 6]/20))
-    r.append(np.dot(trajectories_ml[:, 3], trajectories_ml[:, 6]/20))
+n_episodes_ml = 20
+trajectories_ml = evaluation.collect_episodes(mdp, ml_policy, n_episodes_ml)
+print('ML policy trajectories have %d samples' % trajectories_ml.shape[0])
+print('ML policy return %s' % np.dot(trajectories_ml[:, 3], trajectories_ml[:, 6]/20))
+r.append(np.dot(trajectories_ml[:, 3], trajectories_ml[:, 6]/20))
 
 rmean = np.mean(r)
 rstd = np.std(r)
@@ -183,7 +188,7 @@ rci = st.t.interval(0.9, 20-1, loc=rmean, \
 
 print(rmean)
 print(rci)
-'''
+
 d_sa_mu_hat = trajectories_expert[:, 6]
 D_hat = np.diag(d_sa_mu_hat)
 
@@ -309,6 +314,10 @@ def reward_function(self, state, action):
     return 0.5 * self.knn.predict([np.hstack([state, [action]])]) + \
            0.5 / self.max_value * self.count_sa_knn.predict([np.hstack([state, [action]])], rescale=False)
 
+def reward_function2(state, action):
+    return 0.5 * knn.predict([np.hstack([state, [action]])]) + \
+           0.5 / max_value * count_sa_knn.predict([np.hstack([state, [action]])], rescale=False)
+
 absorbing_value = np.mean(sbf[np.argwhere(trajectories_expert[:, -1] == 1.)])
 
 from scipy.integrate import odeint
@@ -348,6 +357,40 @@ mdp2.max_value = max_value
 mdp2.reward_function = types.MethodType(reward_function, mdp2)
 mdp2.step = types.MethodType(new_step, mdp2)
 
+
+#-------------------------------------------------------------------------------
+from reward_space.policy_gradient.policy_gradient_learner import PolicyGradientLearner
+iterations=5
+learner = PolicyGradientLearner(mdp2, policy, lrate=0.008, verbose=1,
+                                    max_iter_opt=iterations, max_iter_eval=100, tol_opt=-1., tol_eval=0.,
+                                    estimator='reinforce',
+                                    gradient_updater='adam')
+
+theta0 = np.zeros((n_centers,1))
+theta, history = learner.optimize(theta0,return_history=True)
+
+policy.set_parameter(theta)
+n_episodes_ml = 20
+trajectories_ml = evaluation.collect_episodes(mdp, policy, n_episodes_ml)
+print('ECO %s' % np.dot(trajectories_ml[:, 3],
+                                     trajectories_ml[:, 6] / 20))
+
+learner = PolicyGradientLearner(mdp, policy, lrate=0.008, verbose=1,
+                                    max_iter_opt=iterations, max_iter_eval=100, tol_opt=-1., tol_eval=0.,
+                                    estimator='reinforce',
+                                    gradient_updater='adam')
+
+theta0 = np.zeros((n_centers,1))
+theta, history = learner.optimize(theta0,return_history=True)
+
+policy.set_parameter(theta)
+n_episodes_ml = 20
+trajectories_ml = evaluation.collect_episodes(mdp, policy, n_episodes_ml)
+print('Reward %s' % np.dot(trajectories_ml[:, 3],
+                                     trajectories_ml[:, 6] / 20))
+
+
+'''
 #-------------------------------------------------------------------------------
 #FQI train
 regressor_params = {'n_estimators': 50,
@@ -419,3 +462,4 @@ mytime = time.time()
 #np.save('data/ch/expert_returns_%s' % mytime, np.array(ex_returns))
 np.save('data/ch/eco_returns_explo_%s' % mytime, np.array(lr_returns))
 '''
+
