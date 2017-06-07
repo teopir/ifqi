@@ -145,8 +145,8 @@ class GaussianPolicy(SimplePolicy):
         self.K = K
 
     def pdf(self, state, action):
-        mean = np.dot(self.K, state)
-        return multivariate_normal(action, mean, self.covar)
+        mean = np.dot(self.K, state[:, np.newaxis])
+        return multivariate_normal.pdf(action, mean.ravel(), self.covar)
 
     def gradient_log(self, state, action, type_='state-action'):
         if type_ == 'state-action':
@@ -962,4 +962,36 @@ class RBFGaussianPolicy(SimplePolicy):
         hessian = (action - mean) / self.sigma ** 2 * np.outer(np.array(rbf), np.array(rbf))
         return np.array(hessian, ndmin=2)
 
+
+class BivariateGaussianPolicy(GaussianPolicy):
+
+    def __init__(self, k, sigma, rho):
+        self.k = np.array(k)
+        self.sigma = np.array(sigma)
+        self.rho = rho
+        K = np.diag(k)
+        covar = np.diag(self.sigma ** 2)
+        covar[0, 1] = covar[1, 0] = np.prod(self.sigma) * self.rho
+        GaussianPolicy.__init__(self, K, covar)
+
+    def gradient_log(self, state, action, type_='state-action'):
+        if type_  == 'state-action':
+            grad = 1. / (2 * (1 - self.rho ** 2)) * np.array([2 * state[i] / (self.sigma[i] ** 2) * \
+                (action[i] - self.k[i] * state[i]) - 2 * self.rho / np.prod(self.sigma) * \
+                state[i] * (action[1-i] - self.k[1-i]*state[1-i]) for i in range(2)])
+            return np.array(grad)
+        elif type_ == 'list':
+            return map(lambda s, a: self.gradient_log(s, a), state, action)
+
+    def hessian_log(self, state, action, type_='state-action'):
+        if type_ == 'state-action':
+            d = 1. / (2 * (1 - self.rho ** 2)) * np.array([-2 * state[i] ** 2/ (self.sigma[i] ** 2) for i in range(2)])
+            cd = 1. / (2 * (1 - self.rho ** 2)) * np.array([ 2 * self.rho / np.prod(self.sigma) * \
+                    state[i] *state[1-i] for i in range(2)])
+
+            hess = np.diag(d)
+            hess[0, 1], hess[1, 0] = cd
+            return hess
+        elif type_ == 'list':
+            return map(lambda s, a: self.hessian_log(s, a), state, action)
 

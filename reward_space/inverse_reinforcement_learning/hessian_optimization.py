@@ -1,4 +1,4 @@
-#import cvxpy
+import cvxpy
 import numpy as np
 import numpy.linalg as la
 import scipy.optimize as opt
@@ -18,7 +18,7 @@ class HessianOptimizer(object):
             if normalizer == 'weighs_sum_to_one':
                 norm_constraint = [cvxpy.sum_entries(w) == 1]
             elif normalizer == 'norm_weights_one':
-                norm_constraint = [cvxpy.norm(w) <= 1]
+                norm_constraint = [cvxpy.norm(w, 2) <= 1]
             elif normalizer == 'feature_max_one':
                 norm_constraint = [cvxpy.max_entries(np.dot(self.features, w)) == 1,
                                    cvxpy.min_entries(np.dot(self.features, w)) == 0]
@@ -43,7 +43,7 @@ class TraceOptimizer(HessianOptimizer):
         constraints.extend(self._build_weights_constraint(w, normalizer))
 
         problem = cvxpy.Problem(objective, constraints)
-        result = problem.solve(verbose=True)
+        result = problem.solve(solver='SCS', verbose=True)
 
         return w.value, final_hessian.value, result
 
@@ -56,13 +56,19 @@ class MaximumEigenvalueOptimizer(HessianOptimizer):
         for i in range(1, self.n_states_actions):
             final_hessian += self.hessians[i] * w[i]
 
-        objective = cvxpy.Minimize(cvxpy.lambda_max(final_hessian))
+        #t = cvxpy.Variable()
 
+        objective = cvxpy.Minimize(cvxpy.lambda_max(final_hessian))
+        #objective = cvxpy.Minimize(t)
+
+        constraints = []
+        #constraints = [final_hessian - t * np.eye(self.n_parameters) << 0]
         constraints = [final_hessian + self.threshold * np.eye(self.n_parameters) << 0]
         constraints.extend(self._build_weights_constraint(w, normalizer))
+        #print(constraints)
 
         problem = cvxpy.Problem(objective, constraints)
-        result = problem.solve(verbose=True)
+        result = problem.solve(solver='SCS', verbose=True)
 
         return w.value, final_hessian.value, result
 
