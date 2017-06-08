@@ -49,10 +49,12 @@ class LQG(Environment):
         self.sigma_noise = 0.1 * np.eye(dimensions)
         #self.A = np.eye(dimensions)
         #self.B = np.eye(dimensions)
+
         self.A = np.array([[1., 0.1],
                            [0.1, 1.]])
         self.B = np.array([[1., 0.1],
                            [0.1, 1.]])
+
         self.Q = 0.9 *  np.eye(dimensions)
         self.R = 0.9 *  np.eye(dimensions)
 
