@@ -966,10 +966,10 @@ class RBFGaussianPolicy(SimplePolicy):
 class BivariateGaussianPolicy(GaussianPolicy):
 
     def __init__(self, k, sigma, rho):
-        self.k = np.array(k)
+        self.k = self.k = np.array(k).ravel()
         self.sigma = np.array(sigma)
         self.rho = rho
-        K = np.diag(k)
+        K = np.diag(self.k)
         covar = np.diag(self.sigma ** 2)
         covar[0, 1] = covar[1, 0] = np.prod(self.sigma) * self.rho
         GaussianPolicy.__init__(self, K, covar)
@@ -994,4 +994,14 @@ class BivariateGaussianPolicy(GaussianPolicy):
             return hess
         elif type_ == 'list':
             return map(lambda s, a: self.hessian_log(s, a), state, action)
+
+    def get_dim(self):
+        return 2
+
+    def set_parameter(self, k, build_gradient=True, build_hessian=True):
+        self.k = np.array(k).ravel()
+        K = np.diag(self.k)
+        super(self.__class__, self).set_parameter(K, build_gradient, build_hessian)
+
+
 

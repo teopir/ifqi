@@ -9,20 +9,82 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from prettytable import PrettyTable
 from mpl_toolkits.mplot3d import Axes3D
+from sklearn.neighbors import KNeighborsRegressor, NearestNeighbors
+import copy
+
+def plot_state_action_function(f, title, states=None, actions=None, _cmap='coolwarm'):
+    if states is None:
+        states = np.arange(-10, 10.5, .5)
+    if actions is None:
+        actions = np.arange(-8, 8.5, .5)
+    states, actions = np.meshgrid(states, actions)
+    z = f(states.ravel(), actions.ravel()).reshape(states.shape)
+
+    arr = np.vstack([states.ravel()[:, np.newaxis], actions.ravel()[:, np.newaxis], z.ravel()[:, np.newaxis]])
+
+    np.savetxt('data/csv/lqg_crirl_map', arr, delimiter=';')
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot_surface(states, actions, z, rstride=1, cstride=1,
+                    cmap=plt.get_cmap(_cmap),
+                    linewidth=0.3, antialiased=True)
+    ax.set_title(title)
+
+def get_knn_function_for_plot(knn, rescale=False):
+    if rescale:
+        return lambda states, actions: knn.predict \
+         (np.hstack([states[:, np.newaxis], actions[:, np.newaxis]]), rescale=False)
+    else:
+        return lambda states, actions: knn.predict \
+            (np.hstack([states[:, np.newaxis], actions[:, np.newaxis]]))
+
+def get_knn_function_for_prediction(knn, rescale=False):
+    if rescale:
+        return lambda traj: knn.predict(traj[:, :4], rescale=False)
+    else:
+        return lambda traj: knn.predict(traj[:, :4])
+
+def train(learner, states_actions, gaussian_kernel, k, penalty, feature, knn_penalty=None, plot=False):
+    knn = KNeighborsRegressor(n_neighbors=k, weights=gaussian_kernel)
+    knn.fit(states_actions, feature.ravel())
+
+    if plot:
+        if penalty:
+            function = lambda states, actions: .5 * \
+                        get_knn_function_for_plot(knn)(states, actions) *+ \
+                        .5 * 1. / 2. * get_knn_function_for_plot(knn_penalty, True)(states, actions)
+        else:
+            function = get_knn_function_for_plot(knn)
+        plot_state_action_function(function, '%sknn %s' % (k, '- penalty' if penalty else ''))
+
+    if penalty:
+        function = lambda traj: .5 * get_knn_function_for_prediction(knn)(traj) + \
+                             .5 * 1. / 2. * get_knn_function_for_prediction(knn_penalty, True)(traj)
+    else:
+        function = get_knn_function_for_prediction(knn)
+
+
+
+    theta, history = learner.optimize(-np.ones((2,1))*0.2, reward=function, return_history=True)
+    return history
+
 
 global_grad = []
 global_hess = []
 
-for _ in range(10):
-    lqg = LQG(dimensions=2)
+lqg = LQG(dimensions=2)
 
-    #Compute the optimal parameter
-    A, B, Q, R = lqg.A, lqg.B, lqg.Q, lqg.R
-    X = solve_discrete_are(A, B, Q, R)
-    K = -la.multi_dot([la.inv(la.multi_dot([B.T, X, B]) + R), B.T, X, A])
+#Compute the optimal parameter
+A, B, Q, R = lqg.A, lqg.B, lqg.Q, lqg.R
+X = solve_discrete_are(A, B, Q, R)
+K = -la.multi_dot([la.inv(la.multi_dot([B.T, X, B]) + R), B.T, X, A])
+
+
+for _ in range(1):
 
     n_episodes_ex = 20
-    policy_ex = GaussianPolicy(K, covar=0.2 * np.eye(2))
+    policy_ex = GaussianPolicy(K, covar=0.1 * np.eye(2))
     trajectories_ex = evaluation.collect_episodes(lqg, policy_ex, n_episodes_ex)
     n_samples = trajectories_ex.shape[0]
     J = np.dot(trajectories_ex[:, 4], trajectories_ex[:, 7])/n_episodes_ex
@@ -32,15 +94,15 @@ for _ in range(10):
     k2 = np.dot(trajectories_ex[:, 1], trajectories_ex[:, 3]) / np.dot(trajectories_ex[:, 1], trajectories_ex[:, 1])
     n_episodes_ml = 20
     #policy_ml = GaussianPolicy(K = [[k1, 0], [0, k2]], covar=0.1 * np.eye(2))
-    policy_ml = BivariateGaussianPolicy([k1, k2], np.sqrt([0.5,0.5]), 0.)
+    #policy_ml = BivariateGaussianPolicy([k1, k2], np.sqrt([0.2,0.2]), 0.)
+    policy_ml = BivariateGaussianPolicy(K.diagonal(), np.sqrt([0.1, 0.1]), 0.)
     trajectories_ml = evaluation.collect_episodes(lqg, policy_ml, n_episodes_ml)
     print(np.dot(trajectories_ml[:, 4], trajectories_ml[:, 7])/n_episodes_ml)
-
-    trajectories_ex = trajectories_ml
 
     G = np.stack(policy_ml.gradient_log(trajectories_ex[:, :2], trajectories_ex[:, 2:4], type_='list'))
     H = np.stack(policy_ml.hessian_log(trajectories_ex[:, :2], trajectories_ex[:, 2:4], type_='list'), axis=0)
     D_hat = np.diag(trajectories_ex[:, 7])
+
 
     print('-' * 100)
     print('Computing Q-function approx space...')
@@ -51,7 +113,7 @@ for _ in range(10):
     print('-' * 100)
     print('Computing A-function approx space...')
 
-    sigma_kernel = 1.
+    sigma_kernel = 2.
     def gaussian_kernel(x):
         return 1. / np.sqrt(2 * np.pi * sigma_kernel ** 2) * np.exp(- 1. / 2 * x ** 2 / (sigma_kernel ** 2))
 
@@ -71,7 +133,6 @@ for _ in range(10):
 
     Y = np.dot(np.eye(n_samples) - pi_tilde, phi)
     psi = la2.range(Y)
-
 
     from reward_space.policy_gradient.gradient_estimator import MaximumLikelihoodEstimator
     ml_estimator = MaximumLikelihoodEstimator(trajectories_ex)
@@ -114,14 +175,14 @@ for _ in range(10):
     '''
 
     #Rescale rewards into to have difference between max and min equal to 1
-    '''
+
     scaler = MinMaxScaler()
 
     scaled_basis_functions = []
     for bf in basis_functions:
-        sbf = scaler.fit_transform(bf).ravel()
+        sbf = scaler.fit_transform(bf[:, np.newaxis]).ravel()
         scaled_basis_functions.append(sbf)
-    '''
+
     scaled_basis_functions = basis_functions
     gradients, hessians, eigvals, trace = [], [], [], []
     print('Estimating gradient and hessians...')
@@ -143,6 +204,87 @@ for _ in range(10):
 
     global_grad.append(gradients)
     global_hess.append(hessians)
+
+    '''
+        REINFORCE training
+        '''
+    print('-' * 100)
+    print('Estimating d(s,a)...')
+
+    count_sa_hat = np.ones(n_samples)
+    count_sa_hat /= count_sa_hat.max()
+
+    from reward_space.utils.k_neighbors_regressor_2 import KNeighborsRegressor2
+    count_sa_knn = KNeighborsRegressor2(n_neighbors=5, weights=gaussian_kernel)
+    count_sa_knn.fit(trajectories_ex[:, :4], count_sa_hat)
+    # plot_state_action_function(get_knn_function_for_plot(count_sa_knn, True), 'd(s,a)')
+
+
+    print('-' * 100)
+    print('Training with REINFORCE using true reward and true a function')
+
+    iterations = 150
+
+    from reward_space.policy_gradient.policy_gradient_learner import \
+        PolicyGradientLearner
+
+    learner = PolicyGradientLearner(lqg, policy_ml, max_iter_opt=iterations,
+                                    lrate=0.002,
+                                    gradient_updater='adam', verbose=1,
+                                    tol_opt=-1., state_dim=2, action_dim=2)
+
+    _, history = learner.optimize(-np.ones((2, 1)) * 0.2, return_history=True)
+    histories = [history]
+
+    for i in range(1, len(scaled_basis_functions)):
+        print(names[i])
+        sbf = scaled_basis_functions[i]
+        history = train(learner, trajectories_ex[:, :4], gaussian_kernel, 2,
+                        True, sbf,
+                        count_sa_knn, False)
+        histories.append(history)
+
+    labels = names
+
+    histories = np.array(histories)
+    t = PrettyTable()
+    t.add_column('Basis function', labels)
+    t.add_column('Final parameter',
+                 [np.array(histories)[i][-1, 0] for i in range(4)])
+    t.add_column('Final return',
+                 [np.array(histories)[i][-1, 1] for i in range(4)])
+    t.add_column('Final gradient',
+                 [np.array(histories)[i][-1, 2] for i in range(4)])
+    print(t)
+
+    plot = True
+    if plot:
+        _range = np.arange(iterations + 1)
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        ax.set_ylabel('k1')
+        ax.set_xlabel('iterations')
+        ax.set_zlabel('k2')
+        ax.plot([0, iterations + 1], [k1, k1], [k2, k2], color='k',
+                label='Optimal parameter')
+        for i in range(len(histories)):
+            ks = np.stack(np.array(histories)[i][:, 0]).squeeze()
+            ax.plot(_range, ks[:, 0].ravel(), ks[:, 1].ravel(),
+                    marker=None, label=labels[i])
+        ax.legend(loc='upper right')
+
+        _range = np.arange(iterations + 1)
+        fig, ax = plt.subplots()
+        ax.set_xlabel('parameter')
+        ax.set_ylabel('iterations')
+        fig.suptitle('REINFORCE - Return ')
+
+        for i in range(len(histories)):
+            ax.plot(_range, np.array(histories)[i][:, 1].ravel(), marker=None,
+                    label=labels[i])
+        ax.legend(loc='upper right')
+
+
 '''
 gradients = np.mean(np.stack(global_grad).squeeze(), axis=0)
 hessians = np.mean(np.stack(global_hess).squeeze(), axis=0)

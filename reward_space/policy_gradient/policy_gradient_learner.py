@@ -22,7 +22,9 @@ class PolicyGradientLearner(object):
                  tol_eval=1e-5,
                  max_iter_opt=100,
                  tol_opt=1e-5,
-                 verbose=0):
+                 verbose=0,
+                 state_dim=1,
+                 action_dim=1):
 
         '''
         Constructor
@@ -42,6 +44,8 @@ class PolicyGradientLearner(object):
         param tol_opt: the optimization stops when norm-2 of the gradient
                        increment is below tol_eval
         param verbose: verbosity level
+        param state_dim: the dimension of the state space
+        param action_dim: the dimension of the action space
         '''
 
         self.mdp = mdp
@@ -53,19 +57,25 @@ class PolicyGradientLearner(object):
         self.max_iter_opt = max_iter_opt
         self.tol_opt = tol_opt
         self.verbose = verbose
+        self.state_dim = state_dim
+        self.action_dim = action_dim
 
         if estimator == 'reinforce':
             self.estimator = ReinforceGradientEstimator(self.mdp,
                                                         self.policy,
                                                         self.tol_eval,
                                                         self.max_iter_eval,
-                                                        self.verbose == 2)
+                                                        self.verbose == 2,
+                                                        self.state_dim,
+                                                        self.action_dim)
         elif estimator == 'natural':
             self.estimator = NaturalGradientEstimator(self.mdp,
                                                         self.policy,
                                                         self.tol_eval,
                                                         self.max_iter_eval,
-                                                        self.verbose == 2)
+                                                        self.verbose == 2,
+                                                        self.state_dim,
+                                                        self.action_dim)
         else:
             raise NotImplementedError()
 
@@ -115,7 +125,7 @@ class PolicyGradientLearner(object):
             if return_history:
                 history.append([np.copy(theta), avg_return, gradient])
 
-            #gradient_norm = la.norm(gradient)
+            gradient_norm = la.norm(gradient)
             ite += 1
 
             '''
@@ -150,7 +160,9 @@ class GradientEstimator(object):
                  policy,
                  tol=1e-5,
                  max_iter=100,
-                 verbose=True):
+                 verbose=True,
+                 state_dim=1,
+                 action_dim=1):
         '''
         Constructor
 
@@ -160,6 +172,8 @@ class GradientEstimator(object):
                    below tol
         param max_iter: the maximum number of iterations for the algorithm
         param verbose: whether to display progressing messages
+        param state_dim: the dimension of the state space
+        param action_dim: the dimension of the action space
         '''
 
         self.mdp = mdp
@@ -168,6 +182,12 @@ class GradientEstimator(object):
         self.max_iter = max_iter
         self.dim = policy.get_dim()
         self.verbose = verbose
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.reward_index = state_dim + action_dim
+        self.discount_index = 2 * state_dim + action_dim + 1
+        self.state_index = np.arange(state_dim)
+        self.action_index = np.arange(state_dim, state_dim + action_dim)
 
     def set_policy(self, policy):
         self.policy = policy
@@ -218,18 +238,17 @@ class ReinforceGradientEstimator(GradientEstimator):
             traj = evaluation.collect_episode(self.mdp, self.policy)
 
             # Compute the trajectory return
-            t_return_true = np.dot(traj[:, 3], traj[:, 5])
-            #t_return_true = np.dot(traj[:, 2], traj[:, 4])
+            t_return_true = np.dot(traj[:, self.reward_index], traj[:, self.discount_index])
             traj_return_true = np.concatenate([traj_return_true, [[t_return_true]]])
             if reward is None:
                 traj_return = np.concatenate([traj_return, [[t_return_true]]])
             else:
-                t_return = np.dot(reward(traj), traj[:, 4])
+                t_return = np.dot(reward(traj), traj[:, self.discount_index])
                 traj_return = np.concatenate([traj_return, [[t_return]]])
 
             # Compute the trajectory log policy gradient
             t_log_gradient = np.sum(
-                self.policy.gradient_log(traj[:, 0], traj[:, 1], type_='list'),
+                self.policy.gradient_log(traj[:, self.state_index], traj[:, self.action_index], type_='list'),
                 axis=0)
             traj_log_grad = np.concatenate([traj_log_grad, [t_log_gradient]])
 
@@ -261,9 +280,9 @@ class GMDPGradientEstimator(GradientEstimator):
     def estimate(self, reward=None):
        raise NotImplementedError()
 
-class NaturalGradientEstimator(GradientEstimator):
+class NaturalActorCritic(GradientEstimator):
 
-    def estimate(self, n_trials=10, reward=None):
+    def estimate(self, n_trials=100, reward=None):
         '''
         This method performs gradient estimation with Natural gradient algorithm.
 
@@ -278,6 +297,7 @@ class NaturalGradientEstimator(GradientEstimator):
         ite = 0
         gradient_increment = np.inf
         gradient_estimate = np.inf
+
 
         while ite < self.max_iter and gradient_increment > self.tol:
             ite += 1
@@ -320,6 +340,70 @@ class NaturalGradientEstimator(GradientEstimator):
             old_gradient_estimate = gradient_estimate
             gradient_estimate = np.dot(_fisher_inv,
                                        _vanilla_gradient - baseline * _eligibility)
+
+            # Compute the gradient increment
+            gradient_increment = la.norm(
+                gradient_estimate - old_gradient_estimate)
+
+            if self.verbose:
+                print('\tIteration %s return %s gradient_norm %s gradient_increment %s' % (ite, _average_reward, la.norm(gradient_estimate), gradient_increment))
+
+        return gradient_estimate
+
+class NaturalGradientEstimator(GradientEstimator):
+
+    def estimate(self, n_trials=100, reward=None):
+        '''
+        This method performs gradient estimation with Natural gradient algorithm.
+
+        param n_trials: number of trials to estimate the gradient
+        param reward: if set, it is used in place of the reward provided by the
+                      mdp to compute the gradient
+        return: the estimated gradient
+        '''
+        if self.verbose:
+            print('\tNatural gradient: starting estimation...')
+
+        ite = 0
+        gradient_increment = np.inf
+        gradient_estimate = np.inf
+
+        self.max_iter = 1
+        while ite < self.max_iter and gradient_increment > self.tol:
+            ite += 1
+
+            # Collect a trajectory
+            _average_reward = 0.
+            _fisher = 0.
+            _vanilla_gradient = 0.
+            for _ in range(n_trials):
+                traj = evaluation.collect_episode(self.mdp, self.policy)
+
+                # Compute the trajectory return
+                if reward is None:
+                    t_return = np.sum(traj[:, self.reward_index] * traj[:, self.discount_index])
+                else:
+                    t_return = np.sum(reward(traj) * traj[:, self.discount_index])
+                _average_reward += t_return
+
+                # Compute the sufficient statistics
+                t_log_gradient = np.sum(
+                    self.policy.gradient_log(traj[:, self.state_index],
+                                             traj[:, self.action_index],
+                                             type_='list'),
+                    axis=0)
+
+                _fisher += np.outer(t_log_gradient, t_log_gradient)
+                _vanilla_gradient += t_log_gradient * t_return
+
+            _average_reward /= n_trials
+            _fisher /= n_trials
+            _vanilla_gradient /= n_trials
+            #_fisher_inv = la.inv(np.eye(self.dim) * 1e-10 + _fisher)
+
+            # Compute the gradient estimate
+            old_gradient_estimate = gradient_estimate
+            gradient_estimate = la.solve(_fisher, _vanilla_gradient)
 
             # Compute the gradient increment
             gradient_increment = la.norm(

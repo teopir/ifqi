@@ -46,7 +46,7 @@ class LQG(Environment):
 
         self.max_pos = 10.0
         self.max_action = 8.0
-        self.sigma_noise = 0.1 * np.eye(dimensions)
+        self.sigma_noise = 0.01 * np.eye(dimensions)
         #self.A = np.eye(dimensions)
         #self.B = np.eye(dimensions)
 
