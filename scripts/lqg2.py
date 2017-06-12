@@ -81,10 +81,10 @@ X = solve_discrete_are(A, B, Q, R)
 K = -la.multi_dot([la.inv(la.multi_dot([B.T, X, B]) + R), B.T, X, A])
 
 
-for _ in range(1):
+for _ in range(10):
 
     n_episodes_ex = 20
-    policy_ex = GaussianPolicy(K, covar=0.1 * np.eye(2))
+    policy_ex = GaussianPolicy(K, covar=0.01 * np.eye(2))
     trajectories_ex = evaluation.collect_episodes(lqg, policy_ex, n_episodes_ex)
     n_samples = trajectories_ex.shape[0]
     J = np.dot(trajectories_ex[:, 4], trajectories_ex[:, 7])/n_episodes_ex
@@ -95,7 +95,7 @@ for _ in range(1):
     n_episodes_ml = 20
     #policy_ml = GaussianPolicy(K = [[k1, 0], [0, k2]], covar=0.1 * np.eye(2))
     #policy_ml = BivariateGaussianPolicy([k1, k2], np.sqrt([0.2,0.2]), 0.)
-    policy_ml = BivariateGaussianPolicy(K.diagonal(), np.sqrt([0.1, 0.1]), 0.)
+    policy_ml = BivariateGaussianPolicy(K.diagonal(), np.sqrt([0.01, 0.01]), 0.)
     trajectories_ml = evaluation.collect_episodes(lqg, policy_ml, n_episodes_ml)
     print(np.dot(trajectories_ml[:, 4], trajectories_ml[:, 7])/n_episodes_ml)
 
@@ -113,7 +113,7 @@ for _ in range(1):
     print('-' * 100)
     print('Computing A-function approx space...')
 
-    sigma_kernel = 2.
+    sigma_kernel = 1.
     def gaussian_kernel(x):
         return 1. / np.sqrt(2 * np.pi * sigma_kernel ** 2) * np.exp(- 1. / 2 * x ** 2 / (sigma_kernel ** 2))
 
@@ -144,7 +144,7 @@ for _ in range(1):
     eigenvalues_hat, _ = la.eigh(hessian_hat)
     traces_hat = np.trace(hessian_hat, axis1=1, axis2=2)
 
-    plt.scatter(eigenvalues_hat[:, 0], eigenvalues_hat[:, 1])
+    #plt.scatter(eigenvalues_hat[:, 0], eigenvalues_hat[:, 1])
 
     from reward_space.inverse_reinforcement_learning.hessian_optimization import MaximumEigenvalueOptimizer, TraceOptimizer, HeuristicOptimizerNegativeDefinite
     me_opt = MaximumEigenvalueOptimizer(hessian_hat/1000.)
@@ -201,6 +201,14 @@ for _ in range(1):
     t.add_column('Trace', trace)
     print(t)
 
+    print('Saving results...')
+    gradients_np = np.vstack(gradients)
+    hessians_np = np.vstack(hessians)
+
+    saveme1 = np.zeros(3, dtype=object)
+    saveme1[0] = names
+    saveme1[1] = gradients_np
+    saveme1[2] = hessians_np
 
     global_grad.append(gradients)
     global_hess.append(hessians)
@@ -223,7 +231,7 @@ for _ in range(1):
     print('-' * 100)
     print('Training with REINFORCE using true reward and true a function')
 
-    iterations = 150
+    iterations = 300
 
     from reward_space.policy_gradient.policy_gradient_learner import \
         PolicyGradientLearner
@@ -257,7 +265,7 @@ for _ in range(1):
                  [np.array(histories)[i][-1, 2] for i in range(4)])
     print(t)
 
-    plot = True
+    plot = False
     if plot:
         _range = np.arange(iterations + 1)
         fig = plt.figure()
@@ -283,6 +291,16 @@ for _ in range(1):
             ax.plot(_range, np.array(histories)[i][:, 1].ravel(), marker=None,
                     label=labels[i])
         ax.legend(loc='upper right')
+
+    saveme2 = np.zeros(2, dtype=object)
+    saveme2[0] = labels
+    saveme2[1] = histories
+
+    import time
+
+    mytime = time.time()
+    np.save('data/lqg/lqg2_gradients_hessians_%s' % mytime, saveme1)
+    np.save('data/lqg/lqg2_comparision_%s' % mytime,  saveme2)
 
 
 '''

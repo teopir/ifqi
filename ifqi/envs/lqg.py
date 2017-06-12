@@ -50,10 +50,10 @@ class LQG(Environment):
         #self.A = np.eye(dimensions)
         #self.B = np.eye(dimensions)
 
-        self.A = np.array([[1., 0.1],
-                           [0.1, 1.]])
-        self.B = np.array([[1., 0.1],
-                           [0.1, 1.]])
+        self.A = np.array([[1., 0.],
+                           [0., 1.]])
+        self.B = np.array([[1., 0.],
+                           [0., 1.]])
 
         self.Q = 0.9 *  np.eye(dimensions)
         self.R = 0.9 *  np.eye(dimensions)
@@ -90,9 +90,10 @@ class LQG(Environment):
     def reset(self, state=None):
 
         if state is None:
-            self.state = np.array(prng.np_random.uniform(-self.max_pos,
-                                                          self.max_pos,
-                                                          self.dimensions))
+            #self.state = np.array(prng.np_random.uniform(-self.max_pos,
+            #                                              self.max_pos,
+            #                                              self.dimensions))
+            self.state = np.array([-4., -4.])
         else:
             self.state = np.array(state)
 
