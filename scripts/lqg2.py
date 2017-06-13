@@ -80,11 +80,14 @@ A, B, Q, R = lqg.A, lqg.B, lqg.Q, lqg.R
 X = solve_discrete_are(A, B, Q, R)
 K = -la.multi_dot([la.inv(la.multi_dot([B.T, X, B]) + R), B.T, X, A])
 
-
-for _ in range(10):
+K1=K2=0
+e1 = []
+e2 = []
+for _ in range(5):
 
     n_episodes_ex = 20
     policy_ex = GaussianPolicy(K, covar=0.01 * np.eye(2))
+    print(K)
     trajectories_ex = evaluation.collect_episodes(lqg, policy_ex, n_episodes_ex)
     n_samples = trajectories_ex.shape[0]
     J = np.dot(trajectories_ex[:, 4], trajectories_ex[:, 7])/n_episodes_ex
@@ -92,6 +95,7 @@ for _ in range(10):
 
     k1 = np.dot(trajectories_ex[:, 0], trajectories_ex[:, 2]) / np.dot(trajectories_ex[:, 0], trajectories_ex[:, 0])
     k2 = np.dot(trajectories_ex[:, 1], trajectories_ex[:, 3]) / np.dot(trajectories_ex[:, 1], trajectories_ex[:, 1])
+
     n_episodes_ml = 20
     #policy_ml = GaussianPolicy(K = [[k1, 0], [0, k2]], covar=0.1 * np.eye(2))
     #policy_ml = BivariateGaussianPolicy([k1, k2], np.sqrt([0.2,0.2]), 0.)
@@ -144,6 +148,9 @@ for _ in range(10):
     eigenvalues_hat, _ = la.eigh(hessian_hat)
     traces_hat = np.trace(hessian_hat, axis1=1, axis2=2)
 
+    e1.extend(eigenvalues_hat[:, 0])
+    e2.extend(eigenvalues_hat[:, 1])
+    continue
     #plt.scatter(eigenvalues_hat[:, 0], eigenvalues_hat[:, 1])
 
     from reward_space.inverse_reinforcement_learning.hessian_optimization import MaximumEigenvalueOptimizer, TraceOptimizer, HeuristicOptimizerNegativeDefinite
@@ -200,11 +207,13 @@ for _ in range(10):
     t.add_column('Eigenvalues', eigvals)
     t.add_column('Trace', trace)
     print(t)
-
+    '''
     print('Saving results...')
     gradients_np = np.vstack(gradients)
+    print(hessians)
     hessians_np = np.vstack(hessians)
 
+    print(hessians_np)
     saveme1 = np.zeros(3, dtype=object)
     saveme1[0] = names
     saveme1[1] = gradients_np
@@ -214,8 +223,8 @@ for _ in range(10):
     global_hess.append(hessians)
 
     '''
-        REINFORCE training
-        '''
+    #REINFORCE training
+    '''
     print('-' * 100)
     print('Estimating d(s,a)...')
 
@@ -302,6 +311,7 @@ for _ in range(10):
     np.save('data/lqg/lqg2_gradients_hessians_%s' % mytime, saveme1)
     np.save('data/lqg/lqg2_comparision_%s' % mytime,  saveme2)
 
+    '''
 
 '''
 gradients = np.mean(np.stack(global_grad).squeeze(), axis=0)
