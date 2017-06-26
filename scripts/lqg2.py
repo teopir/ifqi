@@ -83,7 +83,8 @@ K = -la.multi_dot([la.inv(la.multi_dot([B.T, X, B]) + R), B.T, X, A])
 K1=K2=0
 e1 = []
 e2 = []
-for _ in range(5):
+j = []
+for _ in range(20):
 
     n_episodes_ex = 20
     policy_ex = GaussianPolicy(K, covar=0.01 * np.eye(2))
@@ -92,6 +93,8 @@ for _ in range(5):
     n_samples = trajectories_ex.shape[0]
     J = np.dot(trajectories_ex[:, 4], trajectories_ex[:, 7])/n_episodes_ex
     print(J)
+    j.append(j)
+    continue
 
     k1 = np.dot(trajectories_ex[:, 0], trajectories_ex[:, 2]) / np.dot(trajectories_ex[:, 0], trajectories_ex[:, 0])
     k2 = np.dot(trajectories_ex[:, 1], trajectories_ex[:, 3]) / np.dot(trajectories_ex[:, 1], trajectories_ex[:, 1])
@@ -312,6 +315,8 @@ for _ in range(5):
     np.save('data/lqg/lqg2_comparision_%s' % mytime,  saveme2)
 
     '''
+
+print(np.mean(j))
 
 '''
 gradients = np.mean(np.stack(global_grad).squeeze(), axis=0)

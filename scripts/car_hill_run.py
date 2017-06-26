@@ -129,7 +129,7 @@ class epsilon_expert(object):
 
     def draw_action(self, state, absorbing=False):
         action = fqi.draw_action(state, absorbing)
-        if np.random.uniform() > 0.9:
+        if np.random.uniform() > 1.:
             return 4 if np.random.randint(2) == 0 else -4
         else:
             return action
@@ -359,6 +359,7 @@ mdp2.step = types.MethodType(new_step, mdp2)
 
 
 #-------------------------------------------------------------------------------
+'''
 from reward_space.policy_gradient.policy_gradient_learner import PolicyGradientLearner
 iterations=5
 learner = PolicyGradientLearner(mdp2, policy, lrate=0.008, verbose=1,
@@ -433,20 +434,20 @@ fqi = FQI(estimator=regressor,
 fit_params = {}
 
 fqi.partial_fit(sast, r, **fit_params)
-
+'''
 lr_returns = []
 trajectories_expert2 = evaluation.collect_episodes(mdp, fqi,
                                                    n_episodes_expert)
 lr_return = np.dot(trajectories_expert2[:, 3],
                    trajectories_expert2[:, 6])
 lr_returns.append(lr_return)
-
+'''
 iterations = 20
 iteration_values = []
 
 for i in range(iterations - 1):
     fqi.partial_fit(None, None, **fit_params)
-
+    '''
     trajectories_expert2 = evaluation.collect_episodes(mdp, fqi,
                                                       n_episodes_expert)
     lr_return = np.dot(trajectories_expert2[:, 3],
@@ -455,11 +456,75 @@ for i in range(iterations - 1):
     print('Expert trajectories have %d samples' % trajectories_expert2.shape[0])
     print('Expert return %s' % lr_return)
 
-
+    '''
 import time
 mytime = time.time()
 
 #np.save('data/ch/expert_returns_%s' % mytime, np.array(ex_returns))
-np.save('data/ch/eco_returns_explo_%s' % mytime, np.array(lr_returns))
-'''
+#np.save('data/ch/eco_returns_explo_%s' % mytime, np.array(lr_returns))
 
+
+trajectories_expert2 = evaluation.collect_episodes(mdp, fqi,
+                                                      n_episodes_expert)
+
+fig, ax = plt.subplots()
+ax.set_xlabel('p')
+ax.set_ylabel('v')
+fig.suptitle('Trajectories')
+
+import scipy.stats as st
+confidence=0.95
+
+stop = np.argwhere(trajectories_expert[:,-1] == 1.).ravel()+1
+start = np.array([0] + list(stop[:-1]))
+
+A = trajectories_expert[:, 3]* trajectories_expert[:, 6]
+indices = np.stack([start, stop]).T
+c = np.r_[0, A.cumsum()][indices]
+sums = c[:,1] - c[:,0]
+
+amax, amin = np.argmax(sums), np.argmin(sums)
+
+tr_ex_best, tr_exp_worst = trajectories_expert[start[amax]:stop[amax], :], trajectories_expert[start[amin]:stop[amin], :]
+
+out = []
+
+for dataset, c, l in zip([trajectories_expert, trajectories_expert2, trajectories_ml], ['r', 'b', 'g'], ['Expert', 'CR-IRL', 'BC']):
+
+
+    index = np.array([0] + list(np.argwhere(dataset[:,-1] == 1.).ravel() + 1))
+    n = len(index)-1
+    lmax = np.diff(index).max()+1
+
+    states = np.zeros((n, 2, lmax))
+    episode = 0
+    t = 0
+    for i in range(len(dataset)):
+        states[episode, :, t] = dataset[i, :2]
+        if dataset[i, -1] == 1.:
+            states[episode, :, t+1] = dataset[i, 4:6]
+            for tt in range(t+2, lmax):
+                states[episode, :, tt] = states[episode, :, t+1]
+            episode += 1
+            t = 0
+        else:
+            t += 1
+
+    '''
+    p_mean, v_mean = np.mean(states, axis=0)
+    p_std, v_std= np.std(states, axis=0)
+
+    p_error = st.t.interval(confidence, n - 1, loc=p_mean, \
+                  scale=p_std / np.sqrt(n - 1))[0] - p_mean
+    v_error = st.t.interval(confidence, n - 1, loc=v_mean, \
+                            scale=v_std / np.sqrt(n - 1))[0] - v_mean
+    '''
+    out.append(states)
+    for i in range(n):
+        ax.plot(states[i, 0, :], states[i, 1, :], color=c)
+    #ax.plot(p_mean, v_mean, color = c, label=l, marker='*')
+    #ax.fill_betweenx(v_mean, p_mean-p_error, p_mean+p_error, color = c, alpha=0.5)
+    #ax.fill_between(p_mean, v_mean - v_error, v_mean + v_error, color = c,alpha=0.5)
+    #ax.errorbar(p_mean, v_mean, xerr=p_std, yerr=v_sdt)
+
+#fig.legend()

@@ -15,9 +15,9 @@ ite_comp=301
 _filter = np.arange(0, ite_comp, (ite_comp-1)/10)
 _filter = np.arange(0,201,20)
 
-gh_paths = glob.glob('data/lqg/lqg2_gradients_hessians_*.npy')
+gh_paths = glob.glob('data/lqg2/lqg2_gradients_hessians_*.npy')
 #grbf_paths = glob.glob('data/lqg/lqg_gbrf_knn_%s_*.npy' % sigma)
-comp_paths = glob.glob('data/lqg/lqg2_comparision_*.npy')
+comp_paths = glob.glob('data/lqg2/lqg2_comparision_*.npy')
 
 common = set(map(lambda x: x.split('_')[-1], gh_paths)) & \
          set(map(lambda x: x.split('_')[-1], comp_paths)) #& \
@@ -94,6 +94,7 @@ param_std = comp_std[:,:,0]
 
 if plot:
 
+    res = []
     _range = np.arange(ite_comp)
     fig, ax = plt.subplots()
     ax.set_xlabel('parameter')
@@ -103,6 +104,8 @@ if plot:
     for i in range(comp_mean.shape[0]):
         y = return_mean[i]
         y_upper = return_ci[1][i] - y
+        res.append(y)
+        res.append(y_upper)
         y_lower = y - return_ci[0][i]
         ax.errorbar(_range[_filter], y[_filter],
                     yerr=[y_lower[_filter], y_upper[_filter]],
@@ -110,6 +113,7 @@ if plot:
 
     ax.legend(loc='upper right')
 
+    np.savetxt('data/csv/lqg2_return2.csv', np.stack(res).T, delimiter=';')
 '''
     res = None
     _range = np.arange(ite_comp)
