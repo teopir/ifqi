@@ -124,12 +124,12 @@ for i in range(iterations - 1):
     #print('Expert return %s' % ex_return)
     #ex_returns.append(ex_return)
 
-
+e=0.9
 class epsilon_expert(object):
 
     def draw_action(self, state, absorbing=False):
         action = fqi.draw_action(state, absorbing)
-        if np.random.uniform() > 1.:
+        if np.random.uniform() > e:
             return 4 if np.random.randint(2) == 0 else -4
         else:
             return action
@@ -467,6 +467,10 @@ mytime = time.time()
 trajectories_expert2 = evaluation.collect_episodes(mdp, fqi,
                                                       n_episodes_expert)
 
+
+l = [trajectories_expert, trajectories_ml, trajectories_expert2]
+np.save('data/coh/%s_%s' % (e,time.time()), l)
+'''
 fig, ax = plt.subplots()
 ax.set_xlabel('p')
 ax.set_ylabel('v')
@@ -510,15 +514,15 @@ for dataset, c, l in zip([trajectories_expert, trajectories_expert2, trajectorie
         else:
             t += 1
 
-    '''
-    p_mean, v_mean = np.mean(states, axis=0)
-    p_std, v_std= np.std(states, axis=0)
+'''
+    #p_mean, v_mean = np.mean(states, axis=0)
+    #p_std, v_std= np.std(states, axis=0)
 
-    p_error = st.t.interval(confidence, n - 1, loc=p_mean, \
-                  scale=p_std / np.sqrt(n - 1))[0] - p_mean
-    v_error = st.t.interval(confidence, n - 1, loc=v_mean, \
-                            scale=v_std / np.sqrt(n - 1))[0] - v_mean
-    '''
+    #p_error = st.t.interval(confidence, n - 1, loc=p_mean, \
+    #              scale=p_std / np.sqrt(n - 1))[0] - p_mean
+    #v_error = st.t.interval(confidence, n - 1, loc=v_mean, \
+    #                        scale=v_std / np.sqrt(n - 1))[0] - v_mean
+'''
     out.append(states)
     for i in range(n):
         ax.plot(states[i, 0, :], states[i, 1, :], color=c)
@@ -526,5 +530,5 @@ for dataset, c, l in zip([trajectories_expert, trajectories_expert2, trajectorie
     #ax.fill_betweenx(v_mean, p_mean-p_error, p_mean+p_error, color = c, alpha=0.5)
     #ax.fill_between(p_mean, v_mean - v_error, v_mean + v_error, color = c,alpha=0.5)
     #ax.errorbar(p_mean, v_mean, xerr=p_std, yerr=v_sdt)
-
+'''
 #fig.legend()
